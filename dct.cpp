@@ -1,6 +1,7 @@
 #include "dct.hpp"
 // #include <arm_neon.h>
 #include "constants.hpp"
+#include "ycctype.hpp"
 
 void fastdct2(int16_t *in, int stride) {
   //  static constexpr float S[] = {
@@ -15,7 +16,7 @@ void fastdct2(int16_t *in, int stride) {
   int32_t z1, z2, z3, z4, z5, z11, z13;
   int16_t *dataptr;
   int ctr;
-  int half = 1 << 14;
+  constexpr int half = 1 << 14;
 
   /* Pass 1: process rows. */
 
@@ -118,9 +119,9 @@ void fastdct2(int16_t *in, int stride) {
   }
 }
 
-void dct2(std::vector<int16_t *> in, int width, double fx, double fy) {
-  int scale_x = 1.0 / fx;
-  int scale_y = 1.0 / fy;
+void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
+  int scale_x = YCC_HV[YCCtype][0] >> 4;
+  int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = in.size();
 
   int stride = width;

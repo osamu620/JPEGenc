@@ -49,23 +49,50 @@ int main(int argc, char *argv[]) {
   }
   std::vector<int> prev_dc(3, 0);
 
-  size_t c0 = 0;
-  auto s0   = std::chrono::high_resolution_clock::now();
+  size_t c0 = 0, c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0, c6 = 0;
+  auto s0 = std::chrono::high_resolution_clock::now();
   for (int n = height; n > 0; n -= LINES) {
     int16_t *src = image.get_lines();
+    auto start   = std::chrono::high_resolution_clock::now();
     if (nc == 3) {
       rgb2ycbcr(width, src);
     }
+    auto stop = std::chrono::high_resolution_clock::now() - start;
+    c1 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
 
+    start = std::chrono::high_resolution_clock::now();
     subsample(src, yuv, width, YCCtype);
-    dct2(yuv, width, fx, fy);
-    quantize(yuv, qtable_L, qtable_C, width, YCCtype);
-    make_zigzag_buffer(yuv, zbuf, width, YCCtype);
+    stop = std::chrono::high_resolution_clock::now() - start;
+    c2 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
 
+    start = std::chrono::high_resolution_clock::now();
+    dct2(yuv, width, YCCtype);
+    stop = std::chrono::high_resolution_clock::now() - start;
+    c3 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
+
+    start = std::chrono::high_resolution_clock::now();
+    quantize(yuv, qtable_L, qtable_C, width, YCCtype);
+    stop = std::chrono::high_resolution_clock::now() - start;
+    c4 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
+
+    start = std::chrono::high_resolution_clock::now();
+    make_zigzag_buffer(yuv, zbuf, width, YCCtype);
+    stop = std::chrono::high_resolution_clock::now() - start;
+    c5 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
+
+    start = std::chrono::high_resolution_clock::now();
     encode_MCUs(zbuf, width, YCCtype, prev_dc, enc);
+    stop = std::chrono::high_resolution_clock::now() - start;
+    c6 += std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
 
     image.advance();
   }
+  printf("RGB->YCbCr : %7.3lf [ms]\n", static_cast<double>(c1) / 1000.0);
+  printf("Subsample  : %7.3lf [ms]\n", static_cast<double>(c2) / 1000.0);
+  printf("DCT        : %7.3lf [ms]\n", static_cast<double>(c3) / 1000.0);
+  printf("Quantize   : %7.3lf [ms]\n", static_cast<double>(c4) / 1000.0);
+  printf("Zigzag     : %7.3lf [ms]\n", static_cast<double>(c5) / 1000.0);
+  printf("Huffman    : %7.3lf [ms]\n", static_cast<double>(c6) / 1000.0);
   auto d0 = std::chrono::high_resolution_clock::now() - s0;
   c0 += std::chrono::duration_cast<std::chrono::microseconds>(d0).count();
   printf("Elapsed time for encoding : %7.3lf [ms]\n", static_cast<double>(c0) / 1000.0);
