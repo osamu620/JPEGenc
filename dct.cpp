@@ -1,14 +1,13 @@
 #include "dct.hpp"
-
-#include "arm_neon.h"
+// #include <arm_neon.h>
 #include "constants.hpp"
 
 void fastdct2(int16_t *in, int stride) {
-  static constexpr float S[] = {
-      0.353553390593273762200422, 0.254897789552079584470970, 0.270598050073098492199862,
-      0.300672443467522640271861, 0.353553390593273762200422, 0.449988111568207852319255,
-      0.653281482438188263928322, 1.281457723870753089398043,
-  };
+  //  static constexpr float S[] = {
+  //      0.353553390593273762200422, 0.254897789552079584470970, 0.270598050073098492199862,
+  //      0.300672443467522640271861, 0.353553390593273762200422, 0.449988111568207852319255,
+  //      0.653281482438188263928322, 1.281457723870753089398043,
+  //  };
   static constexpr int32_t scale[]  = {11585, 8352, 8867, 9852, 11585, 14745, 21407, 41991};
   static constexpr int32_t rotate[] = {23170, 12540, 17734, 42813};
   int32_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
@@ -18,13 +17,6 @@ void fastdct2(int16_t *in, int stride) {
   int ctr;
   int half = 1 << 14;
 
-  // printf("before-----------\n");
-  // for (int i = 0; i < 8; ++i) {
-  //   for (int j = 0; j < 8; ++j) {
-  //     printf("%d ", in[i * stride + j]);
-  //   }
-  //   printf("\n");
-  // }
   /* Pass 1: process rows. */
 
   dataptr = in;
@@ -122,18 +114,8 @@ void fastdct2(int16_t *in, int stride) {
     dataptr[stride * 1] = ((z11 + z4) * scale[1] + half) >> 15;
     dataptr[stride * 7] = ((z11 - z4) * scale[7] + half) >> 15;
 
-    // for (int i = 0; i < 8; ++i) {
-    //   dataptr[stride * i] = (dataptr[stride * i] * scale[i] + half) >> 15;
-    // }
     dataptr++; /* advance pointer to next column */
   }
-  // printf("after-----------\n");
-  // for (int i = 0; i < 8; ++i) {
-  //   for (int j = 0; j < 8; ++j) {
-  //     printf("%d ", in[i * stride + j]);
-  //   }
-  //   printf("\n");
-  // }
 }
 
 void dct2(std::vector<int16_t *> in, int width, double fx, double fy) {
