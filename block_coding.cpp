@@ -112,7 +112,11 @@ void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
                  bitstream &enc) {
   int Hl       = YCC_HV[YCCtype][0] >> 4;
   int Vl       = YCC_HV[YCCtype][0] & 0xF;
-  int16_t *sp0 = in[0], *sp1 = in[1], *sp2 = in[2];
+  int16_t *sp0 = in[0], *sp1, *sp2;
+  if (in.size() == 3) {
+    sp1 = in[1];
+    sp2 = in[2];
+  }
   // Construct MCUs
   for (int Ly = 0, Cy = 0; Ly < LINES; Ly += DCTSIZE * Vl, Cy += DCTSIZE) {
     for (int Lx = 0, Cx = 0; Lx < width; Lx += DCTSIZE * Hl, Cx += DCTSIZE) {
@@ -124,12 +128,15 @@ void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
           sp0 += DCTSIZE * DCTSIZE;
         }
       }
-      // Chroma, Cb
-      encode_blk(sp1, 1, prev_dc[1], enc);
-      sp1 += DCTSIZE * DCTSIZE;
-      // Chroma, Cr
-      encode_blk(sp2, 1, prev_dc[2], enc);
-      sp2 += DCTSIZE * DCTSIZE;
+      if (in.size() == 3) {
+        // Chroma, Cb
+        encode_blk(sp1, 1, prev_dc[1], enc);
+        sp1 += DCTSIZE * DCTSIZE;
+        // Chroma, Cr
+        encode_blk(sp2, 1, prev_dc[2], enc);
+        sp2 += DCTSIZE * DCTSIZE;
+      }
+      ..
     }
   }
 }
