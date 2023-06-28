@@ -136,7 +136,6 @@ void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         encode_blk(sp2, 1, prev_dc[2], enc);
         sp2 += DCTSIZE * DCTSIZE;
       }
-      ..
     }
   }
 }
