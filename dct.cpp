@@ -9,7 +9,7 @@ void fastdct2(int16_t *in, int stride) {
       0.300672443467522640271861, 0.353553390593273762200422, 0.449988111568207852319255,
       0.653281482438188263928322, 1.281457723870753089398043,
   };
-  static constexpr int32_t scale[] = {11585, 8352, 8867, 9852, 11585, 14745, 21407, 41991};
+  static constexpr int32_t scale[]  = {11585, 8352, 8867, 9852, 11585, 14745, 21407, 41991};
   static constexpr int32_t rotate[] = {23170, 12540, 17734, 42813};
   int32_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
   int32_t tmp10, tmp11, tmp12, tmp13;
@@ -48,8 +48,8 @@ void fastdct2(int16_t *in, int stride) {
     dataptr[0] = ((tmp10 + tmp11) * scale[0] + half) >> 15; /* phase 3 */
     dataptr[4] = ((tmp10 - tmp11) * scale[4] + half) >> 15;
 
-    z1 = ((tmp12 + tmp13) * rotate[0] + half) >> 15;     /* c4 */
-    dataptr[2] = ((tmp13 + z1) * scale[2] + half) >> 15; /* phase 5 */
+    z1         = ((tmp12 + tmp13) * rotate[0] + half) >> 15; /* c4 */
+    dataptr[2] = ((tmp13 + z1) * scale[2] + half) >> 15;     /* phase 5 */
     dataptr[6] = ((tmp13 - z1) * scale[6] + half) >> 15;
 
     /* Odd part */
@@ -98,8 +98,8 @@ void fastdct2(int16_t *in, int stride) {
     dataptr[stride * 0] = ((tmp10 + tmp11) * scale[0] + half) >> 15; /* phase 3 */
     dataptr[stride * 4] = ((tmp10 - tmp11) * scale[4] + half) >> 15;
 
-    z1 = ((tmp12 + tmp13) * rotate[0] + half) >> 15;              /* c4 */
-    dataptr[stride * 2] = ((tmp13 + z1) * scale[2] + half) >> 15; /* phase 5 */
+    z1                  = ((tmp12 + tmp13) * rotate[0] + half) >> 15; /* c4 */
+    dataptr[stride * 2] = ((tmp13 + z1) * scale[2] + half) >> 15;     /* phase 5 */
     dataptr[stride * 6] = ((tmp13 - z1) * scale[6] + half) >> 15;
 
     /* Odd part */
@@ -136,10 +136,10 @@ void fastdct2(int16_t *in, int stride) {
   // }
 }
 
-void blkdct2(std::vector<int16_t *> in, int width, double fx, double fy) {
+void dct2(std::vector<int16_t *> in, int width, double fx, double fy) {
   int scale_x = 1.0 / fx;
   int scale_y = 1.0 / fy;
-  int nc = in.size();
+  int nc      = in.size();
 
   int stride = width;
   for (int y = 0; y < LINES; y += 8) {

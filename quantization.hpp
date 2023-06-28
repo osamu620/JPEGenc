@@ -22,6 +22,5 @@ constexpr float qmatrix[2][64] = {
      99, 99, 99, 99, 99, 99, 99, 99}};
 // clang-format on
 
-void blkquantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, double fx, double fy);
+void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype);
 void create_qtable(int, int, int *);
-void create_qtable2(int, int, int *);

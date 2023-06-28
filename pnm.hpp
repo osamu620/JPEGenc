@@ -19,9 +19,9 @@
  * shall be called in the user code.
  * @author Osamu Watanabe
  */
-unsigned char *read_pnm(std::string name, int &width, int &height, int &ncomp) {
+unsigned char *read_pnm(const std::string &name, int &width, int &height, int &ncomp) {
   FILE *fp = fopen(name.c_str(), "rb");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     printf("File %s is not found.\n", name.c_str());
     exit(EXIT_FAILURE);
   }
@@ -35,7 +35,7 @@ unsigned char *read_pnm(std::string name, int &width, int &height, int &ncomp) {
     printf("This image is not in PNM format.\n");
     exit(EXIT_FAILURE);
   }
-  c = fgetc(fp);
+  c            = fgetc(fp);
   bool isASCII = false;
   if (c != '5' && c != '2' && c != '6' && c != '3') {
     printf("This image is not in PGM/PPM format.\n");
@@ -68,17 +68,17 @@ unsigned char *read_pnm(std::string name, int &width, int &height, int &ncomp) {
     switch (status) {
       case 0:
         width = val;
-        val = 0;
+        val   = 0;
         status++;
         break;
       case 1:
         height = val;
-        val = 0;
+        val    = 0;
         status++;
         break;
       case 2:
         maxval = val;
-        val = 0;
+        val    = 0;
         status++;
         break;
       default:
@@ -91,20 +91,20 @@ unsigned char *read_pnm(std::string name, int &width, int &height, int &ncomp) {
     exit(EXIT_FAILURE);
   }
 
-  int numpixels = width * height * ncomp;
+  int numpixels      = width * height * ncomp;
   unsigned char *buf = (unsigned char *)malloc(numpixels * sizeof(unsigned char));
-  if (buf == NULL) {
+  if (buf == nullptr) {
     printf("malloc() error\n");
     exit(EXIT_FAILURE);
   }
 
   // read pixel values into buffer
-  if (isASCII == false) {
+  if (!isASCII) {
     fread(buf, sizeof(unsigned char), numpixels, fp);
   } else {
     for (int i = 0; i < numpixels; ++i) {
       val = 0;
-      c = fgetc(fp);
+      c   = fgetc(fp);
       while (c != ' ' && c != '\n' && c != EOF) {
         val *= 10;
         val += c - '0';

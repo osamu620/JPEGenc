@@ -9,12 +9,13 @@
 int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF, int &YCCtype, double &fx,
                double &fy) {
   YCCtype = YCC::YUV420;
-  fx = 0.5;
-  fy = 0.5;
-  QF = 75;
+  fx      = 0.5;
+  fy      = 0.5;
+  QF      = 75;
   std::vector<std::string> args;
+  args.reserve(argc);
   for (int i = 0; i < argc; ++i) {
-    args.push_back(argv[i]);
+    args.emplace_back(argv[i]);
   }
 
   if (args.size() == 1) {
@@ -25,15 +26,15 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
   for (int i = 1; i < args.size(); ++i) {
     switch (args[i][0]) {
       case '-':
-        if (args[i].substr(1).compare("i") == 0) {
-          if (std::filesystem::is_regular_file(args[i + 1]) == false) {
+        if (args[i].substr(1) == "i") {
+          if (!std::filesystem::is_regular_file(args[i + 1])) {
             std::cerr << "Could not open " << args[i + 1] << " as an input file." << std::endl;
             return EXIT_FAILURE;
           }
           ifile_exist = true;
-          inname = args[i + 1];
+          inname      = args[i + 1];
           ++i;
-        } else if (args[i].substr(1).compare("o") == 0) {
+        } else if (args[i].substr(1) == "o") {
           *out = fopen(args[i + 1].c_str(), "wb");
           if (*out == nullptr) {
             std::cerr << "Could not open '" << args[i + 1] << "' as an output file." << std::endl;
@@ -41,10 +42,10 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
           }
           ofile_exist = true;
           ++i;
-        } else if (args[i].substr(1).compare("q") == 0) {
+        } else if (args[i].substr(1) == "q") {
           try {
             QF = std::stol(args[i + 1], nullptr, 10);
-          } catch (std::invalid_argument e) {
+          } catch (std::invalid_argument &e) {
             std::cerr << "QF value is missing." << std::endl;
             return EXIT_FAILURE;
           }
@@ -55,30 +56,30 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
           }
           QF = (QF == 0) ? 1 : QF;
           ++i;
-        } else if (args[i].substr(1).compare("c") == 0) {
-          if (args[i + 1].compare("444") == 0) {
+        } else if (args[i].substr(1) == "c") {
+          if (args[i + 1] == "444") {
             YCCtype = YCC::YUV444;
             fx = fy = 1.0;
-          } else if (args[i + 1].compare("422") == 0) {
+          } else if (args[i + 1] == "422") {
             YCCtype = YCC::YUV422;
-            fx = 0.5;
-            fy = 1.0;
-          } else if (args[i + 1].compare("411") == 0) {
+            fx      = 0.5;
+            fy      = 1.0;
+          } else if (args[i + 1] == "411") {
             YCCtype = YCC::YUV411;
-            fx = 0.25;
-            fy = 1.0;
-          } else if (args[i + 1].compare("440") == 0) {
+            fx      = 0.25;
+            fy      = 1.0;
+          } else if (args[i + 1] == "440") {
             YCCtype = YCC::YUV440;
-            fx = 1.0;
-            fy = 0.5;
-          } else if (args[i + 1].compare("410") == 0) {
+            fx      = 1.0;
+            fy      = 0.5;
+          } else if (args[i + 1] == "410") {
             YCCtype = YCC::YUV410;
-            fx = 0.25;
-            fy = 0.5;
-          } else if (args[i + 1].compare("420") == 0) {
+            fx      = 0.25;
+            fy      = 0.5;
+          } else if (args[i + 1] == "420") {
             YCCtype = YCC::YUV420;
-            fx = 0.5;
-            fy = 0.5;
+            fx      = 0.5;
+            fy      = 0.5;
           } else {
             std::cerr << "Unknown chroma format " << args[i + 1] << std::endl;
             return EXIT_FAILURE;

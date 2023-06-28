@@ -7,6 +7,7 @@
 #include "jpgmarkers.hpp"
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
+#include "quantization.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
   enc.put_dword(SOF);
@@ -98,8 +99,9 @@ void create_DHT(int c, bitstream &enc) {
 
   // AC
   std::vector<std::pair<int, int>> ACpair;
+  ACpair.reserve(256);
   for (int i = 0; i < 256; ++i) {
-    ACpair.push_back(std::pair<int, int>{AC_len[c][i], i});
+    ACpair.emplace_back(AC_len[c][i], i);
   }
   std::sort(ACpair.begin(), ACpair.end());
   for (int i = 0; i < 256; ++i) {
@@ -131,11 +133,27 @@ void create_DHT(int c, bitstream &enc) {
   tmp.clear();
 }
 
-void create_mainheader(int width, int height, int nc, int *qtable_L, int *qtable_C, int YCCtype,
-                       bitstream &enc) {
-  create_DQT(0, qtable_L, enc);
+void create_mainheader(int width, int height, int nc, int QF, int YCCtype, bitstream &enc) {
+  int qtable[64];
+  auto create_qtable_DQT = [](int c, int QF, int *qtable) {
+    float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;
+    for (int i = 0; i < 64; ++i) {
+      float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
+      stepsize       = floor(stepsize);
+      if (stepsize < 1.0) {
+        stepsize = 1;
+      }
+      if (stepsize > 255) {
+        stepsize = 255;
+      }
+      qtable[i] = static_cast<int>(stepsize);
+    }
+  };
+  create_qtable_DQT(0, QF, qtable);
+  create_DQT(0, qtable, enc);
   if (nc > 1) {
-    create_DQT(1, qtable_C, enc);
+    create_qtable_DQT(1, QF, qtable);
+    create_DQT(1, qtable, enc);
   }
   create_SOF(8, height, width, nc, YCCtype, enc);
   create_DHT(0, enc);

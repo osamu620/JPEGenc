@@ -3,4 +3,4 @@
 #include <cstdint>
 #include <vector>
 
-void blkdct2(std::vector<int16_t *> in, int stride, double fx, double fy);
+void dct2(std::vector<int16_t *> in, int width, double fx, double fy);
