@@ -1,7 +1,10 @@
 #include "dct.hpp"
-// #include <arm_neon.h>
 #include "constants.hpp"
 #include "ycctype.hpp"
+
+#if defined(JPEG_USE_NEON)
+  #include <arm_neon.h>
+#endif
 
 void fastdct2(int16_t *in, int stride) {
   //  static constexpr float S[] = {
@@ -70,7 +73,7 @@ void fastdct2(int16_t *in, int stride) {
   /* Pass 2: process columns. */
 
   dataptr = in;
-
+#if not defined(JPEG_USE_NEON)
   for (ctr = 8 - 1; ctr >= 0; ctr--) {
     tmp0 = dataptr[stride * 0] + dataptr[stride * 7];
     tmp7 = dataptr[stride * 0] - dataptr[stride * 7];
@@ -117,6 +120,58 @@ void fastdct2(int16_t *in, int stride) {
 
     dataptr++; /* advance pointer to next column */
   }
+#else
+  int32x4_t vtmp0, vtmp1, vtmp2, vtmp3, vtmp4, vtmp5, vtmp6, vtmp7;
+  int32x4_t vtmp10, vtmp11, vtmp12, vtmp13;
+  int32x4_t vz1, vz2, vz3, vz4, vz5;
+  int32x4_t vz11, vz13;
+  for (ctr = 8 - 1; ctr >= 0; ctr -= 4) {
+    vtmp0 = vaddl_s16(vld1_s16(dataptr + stride * 0), vld1_s16(dataptr + stride * 7));
+    vtmp7 = vsubl_s16(vld1_s16(dataptr + stride * 0), vld1_s16(dataptr + stride * 7));
+    vtmp1 = vaddl_s16(vld1_s16(dataptr + stride * 1), vld1_s16(dataptr + stride * 6));
+    vtmp6 = vsubl_s16(vld1_s16(dataptr + stride * 1), vld1_s16(dataptr + stride * 6));
+    vtmp2 = vaddl_s16(vld1_s16(dataptr + stride * 2), vld1_s16(dataptr + stride * 5));
+    vtmp5 = vsubl_s16(vld1_s16(dataptr + stride * 2), vld1_s16(dataptr + stride * 5));
+    vtmp3 = vaddl_s16(vld1_s16(dataptr + stride * 3), vld1_s16(dataptr + stride * 4));
+    vtmp4 = vsubl_s16(vld1_s16(dataptr + stride * 3), vld1_s16(dataptr + stride * 4));
+
+    /* Even part */
+
+    vtmp10 = vtmp0 + vtmp3; /* phase 2 */
+    vtmp13 = vtmp0 - vtmp3;
+    vtmp11 = vtmp1 + vtmp2;
+    vtmp12 = vtmp1 - vtmp2;
+
+    vst1_s16(dataptr + stride * 0, vmovn_s32(((vtmp10 + vtmp11) * scale[0] + half) >> 15)); /* phase 3 */
+    vst1_s16(dataptr + stride * 4, vmovn_s32(((vtmp10 - vtmp11) * scale[4] + half) >> 15));
+
+    vz1 = ((vtmp12 + vtmp13) * rotate[0] + half) >> 15;                                  /* c4 */
+    vst1_s16(dataptr + stride * 2, vmovn_s32(((vtmp13 + vz1) * scale[2] + half) >> 15)); /* phase 5 */
+    vst1_s16(dataptr + stride * 6, vmovn_s32(((vtmp13 - vz1) * scale[6] + half) >> 15));
+
+    /* Odd part */
+
+    vtmp10 = vtmp4 + vtmp5; /* phase 2 */
+    vtmp11 = vtmp5 + vtmp6;
+    vtmp12 = vtmp6 + vtmp7;
+
+    /* The rotator is modified from fig 4-8 to avoid extra negations. */
+    vz5 = ((vtmp10 - vtmp12) * rotate[1] + half) >> 15; /* c6 */
+    vz2 = ((rotate[2] * vtmp10 + half) >> 15) + vz5;    /* c2-c6 */
+    vz4 = ((rotate[3] * vtmp12 + half) >> 15) + vz5;    /* c2+c6 */
+    vz3 = (vtmp11 * rotate[0] + half) >> 15;            /* c4 */
+
+    vz11 = vtmp7 + vz3; /* phase 5 */
+    vz13 = vtmp7 - vz3;
+
+    vst1_s16(dataptr + stride * 5, vmovn_s32(((vz13 + vz2) * scale[5] + half) >> 15)); /* phase 6 */
+    vst1_s16(dataptr + stride * 3, vmovn_s32(((vz13 - vz2) * scale[3] + half) >> 15));
+    vst1_s16(dataptr + stride * 1, vmovn_s32(((vz11 + vz4) * scale[1] + half) >> 15));
+    vst1_s16(dataptr + stride * 7, vmovn_s32(((vz11 - vz4) * scale[7] + half) >> 15));
+
+    dataptr += 4; /* advance pointer to next column */
+  }
+#endif
 }
 
 void dct2(std::vector<int16_t *> in, int width, int YCCtype) {

@@ -6,11 +6,8 @@
 
 #include "ycctype.hpp"
 
-int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF, int &YCCtype, double &fx,
-               double &fy) {
+int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF, int &YCCtype) {
   YCCtype = YCC::YUV420;
-  fx      = 0.5;
-  fy      = 0.5;
   QF      = 75;
   std::vector<std::string> args;
   args.reserve(argc);
@@ -59,27 +56,16 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
         } else if (args[i].substr(1) == "c") {
           if (args[i + 1] == "444") {
             YCCtype = YCC::YUV444;
-            fx = fy = 1.0;
           } else if (args[i + 1] == "422") {
             YCCtype = YCC::YUV422;
-            fx      = 0.5;
-            fy      = 1.0;
           } else if (args[i + 1] == "411") {
             YCCtype = YCC::YUV411;
-            fx      = 0.25;
-            fy      = 1.0;
           } else if (args[i + 1] == "440") {
             YCCtype = YCC::YUV440;
-            fx      = 1.0;
-            fy      = 0.5;
           } else if (args[i + 1] == "410") {
             YCCtype = YCC::YUV410;
-            fx      = 0.25;
-            fy      = 0.5;
           } else if (args[i + 1] == "420") {
             YCCtype = YCC::YUV420;
-            fx      = 0.5;
-            fy      = 0.5;
           } else {
             std::cerr << "Unknown chroma format " << args[i + 1] << std::endl;
             return EXIT_FAILURE;

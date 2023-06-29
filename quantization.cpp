@@ -15,13 +15,13 @@ void create_qtable(int c, int QF, int *qtable) {
     if (stepsize > 255.0F) {
       stepsize = 255.0F;
     }
-    val       = static_cast<int>((1.0F / stepsize) * (1 << 15));
+    val       = static_cast<int>((1.0F / stepsize) * (1 << FRACBITS));
     qtable[i] = val;
   }
 }
 
 static inline void quantize_fwd(int16_t *in, const int *qtable, int stride) {
-  int shift = 15 + FRACBITS - 8;
+  int shift = FRACBITS + FRACBITS - 8;
   int half  = 1 << (shift - 1);
   for (int i = 0; i < DCTSIZE; ++i) {
     int16_t *sp = in + i * stride;

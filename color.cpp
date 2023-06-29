@@ -2,7 +2,7 @@
 #include "ycctype.hpp"
 #include "constants.hpp"
 
-void rgb2ycbcr(int width, int16_t *in) {
+void rgb2ycbcr(int16_t *in, int width) {
   int16_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
@@ -16,8 +16,8 @@ void rgb2ycbcr(int width, int16_t *in) {
   constexpr int32_t shift = 15;
   constexpr int32_t half  = 1 << (shift - 1);
   int32_t Y, Cb, Cr;
-  for (int i = 0; i < width * 3 * 32; i += 3) {
-    Y     = ((c00 * I0[0] + c01 * I1[0] + c02 * I2[0] + half) >> shift);  //- (1 << (FRACBITS - 1));
+  for (int i = 0; i < width * 3 * LINES; i += 3) {
+    Y     = ((c00 * I0[0] + c01 * I1[0] + c02 * I2[0] + half) >> shift);
     Cb    = (c10 * I0[0] + c11 * I1[0] + c12 * I2[0] + half) >> shift;
     Cr    = (c20 * I0[0] + c21 * I1[0] + c22 * I2[0] + half) >> shift;
     I0[0] = static_cast<int16_t>(Y);
