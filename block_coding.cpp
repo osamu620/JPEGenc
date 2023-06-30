@@ -4,39 +4,37 @@
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
 
-void make_zigzag_buffer(std::vector<int16_t *> in, std::vector<int16_t *> out, int width, int YCCtype) {
+void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int width, int YCCtype) {
   int nc = in.size();
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
   int stride;
   int16_t *sp, *dp;
   auto make_zigzag_blk = [](const int16_t *sp, int16_t *&dp, int stride) {
-    for (int i = 0; i < DCTSIZE; ++i) {
-      for (int j = 0; j < DCTSIZE; ++j) {
-        *dp++ = sp[z_stride[i * DCTSIZE + j] * stride + z_plus[i * DCTSIZE + j]];
-      }
+    for (int i = 0; i < DCTSIZE * DCTSIZE; ++i) {
+      *dp++ = sp[scan[i]];
     }
   };
-  // Y
-  stride = width;
+  // Luma, Y
+  stride = width * DCTSIZE;
   dp     = out[0];
-  for (int Ly = 0; Ly < LINES; Ly += DCTSIZE * Vl) {
-    for (int Lx = 0; Lx < stride; Lx += DCTSIZE * Hl) {
+  for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
+    for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
       for (int y = 0; y < Vl; ++y) {
         for (int x = 0; x < Hl; ++x) {
-          sp = in[0] + Ly * stride + Lx + y * DCTSIZE * stride + x * DCTSIZE;  // top-left of a block
+          sp = in[0] + (Ly + y) * stride + (Lx + x) * 64;  // top-left of a block
           make_zigzag_blk(sp, dp, stride);
         }
       }
     }
   }
-  // Cb, Cr
-  stride = width / Hl;
+  // Chroma, Cb and Cr
+  stride = width * DCTSIZE / Hl;
   for (int c = 1; c < nc; ++c) {
     dp = out[c];
-    for (int Cy = 0; Cy < LINES / Vl; Cy += DCTSIZE) {
-      for (int Cx = 0; Cx < stride; Cx += DCTSIZE) {
-        sp = in[c] + Cy * stride + Cx;  // top-left of a block
+    for (int Cy = 0; Cy < LINES / DCTSIZE / Vl; ++Cy) {
+      for (int Cx = 0; Cx < width / DCTSIZE / Hl; ++Cx) {
+        sp = in[c] + Cy * stride + Cx * 64;  // top-left of a block
         make_zigzag_blk(sp, dp, stride);
       }
     }

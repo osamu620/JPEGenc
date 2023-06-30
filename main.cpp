@@ -13,7 +13,7 @@
 #include "quantization.hpp"
 #include "ycctype.hpp"
 
-void construct_line_buffer(std::vector<std::unique_ptr<int16_t[]>> &in, int size0, int size1) {
+void construct_line_buffer(std::vector<std::unique_ptr<int16_t[]>> &in, size_t size0, size_t size1) {
   in[0] = std::make_unique<int16_t[]>(size0 * LINES);
   for (int c = 1; c < in.size(); ++c) {
     in[c] = std::make_unique<int16_t[]>(size1);
@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
   if (parse_args(argc, argv, infile, &out, QF, YCCtype)) {
     return EXIT_FAILURE;
   }
-  int scale_x = YCC_HV[YCCtype][0] >> 4;
-  int scale_y = YCC_HV[YCCtype][0] & 0xF;
+  const int scale_x = YCC_HV[YCCtype][0] >> 4;
+  const int scale_y = YCC_HV[YCCtype][0] & 0xF;
 
   imchunk image(infile);
   const int width  = image.get_width();
@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
     YCCtype = YCC::GRAY;
   }
 
-  const int bufsize_L = width * LINES;
-  const int bufsize_C = width / scale_x * LINES / scale_y;
+  const size_t bufsize_L = width * LINES;
+  const size_t bufsize_C = width / scale_x * LINES / scale_y;
 
   // Prepare line-buffers
   std::vector<std::unique_ptr<int16_t[]>> line_buffer(nc);
@@ -53,10 +53,10 @@ int main(int argc, char *argv[]) {
   for (int c = 1; c < nc; ++c) {
     yuv[c] = line_buffer[c].get();
   }
-  std::vector<int16_t *> zbuf(nc);
-  zbuf[0] = line_buffer_zigzag[0].get();
+  std::vector<int16_t *> mcu(nc);
+  mcu[0] = line_buffer_zigzag[0].get();
   for (int c = 1; c < nc; ++c) {
-    zbuf[c] = line_buffer_zigzag[c].get();
+    mcu[c] = line_buffer_zigzag[c].get();
   }
 
   std::vector<int> prev_dc(3, 0);
@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
     subsample(src, yuv, width, YCCtype);
     dct2(yuv, width, YCCtype);
     quantize(yuv, qtable_L, qtable_C, width, YCCtype);
-    make_zigzag_buffer(yuv, zbuf, width, YCCtype);
-    encode_MCUs(zbuf, width, YCCtype, prev_dc, enc);
+    construct_MCUs(yuv, mcu, width, YCCtype);
+    encode_MCUs(mcu, width, YCCtype, prev_dc, enc);
     image.advance();
   }
 

@@ -45,29 +45,38 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
     half = 1 << (shift - 1);
   }
   // Luma, Y, just copying
-  for (int i = 0; i < LINES; ++i) {
-    auto sp = in + nc * i * width;
-    for (int j = 0; j < width; ++j) {
-      out[0][i * width + j] = sp[nc * j];
+  size_t pos = 0;
+  for (int i = 0; i < LINES; i += DCTSIZE) {
+    for (int j = 0; j < width; j += DCTSIZE) {
+      auto sp = in + nc * i * width + nc * j;
+      for (int y = 0; y < DCTSIZE; ++y) {
+        for (int x = 0; x < DCTSIZE; ++x) {
+          out[0][pos] = sp[y * width * nc + nc * x];
+          pos++;
+        }
+      }
     }
   }
   // Chroma, Cb and Cr
-  const int c_width = width / scale_x;
   for (int c = 1; c < nc; ++c) {
-    for (int i = 0, ci = 0; i < LINES; i += scale_y, ++ci) {
-      for (int j = 0, cj = 0; j < width; j += scale_x, ++cj) {
-        size_t stride = nc * width;
-        int16_t *sp   = in + i * stride + nc * j + c;  // top-left
-        int ave       = 0;
-        for (int y = 0; y < scale_y; ++y) {
-          for (int x = 0; x < scale_x; ++x) {
-            ave += sp[y * stride + nc * x];
+    pos = 0;
+    for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
+      for (int j = 0; j < width; j += DCTSIZE * scale_x) {
+        auto sp = in + nc * i * width + nc * j + c;
+        for (int y = 0; y < DCTSIZE * scale_y; y += scale_y) {
+          for (int x = 0; x < DCTSIZE * scale_x; x += scale_x) {
+            int ave = 0;
+            for (int p = 0; p < scale_y; ++p) {
+              for (int q = 0; q < scale_x; ++q) {
+                ave += sp[(y + p) * width * nc + nc * (x + q)];
+              }
+            }
+            ave += half;
+            ave >>= shift;
+            out[c][pos] = static_cast<int16_t>(ave);
+            pos++;
           }
         }
-        //        ave /= (scale_y * scale_x);
-        ave += half;
-        ave >>= shift;
-        out[c][ci * c_width + cj] = static_cast<int16_t>(ave);
       }
     }
   }

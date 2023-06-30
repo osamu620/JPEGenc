@@ -3,6 +3,13 @@
 #include "constants.hpp"
 #include "quantization.hpp"
 
+constexpr float qscale[64] = {
+    0.1250, 0.0901, 0.0957, 0.1063, 0.1250, 0.1591, 0.2310, 0.4531, 0.0901, 0.0650, 0.0690, 0.0766, 0.0901,
+    0.1147, 0.1665, 0.3266, 0.0957, 0.0690, 0.0732, 0.0814, 0.0957, 0.1218, 0.1768, 0.3468, 0.1063, 0.0766,
+    0.0814, 0.0904, 0.1063, 0.1353, 0.1964, 0.3853, 0.1250, 0.0901, 0.0957, 0.1063, 0.1250, 0.1591, 0.2310,
+    0.4531, 0.1591, 0.1147, 0.1218, 0.1353, 0.1591, 0.2025, 0.2940, 0.5766, 0.2310, 0.1665, 0.1768, 0.1964,
+    0.2310, 0.2940, 0.4268, 0.8372, 0.4531, 0.3266, 0.3468, 0.3853, 0.4531, 0.5766, 0.8372, 1.6421};
+
 void create_qtable(int c, int QF, int *qtable) {
   float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;
   for (int i = 0; i < 64; ++i) {
@@ -15,19 +22,20 @@ void create_qtable(int c, int QF, int *qtable) {
     if (stepsize > 255.0F) {
       stepsize = 255.0F;
     }
-    val       = static_cast<int>((1.0F / stepsize) * (1 << FRACBITS));
+#if not defined(JPEG_USE_NEON)
+    val = static_cast<int>((1.0F / stepsize) * (1 << 15));
+#else
+    val = static_cast<int>((qscale[i] / stepsize) * (1 << 15));
+#endif
     qtable[i] = val;
   }
 }
 
 static inline void quantize_fwd(int16_t *in, const int *qtable, int stride) {
-  int shift = FRACBITS + FRACBITS - 8;
+  int shift = 15 + FRACBITS - 8;
   int half  = 1 << (shift - 1);
-  for (int i = 0; i < DCTSIZE; ++i) {
-    int16_t *sp = in + i * stride;
-    for (int j = 0; j < DCTSIZE; ++j) {
-      sp[j] = static_cast<int16_t>((sp[j] * qtable[i * DCTSIZE + j] + half) >> shift);
-    }
+  for (int i = 0; i < DCTSIZE * DCTSIZE; ++i) {
+    in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
 }
 
@@ -36,20 +44,12 @@ void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, 
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = in.size();
 
-  int stride = width;
-  for (int y = 0; y < LINES; y += DCTSIZE) {
-    int16_t *sp = in[0] + stride * y;
-    for (int x = 0; x < stride; x += DCTSIZE) {
-      quantize_fwd(sp + x, qtableL, stride);
-    }
+  for (int i = 0; i < width * LINES; i += DCTSIZE * DCTSIZE) {
+    quantize_fwd(in[0] + i, qtableL, 0);
   }
-  stride = width / scale_x;
   for (int c = 1; c < nc; ++c) {
-    for (int y = 0; y < LINES / scale_y; y += DCTSIZE) {
-      int16_t *sp = in[c] + stride * y;
-      for (int x = 0; x < stride; x += DCTSIZE) {
-        quantize_fwd(sp + x, qtableC, stride);
-      }
+    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE * DCTSIZE) {
+      quantize_fwd(in[c] + i, qtableC, 0);
     }
   }
 }

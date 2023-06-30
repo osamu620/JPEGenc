@@ -37,7 +37,7 @@ class imchunk {
   void advance() {
     cur_line += LINES;
     if (cur_line > height) {
-      std::cerr << "Exceed max line" << std::endl;
+      std::cerr << "ERROR: Exceed height of the image." << std::endl;
       exit(EXIT_FAILURE);
     }
   }
