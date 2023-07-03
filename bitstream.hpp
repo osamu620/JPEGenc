@@ -11,12 +11,28 @@ class bitstream {
   uint8_t tmp;
   std::vector<uint8_t> stream;
 
+  void flush() {
+    if (bits) {
+      // stuff bit = '1'
+      uint8_t stuff = 0xFFU >> bits;
+      tmp <<= (8 - bits);
+      tmp |= stuff;
+      put_byte(tmp);
+      if (tmp == 0xFF) {
+        // byte stuff
+        put_byte(0x00);
+      }
+    }
+    tmp  = 0;
+    bits = 0;
+  }
+
  public:
-  bitstream() : bits(0), tmp(0) { put_dword(SOI); }
+  bitstream() : bits(0), tmp(0) { put_word(SOI); }
 
   void put_byte(uint8_t d) { stream.push_back(d); }
 
-  void put_dword(uint16_t d) {
+  void put_word(uint16_t d) {
     put_byte(d >> 8);
     put_byte(d & 0xFF);
   }
@@ -40,25 +56,9 @@ class bitstream {
     }
   }
 
-  void flush() {
-    if (bits) {
-      // stuff bit = '1'
-      uint8_t stuff = 0xFFU >> bits;
-      tmp <<= (8 - bits);
-      tmp |= stuff;
-      put_byte(tmp);
-      if (tmp == 0xFF) {
-        // byte stuff
-        put_byte(0x00);
-      }
-    }
-    tmp  = 0;
-    bits = 0;
-  }
-
   auto finalize() {
     flush();
-    put_dword(EOI);
+    put_word(EOI);
     return std::move(stream);
   }
 };

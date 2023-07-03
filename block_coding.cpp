@@ -4,6 +4,10 @@
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
 
+#if defined(JPEG_USE_NEON)
+  #include <arm_neon.h>
+#endif
+
 void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int width, int YCCtype) {
   int nc = in.size();
   int Hl = YCC_HV[YCCtype][0] >> 4;
@@ -85,6 +89,46 @@ static inline void encode_blk(const int16_t *in, int c, int &prev_dc, bitstream 
   int diff = in[0] - prev_dc;
   prev_dc  = in[0];
   EncodeDC(diff, DC_cwd[c], DC_len[c], enc);
+
+#if defined(JPEG_USE_NEON)
+  uint64_t bitmap = 0;
+  for (int i = 0; i < 64; i += 8) {
+    uint16x8_t chunk           = vld1q_s16(in + i);
+    const uint16x8_t equalMask = vreinterpretq_u16_u8(vceqq_u8(chunk, vdupq_n_u8(0x00)));
+    const uint8x8_t res        = vshrn_n_u16(equalMask, 4);
+    uint64_t matches           = vget_lane_u64(vreinterpret_u64_u8(res), 0);
+    for (int j = 0; j < 8; ++j) {
+      bitmap <<= 1;
+      bitmap |= (matches & 0xFF) == 0xFF;
+      matches >>= 8;
+    }
+  }
+
+  bitmap = ~bitmap;
+  bitmap <<= 1;
+
+  int count = 1;
+  while (count < 64) {
+    int r = __builtin_clzll(bitmap);
+    if (r > 0) {
+      count += r;
+      bitmap <<= r;
+      run = r;
+    } else {
+      while (run > 15) {
+        EncodeAC(0xF, 0x0, AC_cwd[c], AC_len[c], enc);
+        run -= 16;
+      }
+      EncodeAC(run, in[count], AC_cwd[c], AC_len[c], enc);
+      run = 0;
+      count++;
+      bitmap <<= 1;
+    }
+  }
+  if (run) {
+    EncodeAC(0x0, 0x0, AC_cwd[c], AC_len[c], enc);
+  }
+#else
   int ac;
   for (int i = 1; i < 64; ++i) {
     ac = in[i];
@@ -104,6 +148,7 @@ static inline void encode_blk(const int16_t *in, int c, int &prev_dc, bitstream 
     // EOB
     EncodeAC(0x0, 0x0, AC_cwd[c], AC_len[c], enc);
   }
+#endif
 }
 
 void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,

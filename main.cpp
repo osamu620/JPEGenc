@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
   std::vector<int> prev_dc(3, 0);
 
-  int qtable_L[64], qtable_C[64];
+  int16_t qtable_L[64], qtable_C[64];
   create_qtable(0, QF, qtable_L);
   create_qtable(1, QF, qtable_C);
 
