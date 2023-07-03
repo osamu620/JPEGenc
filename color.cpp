@@ -2,7 +2,12 @@
 #include "ycctype.hpp"
 #include "constants.hpp"
 
+#if defined(JPEG_USE_NEON)
+  #include <arm_neon.h>
+#endif
+
 void rgb2ycbcr(int16_t *in, int width) {
+#if not defined(JPEG_USE_NEON)
   int16_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
@@ -27,6 +32,35 @@ void rgb2ycbcr(int16_t *in, int width) {
     I1 += 3;
     I2 += 3;
   }
+#else
+  const int16x8_t inv_CB_FACT_B = vdupq_n_s16(18492);
+  const int16x8_t inv_CR_FACT_R = vdupq_n_s16(23372);
+  const int16x8_t c00           = vdupq_n_s16(9798);
+  const int16x8_t c01           = vdupq_n_s16(19235);
+  const int16x8_t c02           = vdupq_n_s16(3736);
+  //  const int16x8_t c10           = vdupq_n_s16(-5528);
+  //  const int16x8_t c11           = vdupq_n_s16(-10856);
+  //  const int16x8_t c12           = vdupq_n_s16(16384);
+  //  const int16x8_t c20           = vdupq_n_s16(16384);
+  //  const int16x8_t c21           = vdupq_n_s16(-13720);
+  //  const int16x8_t c22           = vdupq_n_s16(-2664);
+  int16x8x3_t v;
+  int16x8_t R, G, B;
+  int16x8_t Y, Cb, Cr;
+  for (int i = 0; i < width * 3 * LINES; i += 3 * 8) {
+    v        = vld3q_s16(in + i);
+    R        = v.val[0];
+    G        = v.val[1];
+    B        = v.val[2];
+    Y        = vaddq_s16(vaddq_s16(vqrdmulhq_s16(R, c00), vqrdmulhq_s16(G, c01)), vqrdmulhq_s16(B, c02));
+    Cb       = vqrdmulhq_s16(vsubq_s16(B, Y), inv_CB_FACT_B);
+    Cr       = vqrdmulhq_s16(vsubq_s16(R, Y), inv_CR_FACT_R);
+    v.val[0] = Y;
+    v.val[1] = Cb;
+    v.val[2] = Cr;
+    vst3q_s16(in + i, v);
+  }
+#endif
 }
 
 void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) {
