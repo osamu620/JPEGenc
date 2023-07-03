@@ -10,11 +10,11 @@
 #include "quantization.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
-  enc.put_dword(SOF);
-  enc.put_dword(8 + 3 * Nf);
+  enc.put_word(SOF);
+  enc.put_word(8 + 3 * Nf);
   enc.put_byte(P);
-  enc.put_dword(Y);
-  enc.put_dword(X);
+  enc.put_word(Y);
+  enc.put_word(X);
   enc.put_byte(Nf);
 
   for (int Ci = 0; Ci < Nf; ++Ci) {
@@ -29,8 +29,8 @@ void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
 }
 
 void create_SOS(int Ns, bitstream &enc) {
-  enc.put_dword(SOS);
-  enc.put_dword(6 + 2 * Ns);
+  enc.put_word(SOS);
+  enc.put_word(6 + 2 * Ns);
   enc.put_byte(Ns);
   for (int Cs = 0; Cs < Ns; ++Cs) {
     enc.put_byte(Cs + 0);
@@ -48,10 +48,10 @@ void create_SOS(int Ns, bitstream &enc) {
 }
 
 void create_DQT(int c, int *qtable, bitstream &enc) {
-  enc.put_dword(DQT);
+  enc.put_word(DQT);
   int Pq = 0;  // baseline
   int Lq = 2 + (65 + 64 * Pq);
-  enc.put_dword(Lq);
+  enc.put_word(Lq);
   int Tq = 0;
   if (c > 0) {
     Tq = 1;
@@ -83,9 +83,9 @@ void create_DHT(int c, bitstream &enc) {
       tmp.push_back(i);
     }
   }
-  enc.put_dword(DHT);
+  enc.put_word(DHT);
   Lh = tmp.size() + 2 + 1;
-  enc.put_dword(Lh);
+  enc.put_word(Lh);
   Tc = 0;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
@@ -121,9 +121,9 @@ void create_DHT(int c, bitstream &enc) {
     }
   }
 
-  enc.put_dword(DHT);
+  enc.put_word(DHT);
   Lh = tmp.size() + 2 + 1;
-  enc.put_dword(Lh);
+  enc.put_word(Lh);
   Tc = 1;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
