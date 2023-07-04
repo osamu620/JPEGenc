@@ -47,39 +47,50 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
 
 static inline void EncodeDC(int diff, const unsigned int *Ctable, const unsigned int *Ltable,
                             bitstream &enc) {
-  int uval  = (diff < 0) ? -diff : diff;
+  //  int uval = (diff < 0) ? -diff : diff;
+  uint32_t uval = (diff + (diff >> 31)) ^ (diff >> 31);
+#if not defined(JPEG_USE_NEON)
   int s     = 0;
   int bound = 1;
   while (uval >= bound) {
     bound += bound;
     s++;
   }
+#else
+  int s = 32 - __builtin_clz(uval);
+#endif
   enc.put_bits(Ctable[s], Ltable[s]);
   if (s != 0) {
-    if (diff < 0) {
-      diff -= 1;
-      // diff = (~(0xFFFFFFFFU << s)) & (diff - 1);
-    }
+    diff -= (diff >> 31) & 1;
+    //    if (diff < 0) {
+    //      diff -= 1;
+    //      // diff = (~(0xFFFFFFFFU << s)) & (diff - 1);
+    //    }
     enc.put_bits(diff, s);
   }
 }
 
 static inline void EncodeAC(int run, int val, const unsigned int *Ctable, const unsigned int *Ltable,
                             bitstream &enc) {
-  int uval  = (val < 0) ? -val : val;
+  //  int uval = (val < 0) ? -val : val;
+  uint32_t uval = (val + (val >> 31)) ^ (val >> 31);
+#if not defined(JPEG_USE_NEON)
   int s     = 0;
   int bound = 1;
   while (uval >= bound) {
     bound += bound;
     s++;
   }
-  //  int s    = 32 - __builtin_clz(uval);
+#else
+  int s = 32 - __builtin_clz(uval);
+#endif
   enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
   if (s != 0) {
-    if (val < 0) {
-      val -= 1;
-      // val = (~(0xFFFFFFFFU << s)) & (val - 1);
-    }
+    val -= (val >> 31) & 1;
+    //    if (val < 0) {
+    //      val -= 1;
+    //      // val = (~(0xFFFFFFFFU << s)) & (val - 1);
+    //    }
     enc.put_bits(val, s);
   }
 }
@@ -92,23 +103,62 @@ static inline void encode_blk(const int16_t *in, int c, int &prev_dc, bitstream 
 
 #if defined(JPEG_USE_NEON)
   uint64_t bitmap = 0;
-  for (int i = 0; i < 64; i += 8) {
-    uint16x8_t chunk           = vld1q_s16(in + i);
-    const uint16x8_t equalMask = vreinterpretq_u16_u8(vceqq_u8(chunk, vdupq_n_u8(0x00)));
-    const uint8x8_t res        = vshrn_n_u16(equalMask, 4);
-    uint64_t matches           = vget_lane_u64(vreinterpret_u64_u8(res), 0);
-    for (int j = 0; j < 8; ++j) {
-      bitmap <<= 1;
-      bitmap |= (matches & 0xFF) == 0xFF;
-      matches >>= 8;
-    }
+  int16x8x4_t data1, data2;
+  uint16x8_t chunk;
+  uint16x4_t high_bits;
+  uint32x2_t paired16;
+  uint64x1_t paired32;
+  uint8x8_t paired64;
+  uint16x8_t equalMask;
+  uint8x8_t res;
+  for (int i = 0; i < 4; ++i) {
+    data1.val[i] = vld1q_s16(in + 8 * i);
+  }
+  for (int i = 0; i < 4; ++i) {
+    data2.val[i] = vld1q_s16(in + 32 + 8 * i);
+  }
+  for (int i = 0; i < 4; ++i) {
+    bitmap <<= 8;
+    chunk = data1.val[i];
+    // vreinterpretq_u16_u8(vceqq_u8(chunk, vdupq_n_u8(0x00)));
+    equalMask = vceqq_u16(chunk, vdupq_n_u16(0x0000));
+    res       = vshrn_n_u16(equalMask, 4);
+    high_bits = vreinterpret_u16_u8(vshr_n_u8(vrev64_u8(res), 7));
+    paired16  = vreinterpret_u32_u16(vsra_n_u16(high_bits, high_bits, 7));
+    paired32  = vreinterpret_u64_u32(vsra_n_u32(paired16, paired16, 14));
+    paired64  = vreinterpret_u8_u64(vsra_n_u64(paired32, paired32, 28));
+    bitmap |= vget_lane_u8(paired64, 0) | ((int)vget_lane_u8(paired64, 4) << 4);
+  }
+  for (int i = 0; i < 4; ++i) {
+    bitmap <<= 8;
+    chunk     = data2.val[i];
+    equalMask = vceqq_u16(chunk, vdupq_n_u16(0x0000));
+    res       = vshrn_n_u16(equalMask, 4);
+    high_bits = vreinterpret_u16_u8(vshr_n_u8(vrev64_u8(res), 7));
+    paired16  = vreinterpret_u32_u16(vsra_n_u16(high_bits, high_bits, 7));
+    paired32  = vreinterpret_u64_u32(vsra_n_u32(paired16, paired16, 14));
+    paired64  = vreinterpret_u8_u64(vsra_n_u64(paired32, paired32, 28));
+    bitmap |= vget_lane_u8(paired64, 0) | ((int)vget_lane_u8(paired64, 4) << 4);
+    //    matches    = vget_lane_u64(vreinterpret_u64_u8(res), 0);
+    //    auto vvv   = vshr_n_u8(vcnt_u8((uint8x8_t)matches), 3);
+    //    uint64_t v = (uint64_t)vvv;
+    //    for (int j = 0; j < 8; ++j) {
+    //      bitmap <<= 1;
+    //      bitmap |= v & 0xFF;
+    //      v >>= 8;
+    //    }
   }
 
-  bitmap = ~bitmap;
+  bitmap        = ~bitmap;
+  const int idx = 64 - __builtin_ctzll(bitmap);
+  bool haveEOB  = true;
+  if (idx == 64) {
+    haveEOB = false;
+  }
   bitmap <<= 1;
 
   int count = 1;
-  while (count < 64) {
+  while (count <= idx) {
     int r = __builtin_clzll(bitmap);
     if (r > 0) {
       count += r;
@@ -125,7 +175,7 @@ static inline void encode_blk(const int16_t *in, int c, int &prev_dc, bitstream 
       bitmap <<= 1;
     }
   }
-  if (run) {
+  if (haveEOB) {
     EncodeAC(0x0, 0x0, AC_cwd[c], AC_len[c], enc);
   }
 #else
