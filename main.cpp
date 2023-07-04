@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   auto d0 = std::chrono::high_resolution_clock::now() - s0;
   c0 += std::chrono::duration_cast<std::chrono::microseconds>(d0).count();
   printf("Elapsed time for encoding : %7.3lf [ms]\n", static_cast<double>(c0) / 1000.0);
-  printf("Throughput : %7.3lf [MP/s]\n", (width * height * nc) / static_cast<double>(c0));
+  printf("Throughput : %7.3lf [MP/s]\n", (width * height) / static_cast<double>(c0));
 
   // Finalize codestream
   const std::vector<uint8_t> codestream = enc.finalize();
