@@ -7,6 +7,7 @@
 #include "jpgmarkers.hpp"
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
+#include "jpgheaders.hpp"
 #include "quantization.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
