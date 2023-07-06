@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint>
 enum YCC { YUV444, YUV422, YUV411, YUV440, YUV420, YUV410, GRAY };
 
 constexpr uint8_t YCC_HV[7][2] = {
