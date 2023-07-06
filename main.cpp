@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
   auto s0   = std::chrono::high_resolution_clock::now();
 
   // Encoding
-  for (int n = height; n > 0; n -= LINES) {
-    int16_t *src = image.get_lines();
+  for (int n = 0; n < height / LINES; ++n) {
+    int16_t *src = image.get_lines(n);
     if (nc == 3) {
       rgb2ycbcr(src, width);
     }
@@ -81,9 +81,7 @@ int main(int argc, char *argv[]) {
     quantize(yuv, qtable_L, qtable_C, width, YCCtype);
     construct_MCUs(yuv, mcu, width, YCCtype);
     encode_MCUs(mcu, width, YCCtype, prev_dc, enc);
-    image.advance();
   }
-
   auto d0 = std::chrono::high_resolution_clock::now() - s0;
   c0 += std::chrono::duration_cast<std::chrono::microseconds>(d0).count();
   printf("Elapsed time for encoding : %7.3lf [ms]\n", static_cast<double>(c0) / 1000.0);

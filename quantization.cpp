@@ -27,10 +27,11 @@ void create_qtable(int c, int QF, int16_t *qtable) {
       stepsize = 255.0F;
     }
 #if not defined(JPEG_USE_NEON)
-    val = static_cast<int>((1.0F / stepsize) * (1 << 15));
+    val = static_cast<int>((1.0F / stepsize) * (1 << 15) + 0.5);
 #else
-    val = static_cast<int>((qscale[i] / stepsize) * (1 << 15));
+    val = static_cast<int>((qscale[i] / stepsize) * (1 << 15) + 0.5);
 #endif
+    val       = (val > 0x7FFFU) ? 0x7FFF : val;
     qtable[i] = val;
   }
 }

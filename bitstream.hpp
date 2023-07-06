@@ -128,6 +128,11 @@ class bitstream {
 #endif
   }
 
+  auto get_stream() {
+    flush();
+    return &stream;
+  }
+
   auto finalize() {
     flush();
     put_word(EOI);
