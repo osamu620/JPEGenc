@@ -45,68 +45,54 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
   }
 }
 
-static FORCE_INLINE void EncodeDC(int diff, const unsigned int *Ctable, const unsigned int *Ltable,
-                                  bitstream &enc) {
-  //  Branchless abs:
-  //  https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
-  uint32_t uval = (diff + (diff >> 31)) ^ (diff >> 31);
-#if not defined(JPEG_USE_NEON)
-  int s     = 0;
-  int bound = 1;
-  while (uval >= bound) {
-    bound += bound;
-    s++;
-  }
-#else
-  int s = 32 - __builtin_clz(uval);
-#endif
+static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable,
+                                  const unsigned int *Ltable, bitstream &enc) {
   enc.put_bits(Ctable[s], Ltable[s]);
   if (s != 0) {
-    //    if (diff < 0) {
-    //      diff -= 1;
-    //    }
-    diff -= (diff >> 31) & 1;
-    enc.put_bits(diff, s);
-  }
-}
-
-static FORCE_INLINE void EncodeAC(int run, int val, const unsigned int *Ctable, const unsigned int *Ltable,
-                                  bitstream &enc) {
-  uint32_t uval = (val + (val >> 31)) ^ (val >> 31);
 #if not defined(JPEG_USE_NEON)
-  int s     = 0;
-  int bound = 1;
-  while (uval >= bound) {
-    bound += bound;
-    s++;
-  }
-#else
-  int s = 32 - __builtin_clz(uval);
-#endif
-  enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
-  if (s != 0) {
+    //    if (val < 0) {
+    //      val -= 1;
+    //    }
     val -= (val >> 31) & 1;
+#endif
     enc.put_bits(val, s);
   }
 }
 
-static FORCE_INLINE void encode_blk(const int16_t *in, int c, int &prev_dc, bitstream &enc) {
-  int run  = 0;
-  int diff = in[0] - prev_dc;
-  prev_dc  = in[0];
-  EncodeDC(diff, DC_cwd[c], DC_len[c], enc);
+static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable,
+                                  const unsigned int *Ltable, bitstream &enc) {
+  enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
+  if (s != 0) {
+#if not defined(JPEG_USE_NEON)
+    val -= (val >> 31) & 1;
+#endif
+    enc.put_bits(val, s);
+  }
+}
+
+static FORCE_INLINE void encode_blk(int16_t *const in, int c, int &prev_dc, bitstream &enc) {
+  int run = 0;
+  int dc  = in[0];
+  in[0] -= prev_dc;
+  prev_dc = dc;
 
 #if defined(JPEG_USE_NEON)
+  int16_t bits[64];
   uint64_t bitmap = 0;
   uint16x8_t chunk, equalMask;
   uint16x4_t high_bits;
   uint32x2_t paired16;
   uint64x1_t paired32;
   uint8x8_t res;
-
   for (int i = 0; i < 8; ++i) {
     bitmap <<= 8;
-    chunk     = vld1q_s16(in + 8 * i);
+    chunk                = vld1q_s16(in + 8 * i);
+    int16x8_t abs_row0   = vabsq_s16(chunk);
+    int16x8_t row0_lz    = vclzq_s16(abs_row0);
+    uint16x8_t row0_mask = vshlq_u16(vcltzq_s16(chunk), vnegq_s16(row0_lz));
+    uint16x8_t row0_diff = veorq_u16(vreinterpretq_u16_s16(abs_row0), row0_mask);
+    vst1q_s16(bits + i * 8, vsubq_u16(vdupq_n_u16(16), row0_lz));
+    vst1q_s16(in + 8 * i, row0_diff);
     equalMask = vceqq_u16(chunk, vdupq_n_u16(0x0000));
     res       = vshrn_n_u16(equalMask, 4);
     high_bits = vreinterpret_u16_u8(vshr_n_u8(vrev64_u8(res), 7));
@@ -121,6 +107,7 @@ static FORCE_INLINE void encode_blk(const int16_t *in, int c, int &prev_dc, bits
   const bool haveEOB = (idx != 64);
   bitmap <<= 1;
 
+  EncodeDC(in[0], bits[0], DC_cwd[c], DC_len[c], enc);
   int count = 1;
   while (count <= idx) {
     int r = __builtin_clzll(bitmap);
@@ -130,19 +117,29 @@ static FORCE_INLINE void encode_blk(const int16_t *in, int c, int &prev_dc, bits
       run = r;
     } else {
       while (run > 15) {
-        EncodeAC(0xF, 0x0, AC_cwd[c], AC_len[c], enc);
+        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
         run -= 16;
       }
-      EncodeAC(run, in[count], AC_cwd[c], AC_len[c], enc);
+      EncodeAC(run, in[count], bits[count], AC_cwd[c], AC_len[c], enc);
       run = 0;
       count++;
       bitmap <<= 1;
     }
   }
   if (haveEOB) {
-    EncodeAC(0x0, 0x0, AC_cwd[c], AC_len[c], enc);
+    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
   }
 #else
+  //  Branchless abs:
+  //  https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
+  uint32_t uval = (in[0] + (in[0] >> 31)) ^ (in[0] >> 31);
+  int16_t s     = 0;
+  int bound     = 1;
+  while (uval >= bound) {
+    bound += bound;
+    s++;
+  }
+  EncodeDC(in[0], s, DC_cwd[c], DC_len[c], enc);
   int ac;
   for (int i = 1; i < 64; ++i) {
     ac = in[i];
@@ -151,16 +148,23 @@ static FORCE_INLINE void encode_blk(const int16_t *in, int c, int &prev_dc, bits
     } else {
       while (run > 15) {
         // ZRL
-        EncodeAC(0xF, 0x0, AC_cwd[c], AC_len[c], enc);
+        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
         run -= 16;
       }
-      EncodeAC(run, ac, AC_cwd[c], AC_len[c], enc);
+      s     = 0;
+      bound = 1;
+      uval  = (ac + (ac >> 31)) ^ (ac >> 31);
+      while (uval >= bound) {
+        bound += bound;
+        s++;
+      }
+      EncodeAC(run, ac, s, AC_cwd[c], AC_len[c], enc);
       run = 0;
     }
   }
   if (run) {
     // EOB
-    EncodeAC(0x0, 0x0, AC_cwd[c], AC_len[c], enc);
+    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
   }
 #endif
 }
