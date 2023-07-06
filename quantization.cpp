@@ -5,14 +5,13 @@
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
-#endif
-
 constexpr float qscale[64] = {
     0.1250, 0.0901, 0.0957, 0.1063, 0.1250, 0.1591, 0.2310, 0.4531, 0.0901, 0.0650, 0.0690, 0.0766, 0.0901,
     0.1147, 0.1665, 0.3266, 0.0957, 0.0690, 0.0732, 0.0814, 0.0957, 0.1218, 0.1768, 0.3468, 0.1063, 0.0766,
     0.0814, 0.0904, 0.1063, 0.1353, 0.1964, 0.3853, 0.1250, 0.0901, 0.0957, 0.1063, 0.1250, 0.1591, 0.2310,
     0.4531, 0.1591, 0.1147, 0.1218, 0.1353, 0.1591, 0.2025, 0.2940, 0.5766, 0.2310, 0.1665, 0.1768, 0.1964,
     0.2310, 0.2940, 0.4268, 0.8372, 0.4531, 0.3266, 0.3468, 0.3853, 0.4531, 0.5766, 0.8372, 1.6421};
+#endif
 
 void create_qtable(int c, int QF, int16_t *qtable) {
   float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;
@@ -37,9 +36,9 @@ void create_qtable(int c, int QF, int16_t *qtable) {
 }
 
 static inline void quantize_fwd(int16_t *in, const int16_t *qtable, int stride) {
+#if not defined(JPEG_USE_NEON)
   int shift = 15 + FRACBITS - 8;
   int half  = 1 << (shift - 1);
-#if not defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE * DCTSIZE; ++i) {
     in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
