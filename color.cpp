@@ -127,6 +127,19 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
   }
 #else
   switch (YCCtype) {
+    case YCC::GRAY:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE) {
+          auto sp = in + nc * i * width + nc * j;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            int16x8_t v = vld1q_s16(sp + y * width * nc);
+            vst1q_s16(out[0] + pos, v);
+            pos += 8;
+          }
+        }
+      }
+      break;
+
     case YCC::YUV444:
       pos = 0;
       for (int i = 0; i < LINES; i += DCTSIZE) {
