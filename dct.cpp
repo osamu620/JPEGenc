@@ -4,15 +4,13 @@
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
-#endif
-#define F_0_382 12544
-#define F_0_541 17792
-#define F_0_707 23168
-#define F_0_306 9984
+  #define F_0_382 12544
+  #define F_0_541 17792
+  #define F_0_707 23168
+  #define F_0_306 9984
 
 static const int16_t jsimd_fdct_ifast_neon_consts[] = {F_0_382, F_0_541, F_0_707, F_0_306};
 
-#if defined(JPEG_USE_NEON)
 void fast_dct2_neon(int16_t *data) {
   /* Load an 8x8 block of samples into Neon registers.  De-interleaving loads
    * are used, followed by vuzp to transpose the block such that we have a
