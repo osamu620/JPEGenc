@@ -110,10 +110,9 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
   if (shift) {
     half = 1 << (shift - 1);
   }
-  // Luma, Y, just copying
-  size_t pos        = 0;
-  size_t pos_Chroma = 0;
+  size_t pos = 0;
 #if not defined(JPEG_USE_NEON)
+  // Luma, Y, just copying
   for (int i = 0; i < LINES; i += DCTSIZE) {
     for (int j = 0; j < width; j += DCTSIZE) {
       auto sp = in + nc * i * width + nc * j;
@@ -125,7 +124,31 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       }
     }
   }
+  // Chroma, Cb and Cr
+  for (int c = 1; c < nc; ++c) {
+    pos = 0;
+    for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
+      for (int j = 0; j < width; j += DCTSIZE * scale_x) {
+        auto sp = in + nc * i * width + nc * j + c;
+        for (int y = 0; y < DCTSIZE * scale_y; y += scale_y) {
+          for (int x = 0; x < DCTSIZE * scale_x; x += scale_x) {
+            int ave = 0;
+            for (int p = 0; p < scale_y; ++p) {
+              for (int q = 0; q < scale_x; ++q) {
+                ave += sp[(y + p) * width * nc + nc * (x + q)];
+              }
+            }
+            ave += half;
+            ave >>= shift;
+            out[c][pos] = static_cast<int16_t>(ave);
+            pos++;
+          }
+        }
+      }
+    }
+  }
 #else
+  size_t pos_Chroma = 0;
   switch (YCCtype) {
     case YCC::GRAY:
       for (int i = 0; i < LINES; i += DCTSIZE) {
