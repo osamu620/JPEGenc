@@ -172,7 +172,7 @@ void fastdct2(int16_t *in, int stride) {
   //      0.653281482438188263928322, 1.281457723870753089398043,
   //  };
   static constexpr int32_t scale[]  = {11585, 8352, 8867, 9852, 11585, 14745, 21407, 41991};
-  static constexpr int32_t rotate[] = {23170, 12540, 17734, 42813};
+  static constexpr int32_t rotate[] = {12540, 17734, 23170, 42813};
   int32_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
   int32_t tmp10, tmp11, tmp12, tmp13;
   int32_t z1, z2, z3, z4, z5, z11, z13;
@@ -203,7 +203,7 @@ void fastdct2(int16_t *in, int stride) {
     dataptr[0] = ((tmp10 + tmp11) * scale[0] + half) >> 15; /* phase 3 */
     dataptr[4] = ((tmp10 - tmp11) * scale[4] + half) >> 15;
 
-    z1         = ((tmp12 + tmp13) * rotate[0] + half) >> 15; /* c4 */
+    z1         = ((tmp12 + tmp13) * rotate[2] + half) >> 15; /* c4 */
     dataptr[2] = ((tmp13 + z1) * scale[2] + half) >> 15;     /* phase 5 */
     dataptr[6] = ((tmp13 - z1) * scale[6] + half) >> 15;
 
@@ -214,10 +214,10 @@ void fastdct2(int16_t *in, int stride) {
     tmp12 = tmp6 + tmp7;
 
     /* The rotator is modified from fig 4-8 to avoid extra negations. */
-    z5 = ((tmp10 - tmp12) * rotate[1] + half) >> 15; /* c6 */
-    z2 = ((rotate[2] * tmp10 + half) >> 15) + z5;    /* c2-c6 */
+    z5 = ((tmp10 - tmp12) * rotate[0] + half) >> 15; /* c6 */
+    z2 = ((rotate[1] * tmp10 + half) >> 15) + z5;    /* c2-c6 */
     z4 = ((rotate[3] * tmp12 + half) >> 15) + z5;    /* c2+c6 */
-    z3 = (tmp11 * rotate[0] + half) >> 15;           /* c4 */
+    z3 = (tmp11 * rotate[2] + half) >> 15;           /* c4 */
 
     z11 = tmp7 + z3; /* phase 5 */
     z13 = tmp7 - z3;
@@ -253,7 +253,7 @@ void fastdct2(int16_t *in, int stride) {
     dataptr[stride * 0] = ((tmp10 + tmp11) * scale[0] + half) >> 15; /* phase 3 */
     dataptr[stride * 4] = ((tmp10 - tmp11) * scale[4] + half) >> 15;
 
-    z1                  = ((tmp12 + tmp13) * rotate[0] + half) >> 15; /* c4 */
+    z1                  = ((tmp12 + tmp13) * rotate[2] + half) >> 15; /* c4 */
     dataptr[stride * 2] = ((tmp13 + z1) * scale[2] + half) >> 15;     /* phase 5 */
     dataptr[stride * 6] = ((tmp13 - z1) * scale[6] + half) >> 15;
 
@@ -264,10 +264,10 @@ void fastdct2(int16_t *in, int stride) {
     tmp12 = tmp6 + tmp7;
 
     /* The rotator is modified from fig 4-8 to avoid extra negations. */
-    z5 = ((tmp10 - tmp12) * rotate[1] + half) >> 15; /* c6 */
-    z2 = ((rotate[2] * tmp10 + half) >> 15) + z5;    /* c2-c6 */
+    z5 = ((tmp10 - tmp12) * rotate[0] + half) >> 15; /* c6 */
+    z2 = ((rotate[1] * tmp10 + half) >> 15) + z5;    /* c2-c6 */
     z4 = ((rotate[3] * tmp12 + half) >> 15) + z5;    /* c2+c6 */
-    z3 = (tmp11 * rotate[0] + half) >> 15;           /* c4 */
+    z3 = (tmp11 * rotate[2] + half) >> 15;           /* c4 */
 
     z11 = tmp7 + z3; /* phase 5 */
     z13 = tmp7 - z3;
