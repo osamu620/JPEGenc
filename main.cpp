@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
   // Encoding
   for (int n = 0; n < height / LINES; ++n) {
-    int16_t *src = image.get_lines(n);
+    uint8_t *src = image.get_lines(n);
     if (nc == 3) {
       rgb2ycbcr(src, width);
     }

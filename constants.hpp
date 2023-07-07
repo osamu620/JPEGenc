@@ -18,5 +18,5 @@ constexpr size_t LINES    = 16;
 #if defined(JPEG_USE_NEON)
 constexpr int32_t FRACBITS = 8;  // shall be 8 with NEON version of DCT
 #else
-constexpr int32_t FRACBITS = 13;  // shall be less than 13 with non-SIMD DCT
+constexpr int32_t FRACBITS = 8;  // shall be less than 13 with non-SIMD DCT
 #endif

@@ -6,9 +6,9 @@
   #include <arm_neon.h>
 #endif
 
-void rgb2ycbcr(int16_t *in, int width) {
+void rgb2ycbcr(uint8_t *in, int width) {
 #if not defined(JPEG_USE_NEON)
-  int16_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
+  uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
   constexpr int32_t c02   = 3736;    // 0.114 * 2^15
@@ -25,77 +25,98 @@ void rgb2ycbcr(int16_t *in, int width) {
     Y     = ((c00 * I0[0] + c01 * I1[0] + c02 * I2[0] + half) >> shift);
     Cb    = (c10 * I0[0] + c11 * I1[0] + c12 * I2[0] + half) >> shift;
     Cr    = (c20 * I0[0] + c21 * I1[0] + c22 * I2[0] + half) >> shift;
-    I0[0] = static_cast<int16_t>(Y);
-    I1[0] = static_cast<int16_t>(Cb);
-    I2[0] = static_cast<int16_t>(Cr);
+    I0[0] = static_cast<uint8_t>(Y);
+    I1[0] = static_cast<uint8_t>(Cb + 128);
+    I2[0] = static_cast<uint8_t>(Cr + 128);
     I0 += 3;
     I1 += 3;
     I2 += 3;
   }
 #else
-  const int16x8_t inv_CB_FACT_B = vdupq_n_s16(18492);
-  const int16x8_t inv_CR_FACT_R = vdupq_n_s16(23372);
-  const int16x8_t c00           = vdupq_n_s16(9798);
-  const int16x8_t c01           = vdupq_n_s16(19235);
-  const int16x8_t c02           = vdupq_n_s16(3736);
-  int16x8x3_t v;
-  int16x8_t R, G, B;
-  int16x8_t Y, Cb, Cr;
-  for (int i = 0; i < width * 3 * LINES; i += 3 * 8) {
-    v        = vld3q_s16(in + i);
-    R        = v.val[0];
-    G        = v.val[1];
-    B        = v.val[2];
-    Y        = vaddq_s16(vaddq_s16(vqrdmulhq_s16(R, c00), vqrdmulhq_s16(G, c01)), vqrdmulhq_s16(B, c02));
-    Cb       = vqrdmulhq_s16(vsubq_s16(B, Y), inv_CB_FACT_B);
-    Cr       = vqrdmulhq_s16(vsubq_s16(R, Y), inv_CR_FACT_R);
-    v.val[0] = Y;
-    v.val[1] = Cb;
-    v.val[2] = Cr;
-    vst3q_s16(in + i, v);
+  constexpr uint16_t constants[8] = {19595, 38470, 7471, 11056, 21712, 32768, 27440, 5328};
+  const uint16x8_t coeff          = vld1q_u16(constants);
+  const uint32x4_t scaled_128_5   = vdupq_n_u32((128 << 16) + 32767);
+  uint8x16x3_t v;
+  for (int i = 0; i < width * 3 * LINES; i += 3 * 16) {
+    v              = vld3q_u8(in + i);
+    uint16x8_t r_l = vmovl_u8(vget_low_u8(v.val[0]));
+    uint16x8_t g_l = vmovl_u8(vget_low_u8(v.val[1]));
+    uint16x8_t b_l = vmovl_u8(vget_low_u8(v.val[2]));
+    uint16x8_t r_h = vmovl_u8(vget_high_u8(v.val[0]));
+    uint16x8_t g_h = vmovl_u8(vget_high_u8(v.val[1]));
+    uint16x8_t b_h = vmovl_u8(vget_high_u8(v.val[2]));
+
+    /* Compute Y = 0.29900 * R + 0.58700 * G + 0.11400 * B */
+    uint32x4_t y_ll = vmull_laneq_u16(vget_low_u16(r_l), coeff, 0);
+    y_ll            = vmlal_laneq_u16(y_ll, vget_low_u16(g_l), coeff, 1);
+    y_ll            = vmlal_laneq_u16(y_ll, vget_low_u16(b_l), coeff, 2);
+    uint32x4_t y_lh = vmull_laneq_u16(vget_high_u16(r_l), coeff, 0);
+    y_lh            = vmlal_laneq_u16(y_lh, vget_high_u16(g_l), coeff, 1);
+    y_lh            = vmlal_laneq_u16(y_lh, vget_high_u16(b_l), coeff, 2);
+    uint32x4_t y_hl = vmull_laneq_u16(vget_low_u16(r_h), coeff, 0);
+    y_hl            = vmlal_laneq_u16(y_hl, vget_low_u16(g_h), coeff, 1);
+    y_hl            = vmlal_laneq_u16(y_hl, vget_low_u16(b_h), coeff, 2);
+    uint32x4_t y_hh = vmull_laneq_u16(vget_high_u16(r_h), coeff, 0);
+    y_hh            = vmlal_laneq_u16(y_hh, vget_high_u16(g_h), coeff, 1);
+    y_hh            = vmlal_laneq_u16(y_hh, vget_high_u16(b_h), coeff, 2);
+
+    /* Compute Cb = -0.16874 * R - 0.33126 * G + 0.50000 * B  + 128 */
+    uint32x4_t cb_ll = scaled_128_5;
+    cb_ll            = vmlsl_laneq_u16(cb_ll, vget_low_u16(r_l), coeff, 3);
+    cb_ll            = vmlsl_laneq_u16(cb_ll, vget_low_u16(g_l), coeff, 4);
+    cb_ll            = vmlal_laneq_u16(cb_ll, vget_low_u16(b_l), coeff, 5);
+    uint32x4_t cb_lh = scaled_128_5;
+    cb_lh            = vmlsl_laneq_u16(cb_lh, vget_high_u16(r_l), coeff, 3);
+    cb_lh            = vmlsl_laneq_u16(cb_lh, vget_high_u16(g_l), coeff, 4);
+    cb_lh            = vmlal_laneq_u16(cb_lh, vget_high_u16(b_l), coeff, 5);
+    uint32x4_t cb_hl = scaled_128_5;
+    cb_hl            = vmlsl_laneq_u16(cb_hl, vget_low_u16(r_h), coeff, 3);
+    cb_hl            = vmlsl_laneq_u16(cb_hl, vget_low_u16(g_h), coeff, 4);
+    cb_hl            = vmlal_laneq_u16(cb_hl, vget_low_u16(b_h), coeff, 5);
+    uint32x4_t cb_hh = scaled_128_5;
+    cb_hh            = vmlsl_laneq_u16(cb_hh, vget_high_u16(r_h), coeff, 3);
+    cb_hh            = vmlsl_laneq_u16(cb_hh, vget_high_u16(g_h), coeff, 4);
+    cb_hh            = vmlal_laneq_u16(cb_hh, vget_high_u16(b_h), coeff, 5);
+
+    /* Compute Cr = 0.50000 * R - 0.41869 * G - 0.08131 * B  + 128 */
+    uint32x4_t cr_ll = scaled_128_5;
+    cr_ll            = vmlal_laneq_u16(cr_ll, vget_low_u16(r_l), coeff, 5);
+    cr_ll            = vmlsl_laneq_u16(cr_ll, vget_low_u16(g_l), coeff, 6);
+    cr_ll            = vmlsl_laneq_u16(cr_ll, vget_low_u16(b_l), coeff, 7);
+    uint32x4_t cr_lh = scaled_128_5;
+    cr_lh            = vmlal_laneq_u16(cr_lh, vget_high_u16(r_l), coeff, 5);
+    cr_lh            = vmlsl_laneq_u16(cr_lh, vget_high_u16(g_l), coeff, 6);
+    cr_lh            = vmlsl_laneq_u16(cr_lh, vget_high_u16(b_l), coeff, 7);
+    uint32x4_t cr_hl = scaled_128_5;
+    cr_hl            = vmlal_laneq_u16(cr_hl, vget_low_u16(r_h), coeff, 5);
+    cr_hl            = vmlsl_laneq_u16(cr_hl, vget_low_u16(g_h), coeff, 6);
+    cr_hl            = vmlsl_laneq_u16(cr_hl, vget_low_u16(b_h), coeff, 7);
+    uint32x4_t cr_hh = scaled_128_5;
+    cr_hh            = vmlal_laneq_u16(cr_hh, vget_high_u16(r_h), coeff, 5);
+    cr_hh            = vmlsl_laneq_u16(cr_hh, vget_high_u16(g_h), coeff, 6);
+    cr_hh            = vmlsl_laneq_u16(cr_hh, vget_high_u16(b_h), coeff, 7);
+
+    /* Descale Y values (rounding right shift) and narrow to 16-bit. */
+    uint16x8_t y_l = vcombine_u16(vrshrn_n_u32(y_ll, 16), vrshrn_n_u32(y_lh, 16));
+    uint16x8_t y_h = vcombine_u16(vrshrn_n_u32(y_hl, 16), vrshrn_n_u32(y_hh, 16));
+    /* Descale Cb values (right shift) and narrow to 16-bit. */
+    uint16x8_t cb_l = vcombine_u16(vshrn_n_u32(cb_ll, 16), vshrn_n_u32(cb_lh, 16));
+    uint16x8_t cb_h = vcombine_u16(vshrn_n_u32(cb_hl, 16), vshrn_n_u32(cb_hh, 16));
+    /* Descale Cr values (right shift) and narrow to 16-bit. */
+    uint16x8_t cr_l = vcombine_u16(vshrn_n_u32(cr_ll, 16), vshrn_n_u32(cr_lh, 16));
+    uint16x8_t cr_h = vcombine_u16(vshrn_n_u32(cr_hl, 16), vshrn_n_u32(cr_hh, 16));
+    /* Narrow Y, Cb, and Cr values to 8-bit and store to memory.  Buffer
+     * overwrite is permitted up to the next multiple of ALIGN_SIZE bytes.
+     */
+    v.val[0] = vcombine_u8(vmovn_u16(y_l), vmovn_u16(y_h));
+    v.val[1] = vcombine_u8(vmovn_u16(cb_l), vmovn_u16(cb_h));
+    v.val[2] = vcombine_u8(vmovn_u16(cr_l), vmovn_u16(cr_h));
+    vst3q_u8(in + i, v);
   }
-  // Version of 32-bit for internal precision
-  //  const int32x4_t inv_CB_FACT_B = vdupq_n_s32(36984);  // 18492
-  //  const int32x4_t inv_CR_FACT_R = vdupq_n_s32(46745);  // 23372
-  //  const int32x4_t c00           = vdupq_n_s32(19595);  // 9798
-  //  const int32x4_t c01           = vdupq_n_s32(38470);  // 19235
-  //  const int32x4_t c02           = vdupq_n_s32(7471);   // 3736
-  //  int16x8x3_t v;
-  //  int32x4_t R0, R1, G0, G1, B0, B1;
-  //  int32x4_t Y0, Y1, Cb0, Cb1, Cr0, Cr1;
-  //  for (int i = 0; i < width * 3 * LINES; i += 3 * 8) {
-  //    v  = vld3q_s16(in + i);
-  //    R0 = vmovl_s16(vget_low_s16(v.val[0]));
-  //    R1 = vmovl_high_s16(v.val[0]);
-  //    G0 = vmovl_s16(vget_low_s16(v.val[1]));
-  //    G1 = vmovl_high_s16(v.val[1]);
-  //    B0 = vmovl_s16(vget_low_s16(v.val[2]));
-  //    B1 = vmovl_high_s16(v.val[2]);
-  //
-  //    Y0 = vaddq_s32(vaddq_s32(vmulq_s32(R0, c00), vmulq_s32(G0, c01)), vmulq_s32(B0, c02));
-  //    Y1 = vaddq_s32(vaddq_s32(vmulq_s32(R1, c00), vmulq_s32(G1, c01)), vmulq_s32(B1, c02));
-  //    Y0 = vrshrq_n_s32(Y0, 16);
-  //    Y1 = vrshrq_n_s32(Y1, 16);
-  //
-  //    Cb0 = vmulq_s32(vsubq_s32(B0, Y0), inv_CB_FACT_B);
-  //    Cr0 = vmulq_s32(vsubq_s32(R0, Y0), inv_CR_FACT_R);
-  //    Cb1 = vmulq_s32(vsubq_s32(B1, Y1), inv_CB_FACT_B);
-  //    Cr1 = vmulq_s32(vsubq_s32(R1, Y1), inv_CR_FACT_R);
-  //
-  //    Cb0 = vrshrq_n_s32(Cb0, 16);
-  //    Cb1 = vrshrq_n_s32(Cb1, 16);
-  //    Cr0 = vrshrq_n_s32(Cr0, 16);
-  //    Cr1 = vrshrq_n_s32(Cr1, 16);
-  //
-  //    v.val[0] = vcombine_s16(vmovn_s32(Y0), vmovn_s32(Y1));
-  //    v.val[1] = vcombine_s16(vmovn_s32(Cb0), vmovn_s32(Cb1));
-  //    v.val[2] = vcombine_s16(vmovn_s32(Cr0), vmovn_s32(Cr1));
-  //    vst3q_s16(in + i, v);
-  //}
 #endif
 }
 
-void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) {
+void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) {
   int nc      = out.size();
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
@@ -118,7 +139,7 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       auto sp = in + nc * i * width + nc * j;
       for (int y = 0; y < DCTSIZE; ++y) {
         for (int x = 0; x < DCTSIZE; ++x) {
-          out[0][pos] = sp[y * width * nc + nc * x];
+          out[0][pos] = sp[y * width * nc + nc * x] - 128;
           pos++;
         }
       }
@@ -140,7 +161,7 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
             }
             ave += half;
             ave >>= shift;
-            out[c][pos] = static_cast<int16_t>(ave);
+            out[c][pos] = static_cast<int16_t>(ave - 128);
             pos++;
           }
         }
@@ -148,121 +169,171 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
     }
   }
 #else
-  size_t pos_Chroma = 0;
+  size_t pos_Chroma    = 0;
+  const uint8x8_t c128 = vdup_n_u8(128);
   switch (YCCtype) {
     case YCC::GRAY:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0;
           for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8_t v = vld1q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v);
-            pos += 8;
+            auto v = vld1q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v), c128)));
+            p += 8;
           }
+          pos += 128;
         }
       }
       break;
 
     case YCC::YUV444:
-      pos = 0;
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0;
           for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8x3_t v = vld3q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v.val[0]);
-            vst1q_s16(out[1] + pos, v.val[1]);
-            vst1q_s16(out[2] + pos, v.val[2]);
-            pos += 8;
+            auto v = vld3q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
+            vst1q_s16(out[1] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128)));
+            vst1q_s16(out[1] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128)));
+            vst1q_s16(out[2] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128)));
+            vst1q_s16(out[2] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128)));
+            p += 8;
           }
-        }
-      }
-      break;
-    case YCC::YUV422:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
-          for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8x3_t v = vld3q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v.val[0]);
-            int16x4_t cb0   = vget_low_s16(v.val[1]);
-            int16x4_t cb1   = vget_high_s16(v.val[1]);
-            int16x4_t cr0   = vget_low_s16(v.val[2]);
-            int16x4_t cr1   = vget_high_s16(v.val[2]);
-            int16x4_t cbout = vrshr_n_s16(vpadd_s16(cb0, cb1), 1);
-            int16x4_t crout = vrshr_n_s16(vpadd_s16(cr0, cr1), 1);
-            // (pos_Chomra % 8) + (pos / 128) * 64 + y * 8
-            const size_t pos_C = (pos_Chroma & 0x7) + (pos >> 7) * DCTSIZE * DCTSIZE + y * DCTSIZE;
-            vst1_s16(out[1] + pos_C, cbout);
-            vst1_s16(out[2] + pos_C, crout);
-            pos += 8;
-          }
-          pos_Chroma += 4;
-        }
-      }
-      break;
-    case YCC::YUV440:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
-          int16x8_t cb, cr;
-          pos_Chroma = j * DCTSIZE;
-          for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8x3_t v = vld3q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v.val[0]);
-            if (y % 2 == 0) {
-              cb = v.val[1];
-              cr = v.val[2];
-            } else {
-              // (i / DCTSIZE) * 32
-              vst1q_s16(out[1] + (i << 2) + pos_Chroma, vrhaddq_s16(cb, v.val[1]));
-              vst1q_s16(out[2] + (i << 2) + pos_Chroma, vrhaddq_s16(cr, v.val[2]));
-              pos_Chroma += 8;
-            }
-            pos += 8;
-          }
-        }
-      }
-      break;
-    case YCC::YUV420:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
-          int16x8_t cb, cr;
-          int32x4_t t00, t01, t10, t11;
-          int32x4_t cb0, cr0;
-          // pos_Chroma = (j / 16) * 64 + ((j / 8) % 2) * 4 + (i / DCTSIZE) * 32;
-          pos_Chroma = ((j & 0xFFFFFFF0) << 2) + ((j & 0x8) >> 1) + (i << 2);
-          for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8x3_t v = vld3q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v.val[0]);
-            if (y % 2 == 0) {
-              cb = v.val[1];
-              cr = v.val[2];
-            } else {
-              t00 = vaddq_s32(vmovl_s16(vget_low_s16(cb)), vmovl_s16(vget_low_s16(v.val[1])));
-              t01 = vaddq_s32(vmovl_high_s16(cb), vmovl_high_s16(v.val[1]));
-              cb0 = vrshrq_n_s32(vpaddq_s32(t00, t01), 2);
-              t10 = vaddq_s32(vmovl_s16(vget_low_s16(cr)), vmovl_s16(vget_low_s16(v.val[2])));
-              t11 = vaddq_s32(vmovl_high_s16(cr), vmovl_high_s16(v.val[2]));
-              cr0 = vrshrq_n_s32(vpaddq_s32(t10, t11), 2);
-              vst1_s16(out[1] + pos_Chroma, vmovn_s32(cb0));
-              vst1_s16(out[2] + pos_Chroma, vmovn_s32(cr0));
-              pos_Chroma += 8;
-            }
-            pos += 8;
-          }
+          pos += 128;
         }
       }
       break;
 
+    case YCC::YUV422:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            auto v = vld3q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
+            int16x8_t cb0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128));
+            int16x8_t cb1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128));
+            vst1q_s16(out[1] + pos_Chroma + p, vrshrq_n_s16(vpaddq_s16(cb0, cb1), 1));
+            int16x8_t cr0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128));
+            int16x8_t cr1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128));
+            vst1q_s16(out[2] + pos_Chroma + p, vrshrq_n_s16(vpaddq_s16(cr0, cr1), 1));
+            p += 8;
+          }
+          pos += 128;
+          pos_Chroma += 64;
+        }
+      }
+      break;
+
+    case YCC::YUV440:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0, pc = 0;
+          int16x8_t cbl, cbh, crl, crh, cb0, cb1, cr0, cr1;
+          pos_Chroma = j * 8 + i * 4;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            auto v = vld3q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
+            cb0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128));
+            cb1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128));
+            cr0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128));
+            cr1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128));
+            if (y % 2 == 0) {
+              cbl = cb0;
+              cbh = cb1;
+              crl = cr0;
+              crh = cr1;
+            } else {
+              vst1q_s16(out[1] + pos_Chroma + pc, vrhaddq_s16(cbl, cb0));
+              vst1q_s16(out[1] + pos_Chroma + pc + 64, vrhaddq_s16(cbh, cb1));
+              vst1q_s16(out[2] + pos_Chroma + pc, vrhaddq_s16(crl, cr0));
+              vst1q_s16(out[2] + pos_Chroma + pc + 64, vrhaddq_s16(crh, cr1));
+              pc += 8;
+            }
+            p += 8;
+          }
+          pos += 128;
+        }
+      }
+      break;
+
+    case YCC::YUV420:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0, pc = 0;
+          int16x8_t cbl, cbh, crl, crh, cb0, cb1, cr0, cr1;
+          pos_Chroma = j * 4 + i * 4;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            auto v = vld3q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
+            cb0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128));
+            cb1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128));
+            cr0 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128));
+            cr1 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128));
+            if (y % 2 == 0) {
+              cbl = cb0;
+              cbh = cb1;
+              crl = cr0;
+              crh = cr1;
+            } else {
+              int16x8_t cbout = vrshrq_n_s16(vpaddq_s16(vaddq_s16(cbl, cb0), vaddq_s16(cbh, cb1)), 2);
+              int16x8_t crout = vrshrq_n_s16(vpaddq_s16(vaddq_s16(crl, cr0), vaddq_s16(crh, cr1)), 2);
+              vst1q_s16(out[1] + pos_Chroma + pc, cbout);
+              vst1q_s16(out[2] + pos_Chroma + pc, crout);
+              pc += 8;
+            }
+            p += 8;
+          }
+          pos += 128;
+        }
+      }
+      break;
+
+    case 500:  // YCC::YUV411:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE * 2) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0, pc = 0;
+          pos_Chroma = (j / 32) * 16;
+          pos_Chroma += ((j / 16) % 2 == 0) ? 0 : 4;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            auto v = vld3q_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
+            int16x8_t cb0   = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128));
+            int16x8_t cb1   = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128));
+            int16x8_t cr0   = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128));
+            int16x8_t cr1   = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128));
+            int16x8_t cb_x  = vpaddq_s16(cb0, cb1);
+            int16x8_t cr_x  = vpaddq_s16(cr0, cr1);
+            int16x4_t cbout = vrshr_n_s16(vpadd_s16(vget_low_s16(cb_x), vget_high_s16(cb_x)), 2);
+            int16x4_t crout = vrshr_n_s16(vpadd_s16(vget_low_s16(cr_x), vget_high_s16(cr_x)), 2);
+            vst1_s16(out[1] + pos_Chroma + pc, cbout);
+            vst1_s16(out[2] + pos_Chroma + pc, crout);
+            p += 8;
+            pc += 8;
+          }
+          pos += 128;
+        }
+      }
+      break;
     default:  // For 411, 410
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += DCTSIZE) {
           auto sp = in + nc * i * width + nc * j;
           for (int y = 0; y < DCTSIZE; ++y) {
-            int16x8x3_t v = vld3q_s16(sp + y * width * nc);
-            vst1q_s16(out[0] + pos, v.val[0]);
+            uint8x8x3_t v = vld3_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos, vreinterpretq_s16_u16(vsubl_u8(v.val[0], c128)));
             pos += 8;
           }
         }
@@ -283,7 +354,7 @@ void subsample(int16_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
                 }
                 ave += half;
                 ave >>= shift;
-                out[c][pos] = static_cast<int16_t>(ave);
+                out[c][pos] = static_cast<int16_t>(ave - 128);
                 pos++;
               }
             }
