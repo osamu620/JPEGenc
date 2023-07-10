@@ -43,11 +43,11 @@ static inline void quantize_fwd(int16_t *in, const int *qtable, int stride) {
 #if not defined(JPEG_USE_NEON)
   int shift = 16;
   int half  = 1 << (shift - 1);
-  for (int i = 0; i < DCTSIZE * DCTSIZE; ++i) {
+  for (int i = 0; i < DCTSIZE2; ++i) {
     in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
 #else
-  for (int i = 0; i < DCTSIZE * DCTSIZE; i += DCTSIZE) {
+  for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
     int32x4_t ql = vld1q_s32(qtable);
     int32x4_t qh = vld1q_s32(qtable + 4);
     int16x8_t v  = vld1q_s16(in);
@@ -67,11 +67,11 @@ void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, 
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = in.size();
 
-  for (int i = 0; i < width * LINES; i += DCTSIZE * DCTSIZE) {
+  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
     quantize_fwd(in[0] + i, qtableL, 0);
   }
   for (int c = 1; c < nc; ++c) {
-    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE * DCTSIZE) {
+    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
       quantize_fwd(in[c] + i, qtableC, 0);
     }
   }

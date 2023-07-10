@@ -6,6 +6,27 @@
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
+// clang-format off
+// This table is borrowed from libjpeg-turbo
+alignas(16) const uint8_t jsimd_huff_encode_one_block_consts[] = {
+        0,   1,   2,   3,  16,  17,  32,  33,
+        18,  19,   4,   5,   6,   7,  20,  21,
+        34,  35,  48,  49, 255, 255,  50,  51,
+        36,  37,  22,  23,   8,   9,  10,  11,
+        255, 255,   6,   7,  20,  21,  34,  35,
+        48,  49, 255, 255,  50,  51,  36,  37,
+        54,  55,  40,  41,  26,  27,  12,  13,
+        14,  15,  28,  29,  42,  43,  56,  57,
+        6,   7,  20,  21,  34,  35,  48,  49,
+        50,  51,  36,  37,  22,  23,   8,   9,
+        26,  27,  12,  13, 255, 255,  14,  15,
+        28,  29,  42,  43,  56,  57, 255, 255,
+        52,  53,  54,  55,  40,  41,  26,  27,
+        12,  13, 255, 255,  14,  15,  28,  29,
+        26,  27,  40,  41,  42,  43,  28,  29,
+        14,  15,  30,  31,  44,  45,  46,  47
+};
+// clang-format on
 #endif
 
 void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int width, int YCCtype) {
@@ -14,10 +35,52 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
   int Vl = YCC_HV[YCCtype][0] & 0xF;
   int stride;
   int16_t *sp, *dp;
-  auto make_zigzag_blk = [](const int16_t *sp, int16_t *&dp, int stride) {
-    for (int i = 0; i < DCTSIZE * DCTSIZE; ++i) {
-      *dp++ = sp[scan[i]];
+
+  auto make_zigzag_blk = [](const int16_t *sp, int16_t *&dp) {
+#if not defined(JPEG_USE_NEON)
+    for (int i = 0; i < DCTSIZE2; ++i) {
+      dp[i] = sp[scan[i]];
     }
+#else
+    // This code is borrowed from libjpeg-turbo
+    const uint8x16x4_t idx_rows_0123 = vld1q_u8_x4(jsimd_huff_encode_one_block_consts + 0 * DCTSIZE);
+    const uint8x16x4_t idx_rows_4567 = vld1q_u8_x4(jsimd_huff_encode_one_block_consts + 8 * DCTSIZE);
+
+    const int8x16x4_t tbl_rows_0123 = vld1q_s8_x4((int8_t *)(sp + 0 * DCTSIZE));
+    const int8x16x4_t tbl_rows_4567 = vld1q_s8_x4((int8_t *)(sp + 4 * DCTSIZE));
+
+    /* Initialise extra lookup tables. */
+    const int8x16x4_t tbl_rows_2345 = {
+        {tbl_rows_0123.val[2], tbl_rows_0123.val[3], tbl_rows_4567.val[0], tbl_rows_4567.val[1]}};
+    const int8x16x3_t tbl_rows_567 = {{tbl_rows_4567.val[1], tbl_rows_4567.val[2], tbl_rows_4567.val[3]}};
+
+    /* Shuffle coefficients into zig-zag order. */
+    int16x8_t row0 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[0]));
+    int16x8_t row1 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[1]));
+    int16x8_t row2 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_2345, idx_rows_0123.val[2]));
+    int16x8_t row3 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[3]));
+    int16x8_t row4 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_4567, idx_rows_4567.val[0]));
+    int16x8_t row5 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_2345, idx_rows_4567.val[1]));
+    int16x8_t row6 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_4567, idx_rows_4567.val[2]));
+    int16x8_t row7 = vreinterpretq_s16_s8(vqtbl3q_s8(tbl_rows_567, idx_rows_4567.val[3]));
+
+    /* Initialize AC coefficient lanes not reachable by lookup tables. */
+    row1 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[0]), 0), row1, 2);
+    row2 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[1]), 4), row2, 0);
+    row2 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[2]), 0), row2, 5);
+    row5 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[1]), 7), row5, 2);
+    row5 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[2]), 3), row5, 7);
+    row6 = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[3]), 7), row6, 5);
+
+    vst1q_s16(dp + 0 * DCTSIZE, row0);
+    vst1q_s16(dp + 1 * DCTSIZE, row1);
+    vst1q_s16(dp + 2 * DCTSIZE, row2);
+    vst1q_s16(dp + 3 * DCTSIZE, row3);
+    vst1q_s16(dp + 4 * DCTSIZE, row4);
+    vst1q_s16(dp + 5 * DCTSIZE, row5);
+    vst1q_s16(dp + 6 * DCTSIZE, row6);
+    vst1q_s16(dp + 7 * DCTSIZE, row7);
+#endif
   };
   // Luma, Y
   stride = width * DCTSIZE;
@@ -26,8 +89,9 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
     for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
       for (int y = 0; y < Vl; ++y) {
         for (int x = 0; x < Hl; ++x) {
-          sp = in[0] + (Ly + y) * stride + (Lx + x) * 64;  // top-left of a block
-          make_zigzag_blk(sp, dp, stride);
+          sp = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of a block
+          make_zigzag_blk(sp, dp);
+          dp += DCTSIZE2;
         }
       }
     }
@@ -39,7 +103,8 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
     for (int Cy = 0; Cy < LINES / DCTSIZE / Vl; ++Cy) {
       for (int Cx = 0; Cx < width / DCTSIZE / Hl; ++Cx) {
         sp = in[c] + Cy * stride + Cx * 64;  // top-left of a block
-        make_zigzag_blk(sp, dp, stride);
+        make_zigzag_blk(sp, dp);
+        dp += DCTSIZE2;
       }
     }
   }
@@ -182,8 +247,8 @@ void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
   const int Hl = YCC_HV[YCCtype][0] >> 4;
   const int Vl = YCC_HV[YCCtype][0] & 0xF;
   // Construct MCUs
-  constexpr size_t len  = DCTSIZE * DCTSIZE;
-  const size_t num_mcus = width * LINES / (DCTSIZE * DCTSIZE * Vl * Hl);
+  constexpr size_t len  = DCTSIZE2;
+  const size_t num_mcus = width * LINES / (DCTSIZE2 * Vl * Hl);
   int16_t *sp0          = in[0], *sp1, *sp2;
   if (in.size() == 3) {
     sp1 = in[1];

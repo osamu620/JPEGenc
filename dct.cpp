@@ -281,7 +281,7 @@ void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = in.size();
 
-  for (int i = 0; i < width * LINES; i += DCTSIZE * DCTSIZE) {
+  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
 #if not defined(JPEG_USE_NEON)
     fastdct2(in[0] + i, DCTSIZE);
 #else
@@ -289,7 +289,7 @@ void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
 #endif
   }
   for (int c = 1; c < nc; ++c) {
-    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE * DCTSIZE) {
+    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
 #if not defined(JPEG_USE_NEON)
       fastdct2(in[c] + i, DCTSIZE);
 #else
