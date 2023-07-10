@@ -53,11 +53,6 @@ int main(int argc, char *argv[]) {
   for (int c = 1; c < nc; ++c) {
     yuv[c] = line_buffer[c].get();
   }
-  std::vector<int16_t *> mcu(nc);
-  mcu[0] = line_buffer_zigzag[0].get();
-  for (int c = 1; c < nc; ++c) {
-    mcu[c] = line_buffer_zigzag[c].get();
-  }
 
   std::vector<int> prev_dc(3, 0);
 
@@ -79,8 +74,7 @@ int main(int argc, char *argv[]) {
     subsample(src, yuv, width, YCCtype);
     dct2(yuv, width, YCCtype);
     quantize(yuv, qtable_L, qtable_C, width, YCCtype);
-    construct_MCUs(yuv, mcu, width, YCCtype);
-    encode_MCUs(mcu, width, YCCtype, prev_dc, enc);
+    Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
   }
   auto d0 = std::chrono::high_resolution_clock::now() - s0;
   c0 += std::chrono::duration_cast<std::chrono::microseconds>(d0).count();
