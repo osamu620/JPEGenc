@@ -134,7 +134,8 @@ void create_DHT(int c, bitstream &enc) {
   tmp.clear();
 }
 
-void create_mainheader(int width, int height, int nc, int QF, int YCCtype, bitstream &enc) {
+void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc) {
+  const int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int qtable[64];
   auto create_qtable_DQT = [](int c, int QF, int *qtable) {
     float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;

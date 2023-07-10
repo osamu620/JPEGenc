@@ -226,7 +226,7 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
 
   bitmap <<= 1;
 
-  //  EncodeDC(dp[0], bits[0], DC_cwd[c], DC_len[c], enc);
+  // EncodeDC(dp[0], bits[0], DC_cwd[c], DC_len[c], enc);
   enc.put_bits(DC_cwd[c][bits[0]], DC_len[c][bits[0]]);
   if (bits[0] != 0) {
     enc.put_bits(dp[0], bits[0]);
@@ -238,25 +238,26 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
     count += run;
     bitmap <<= run;
     while (run > 15) {
-      //        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+      // EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
       enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
       run -= 16;
     }
-    //      EncodeAC(run, dp[count], bits[count], AC_cwd[c], AC_len[c], enc);
+    // EncodeAC(run, dp[count], bits[count], AC_cwd[c], AC_len[c], enc);
     enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
     enc.put_bits(dp[count], bits[count]);
     count++;
     bitmap <<= 1;
   }
   if (count != 64) {
-    //    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+    // EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
     enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 #endif
 };
+
 void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                  bitstream &enc) {
-  int nc = in.size();
+  int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
   int stride;

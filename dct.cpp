@@ -9,7 +9,7 @@
   #define F_0_707 23168
   #define F_0_306 9984
 
-static const int16_t jsimd_fdct_ifast_neon_consts[] = {F_0_382, F_0_541, F_0_707, F_0_306};
+alignas(16) static const int16_t jsimd_fdct_ifast_neon_consts[] = {F_0_382, F_0_541, F_0_707, F_0_306};
 
 void fast_dct2_neon(int16_t *data) {
   /* Load an 8x8 block of samples into Neon registers.  De-interleaving loads
@@ -279,7 +279,7 @@ void fastdct2(int16_t *in, int stride) {
 void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
-  int nc      = in.size();
+  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
 #if not defined(JPEG_USE_NEON)

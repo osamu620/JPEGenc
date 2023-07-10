@@ -66,18 +66,20 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
             YCCtype = YCC::YUV410;
           } else if (args[i + 1] == "420") {
             YCCtype = YCC::YUV420;
+          } else if (args[i + 1] == "GRAY") {
+            YCCtype = YCC::GRAY2;
           } else {
             std::cerr << "Unknown chroma format " << args[i + 1] << std::endl;
             return EXIT_FAILURE;
           }
           ++i;
         } else {
-          std::cerr << "Unkown option " << args[i].substr(1) << std::endl;
+          std::cerr << "Unknown option " << args[i].substr(1) << std::endl;
           return EXIT_FAILURE;
         }
         break;
       default:
-        std::cerr << "Unkown option " << args[i] << std::endl;
+        std::cerr << "Unknown option " << args[i] << std::endl;
         return EXIT_FAILURE;
         break;
     }

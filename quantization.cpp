@@ -65,7 +65,7 @@ static inline void quantize_fwd(int16_t *in, const int *qtable, int stride) {
 void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
-  int nc      = in.size();
+  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
     quantize_fwd(in[0] + i, qtableL, 0);

@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <iostream>
 #include <vector>
-#include <memory>
+#include "aligned_unique_ptr.hpp"
 
 #include "block_coding.hpp"
 #include "color.hpp"
@@ -13,10 +13,10 @@
 #include "quantization.hpp"
 #include "ycctype.hpp"
 
-void construct_line_buffer(std::vector<std::unique_ptr<int16_t[]>> &in, size_t size0, size_t size1) {
-  in[0] = std::make_unique<int16_t[]>(size0 * LINES);
+void construct_line_buffer(std::vector<unique_ptr_aligned<int16_t>> &in, size_t size0, size_t size1) {
+  in[0] = aligned_uptr<int16_t>(32, size0 * LINES);
   for (int c = 1; c < in.size(); ++c) {
-    in[c] = std::make_unique<int16_t[]>(size1);
+    in[c] = aligned_uptr<int16_t>(32, size1);
   }
 }
 
@@ -33,18 +33,18 @@ int main(int argc, char *argv[]) {
   imchunk image(infile);
   const int width  = image.get_width();
   const int height = image.get_height();
-  const int nc     = image.get_num_comps();
-
+  int nc           = image.get_num_comps();
   if (nc == 1) {
     YCCtype = YCC::GRAY;
   }
+  nc = (YCCtype == YCC::GRAY2) ? 1 : nc;
 
   const size_t bufsize_L = width * LINES;
   const size_t bufsize_C = width / scale_x * LINES / scale_y;
 
   // Prepare line-buffers
-  std::vector<std::unique_ptr<int16_t[]>> line_buffer(nc);
-  std::vector<std::unique_ptr<int16_t[]>> line_buffer_zigzag(nc);
+  std::vector<unique_ptr_aligned<int16_t>> line_buffer(nc);
+  std::vector<unique_ptr_aligned<int16_t>> line_buffer_zigzag(nc);
   construct_line_buffer(line_buffer, bufsize_L, bufsize_C);
   construct_line_buffer(line_buffer_zigzag, bufsize_L, bufsize_C);
 
@@ -56,19 +56,19 @@ int main(int argc, char *argv[]) {
 
   std::vector<int> prev_dc(3, 0);
 
-  int qtable_L[64], qtable_C[64];
+  alignas(32) int qtable_L[64], qtable_C[64];
   create_qtable(0, QF, qtable_L);
   create_qtable(1, QF, qtable_C);
 
   bitstream enc;
-  create_mainheader(width, height, nc, QF, YCCtype, enc);
+  create_mainheader(width, height, QF, YCCtype, enc);
   size_t c0 = 0;
   auto s0   = std::chrono::high_resolution_clock::now();
 
   // Encoding
   for (int n = 0; n < height / LINES; ++n) {
     uint8_t *src = image.get_lines_from(n);
-    if (nc == 3) {
+    if (image.get_num_comps() == 3) {
       rgb2ycbcr(src, width);
     }
     subsample(src, yuv, width, YCCtype);

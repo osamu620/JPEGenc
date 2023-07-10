@@ -33,12 +33,12 @@ void rgb2ycbcr(uint8_t *in, int width) {
     I2 += 3;
   }
 #else
-  constexpr uint16_t constants[8] = {19595, 38470, 7471, 11056, 21712, 32768, 27440, 5328};
-  const uint16x8_t coeff          = vld1q_u16(constants);
-  const uint32x4_t scaled_128_5   = vdupq_n_u32((128 << 16) + 32767);
+  alignas(16) constexpr uint16_t constants[8] = {19595, 38470, 7471, 11056, 21712, 32768, 27440, 5328};
+  const uint16x8_t coeff                      = vld1q_u16(constants);
+  const uint32x4_t scaled_128_5               = vdupq_n_u32((128 << 16) + 32767);
   uint8x16x3_t v;
-  for (int i = 0; i < width * 3 * LINES; i += 3 * 16) {
-    v              = vld3q_u8(in + i);
+  for (size_t i = width * LINES; i > 0; i -= DCTSIZE * 2) {
+    v              = vld3q_u8(in);
     uint16x8_t r_l = vmovl_u8(vget_low_u8(v.val[0]));
     uint16x8_t g_l = vmovl_u8(vget_low_u8(v.val[1]));
     uint16x8_t b_l = vmovl_u8(vget_low_u8(v.val[2]));
@@ -111,13 +111,14 @@ void rgb2ycbcr(uint8_t *in, int width) {
     v.val[0] = vcombine_u8(vmovn_u16(y_l), vmovn_u16(y_h));
     v.val[1] = vcombine_u8(vmovn_u16(cb_l), vmovn_u16(cb_h));
     v.val[2] = vcombine_u8(vmovn_u16(cr_l), vmovn_u16(cr_h));
-    vst3q_u8(in + i, v);
+    vst3q_u8(in, v);
+    in += 3 * DCTSIZE * 2;
   }
 #endif
 }
 
 void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) {
-  int nc      = out.size();
+  int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
 
@@ -374,6 +375,18 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
             p += 8;
           }
           pos += 256;
+        }
+      }
+      break;
+    case YCC::GRAY2:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE) {
+          auto sp = in + nc * i * width + nc * j;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            uint8x8x3_t v = vld3_u8(sp + y * width * nc);
+            vst1q_s16(out[0] + pos, vreinterpretq_s16_u16(vsubl_u8(v.val[0], c128)));
+            pos += 8;
+          }
         }
       }
       break;
