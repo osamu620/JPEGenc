@@ -26,7 +26,7 @@ class imchunk {
   [[nodiscard]] int get_height() const { return height; }
   [[nodiscard]] int get_num_comps() const { return ncomp; }
 
-  uint8_t *get_lines(int n) {
+  uint8_t *get_lines_from(int n) {
     cur_line = n * LINES;
     if (cur_line > height) {
       std::cerr << "ERROR: Exceed height of the image." << std::endl;
@@ -35,14 +35,6 @@ class imchunk {
     uint8_t *p = g_buf + width * cur_line * ncomp;
     memcpy(buf, p, width * LINES * ncomp);
     return buf;
-  }
-
-  void advance() {
-    cur_line += LINES;
-    if (cur_line > height) {
-      std::cerr << "ERROR: Exceed height of the image." << std::endl;
-      exit(EXIT_FAILURE);
-    }
   }
 
   ~imchunk() {

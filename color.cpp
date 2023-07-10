@@ -299,31 +299,81 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       }
       break;
 
-    case 500:  // YCC::YUV411:
+    case YCC::YUV411:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += DCTSIZE * 4) {
+          auto sp  = in + nc * i * width + nc * j;
+          size_t p = 0;
+          for (int y = 0; y < DCTSIZE; ++y) {
+            auto v0 = vld3q_u8(sp + y * width * nc);
+            auto v1 = vld3q_u8(sp + y * width * nc + nc * DCTSIZE * 2);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 128,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 192,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[0]), c128)));
+            int16x8_t cb00 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[1]), c128));
+            int16x8_t cb01 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[1]), c128));
+            int16x8_t cb10 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[1]), c128));
+            int16x8_t cb11 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[1]), c128));
+            int16x8_t cr00 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[2]), c128));
+            int16x8_t cr01 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[2]), c128));
+            int16x8_t cr10 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[2]), c128));
+            int16x8_t cr11 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[2]), c128));
+            vst1q_s16(out[1] + pos_Chroma + p,
+                      vrshrq_n_s16(vpaddq_s16(vpaddq_s16(cb00, cb01), vpaddq_s16(cb10, cb11)), 2));
+            vst1q_s16(out[2] + pos_Chroma + p,
+                      vrshrq_n_s16(vpaddq_s16(vpaddq_s16(cr00, cr01), vpaddq_s16(cr10, cr11)), 2));
+            p += 8;
+          }
+          pos += 256;
+          pos_Chroma += 64;
+        }
+      }
+      break;
+    case YCC::YUV410:
+      for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int j = 0; j < width; j += DCTSIZE * 4) {
           auto sp  = in + nc * i * width + nc * j;
           size_t p = 0, pc = 0;
-          pos_Chroma = (j / 32) * 16;
-          pos_Chroma += ((j / 16) % 2 == 0) ? 0 : 4;
+          int16x8_t cb00, cb01, cb10, cb11, cr00, cr01, cr10, cr11;
+          int16x8_t cb, cr;
+          pos_Chroma = j * 2 + i * 4;
           for (int y = 0; y < DCTSIZE; ++y) {
-            auto v = vld3q_u8(sp + y * width * nc);
-            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[0]), c128)));
-            vst1q_s16(out[0] + pos + p + 64, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[0]), c128)));
-            int16x8_t cb0   = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[1]), c128));
-            int16x8_t cb1   = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[1]), c128));
-            int16x8_t cr0   = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v.val[2]), c128));
-            int16x8_t cr1   = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v.val[2]), c128));
-            int16x8_t cb_x  = vpaddq_s16(cb0, cb1);
-            int16x8_t cr_x  = vpaddq_s16(cr0, cr1);
-            int16x4_t cbout = vrshr_n_s16(vpadd_s16(vget_low_s16(cb_x), vget_high_s16(cb_x)), 2);
-            int16x4_t crout = vrshr_n_s16(vpadd_s16(vget_low_s16(cr_x), vget_high_s16(cr_x)), 2);
-            vst1_s16(out[1] + pos_Chroma + pc, cbout);
-            vst1_s16(out[2] + pos_Chroma + pc, crout);
+            auto v0 = vld3q_u8(sp + y * width * nc);
+            auto v1 = vld3q_u8(sp + y * width * nc + nc * DCTSIZE * 2);
+            vst1q_s16(out[0] + pos + p, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 64,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 128,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[0]), c128)));
+            vst1q_s16(out[0] + pos + p + 192,
+                      vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[0]), c128)));
+            cb00 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[1]), c128));
+            cb01 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[1]), c128));
+            cb10 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[1]), c128));
+            cb11 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[1]), c128));
+            cr00 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[2]), c128));
+            cr01 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[2]), c128));
+            cr10 = vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[2]), c128));
+            cr11 = vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[2]), c128));
+            if (y % 2 == 0) {
+              cb = vpaddq_s16(vpaddq_s16(cb00, cb01), vpaddq_s16(cb10, cb11));
+              cr = vpaddq_s16(vpaddq_s16(cr00, cr01), vpaddq_s16(cr10, cr11));
+            } else {
+              cb = vrshrq_n_s16(vaddq_s16(cb, vpaddq_s16(vpaddq_s16(cb00, cb01), vpaddq_s16(cb10, cb11))),
+                                3);
+              cr = vrshrq_n_s16(vaddq_s16(cr, vpaddq_s16(vpaddq_s16(cr00, cr01), vpaddq_s16(cr10, cr11))),
+                                3);
+              vst1q_s16(out[1] + pos_Chroma + pc, cb);
+              vst1q_s16(out[2] + pos_Chroma + pc, cr);
+              pc += 8;
+            }
             p += 8;
-            pc += 8;
           }
-          pos += 128;
+          pos += 256;
         }
       }
       break;

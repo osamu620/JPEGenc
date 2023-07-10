@@ -45,8 +45,8 @@ void construct_MCUs(std::vector<int16_t *> in, std::vector<int16_t *> out, int w
   }
 }
 
-static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable,
-                                  const unsigned int *Ltable, bitstream &enc) {
+static void EncodeDC(int val, int16_t s, const unsigned int *Ctable, const unsigned int *Ltable,
+                     bitstream &enc) {
   enc.put_bits(Ctable[s], Ltable[s]);
   if (s != 0) {
 #if not defined(JPEG_USE_NEON)
@@ -59,8 +59,8 @@ static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable
   }
 }
 
-static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable,
-                                  const unsigned int *Ltable, bitstream &enc) {
+static void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable, const unsigned int *Ltable,
+                     bitstream &enc) {
   enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
   if (s != 0) {
 #if not defined(JPEG_USE_NEON)
@@ -107,7 +107,11 @@ static FORCE_INLINE void encode_blk(int16_t *const in, int c, int &prev_dc, bits
   const bool haveEOB = (idx != 64);
   bitmap <<= 1;
 
-  EncodeDC(in[0], bits[0], DC_cwd[c], DC_len[c], enc);
+  //  EncodeDC(in[0], bits[0], DC_cwd[c], DC_len[c], enc);
+  enc.put_bits(DC_cwd[c][bits[0]], DC_len[c][bits[0]]);
+  if (bits[0] != 0) {
+    enc.put_bits(in[0], bits[0]);
+  }
   int count = 1;
   while (count <= idx) {
     int r = __builtin_clzll(bitmap);
@@ -117,17 +121,21 @@ static FORCE_INLINE void encode_blk(int16_t *const in, int c, int &prev_dc, bits
       run = r;
     } else {
       while (run > 15) {
-        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+        //        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+        enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
         run -= 16;
       }
-      EncodeAC(run, in[count], bits[count], AC_cwd[c], AC_len[c], enc);
+      //      EncodeAC(run, in[count], bits[count], AC_cwd[c], AC_len[c], enc);
+      enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
+      enc.put_bits(in[count], bits[count]);
       run = 0;
       count++;
       bitmap <<= 1;
     }
   }
   if (haveEOB) {
-    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
+    //    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
   }
 #else
   //  Branchless abs:
@@ -171,30 +179,35 @@ static FORCE_INLINE void encode_blk(int16_t *const in, int c, int &prev_dc, bits
 
 void encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                  bitstream &enc) {
-  int Hl       = YCC_HV[YCCtype][0] >> 4;
-  int Vl       = YCC_HV[YCCtype][0] & 0xF;
-  int16_t *sp0 = in[0], *sp1, *sp2;
-  if (in.size() == 3) {
-    sp1 = in[1];
-    sp2 = in[2];
-  }
+  const int Hl = YCC_HV[YCCtype][0] >> 4;
+  const int Vl = YCC_HV[YCCtype][0] & 0xF;
   // Construct MCUs
   constexpr size_t len  = DCTSIZE * DCTSIZE;
   const size_t num_mcus = width * LINES / (DCTSIZE * DCTSIZE * Vl * Hl);
-  for (size_t n = num_mcus; n > 0; --n) {
-    // Encoding an MCU
-    // Luma, Y
-    for (int i = Vl * Hl; i > 0; --i) {
-      encode_blk(sp0, 0, prev_dc[0], enc);
-      sp0 += len;
-    }
-    if (in.size() == 3) {
+  int16_t *sp0          = in[0], *sp1, *sp2;
+  if (in.size() == 3) {
+    sp1 = in[1];
+    sp2 = in[2];
+    for (size_t n = num_mcus; n > 0; --n) {
+      // Encoding an MCU
+      // Luma, Y
+      for (int i = Vl * Hl; i > 0; --i) {
+        encode_blk(sp0, 0, prev_dc[0], enc);
+        sp0 += len;
+      }
       // Chroma, Cb
       encode_blk(sp1, 1, prev_dc[1], enc);
       sp1 += len;
       // Chroma, Cr
       encode_blk(sp2, 1, prev_dc[2], enc);
       sp2 += len;
+    }
+  } else {
+    for (size_t n = num_mcus; n > 0; --n) {
+      // Encoding an MCU
+      // Luma, Y
+      encode_blk(sp0, 0, prev_dc[0], enc);
+      sp0 += len;
     }
   }
 }
