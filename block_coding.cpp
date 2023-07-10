@@ -2,7 +2,6 @@
 #include "constants.hpp"
 #include "huffman_tables.hpp"
 #include "ycctype.hpp"
-#include "zigzag_order.hpp"
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
@@ -29,6 +28,7 @@ alignas(16) const uint8_t jsimd_huff_encode_one_block_consts[] = {
 // clang-format on
 
 #else
+  #include "zigzag_order.hpp"
 static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable,
                                   const unsigned int *Ltable, bitstream &enc) {
   enc.put_bits(Ctable[s], Ltable[s]);
@@ -161,7 +161,7 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
   uint8x8_t bitmap_all = vpadd_u8(vget_low_u8(bitmap_rows_76543210), vget_high_u8(bitmap_rows_76543210));
   /* Move bitmap to 64-bit scalar register. */
   uint64_t bitmap = vget_lane_u64(vreinterpret_u64_u8(bitmap_all), 0);
-  int16_t bits[64];
+  uint8_t bits[64];
 
   int16x8_t abs_row0 = vabsq_s16(row0);
   int16x8_t abs_row1 = vabsq_s16(row1);
@@ -181,6 +181,22 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
   int16x8_t row6_lz = vclzq_s16(abs_row6);
   int16x8_t row7_lz = vclzq_s16(abs_row7);
 
+  /* Narrow leading zero count to 8 bits. */
+  uint8x16_t row01_lz = vuzp1q_u8(vreinterpretq_u8_s16(row0_lz), vreinterpretq_u8_s16(row1_lz));
+  uint8x16_t row23_lz = vuzp1q_u8(vreinterpretq_u8_s16(row2_lz), vreinterpretq_u8_s16(row3_lz));
+  uint8x16_t row45_lz = vuzp1q_u8(vreinterpretq_u8_s16(row4_lz), vreinterpretq_u8_s16(row5_lz));
+  uint8x16_t row67_lz = vuzp1q_u8(vreinterpretq_u8_s16(row6_lz), vreinterpretq_u8_s16(row7_lz));
+  /* Compute nbits needed to specify magnitude of each coefficient. */
+  uint8x16_t row01_nbits = vsubq_u8(vdupq_n_u8(16), row01_lz);
+  uint8x16_t row23_nbits = vsubq_u8(vdupq_n_u8(16), row23_lz);
+  uint8x16_t row45_nbits = vsubq_u8(vdupq_n_u8(16), row45_lz);
+  uint8x16_t row67_nbits = vsubq_u8(vdupq_n_u8(16), row67_lz);
+  /* Store nbits. */
+  vst1q_u8(bits + 0 * DCTSIZE, row01_nbits);
+  vst1q_u8(bits + 2 * DCTSIZE, row23_nbits);
+  vst1q_u8(bits + 4 * DCTSIZE, row45_nbits);
+  vst1q_u8(bits + 6 * DCTSIZE, row67_nbits);
+
   uint16x8_t row0_mask = vshlq_u16(vcltzq_s16(row0), vnegq_s16(row0_lz));
   uint16x8_t row1_mask = vshlq_u16(vcltzq_s16(row1), vnegq_s16(row1_lz));
   uint16x8_t row2_mask = vshlq_u16(vcltzq_s16(row2), vnegq_s16(row2_lz));
@@ -189,15 +205,6 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
   uint16x8_t row5_mask = vshlq_u16(vcltzq_s16(row5), vnegq_s16(row5_lz));
   uint16x8_t row6_mask = vshlq_u16(vcltzq_s16(row6), vnegq_s16(row6_lz));
   uint16x8_t row7_mask = vshlq_u16(vcltzq_s16(row7), vnegq_s16(row7_lz));
-
-  vst1q_s16(bits + 0 * 8, vsubq_u16(vdupq_n_u16(16), row0_lz));
-  vst1q_s16(bits + 1 * 8, vsubq_u16(vdupq_n_u16(16), row1_lz));
-  vst1q_s16(bits + 2 * 8, vsubq_u16(vdupq_n_u16(16), row2_lz));
-  vst1q_s16(bits + 3 * 8, vsubq_u16(vdupq_n_u16(16), row3_lz));
-  vst1q_s16(bits + 4 * 8, vsubq_u16(vdupq_n_u16(16), row4_lz));
-  vst1q_s16(bits + 5 * 8, vsubq_u16(vdupq_n_u16(16), row5_lz));
-  vst1q_s16(bits + 6 * 8, vsubq_u16(vdupq_n_u16(16), row6_lz));
-  vst1q_s16(bits + 7 * 8, vsubq_u16(vdupq_n_u16(16), row7_lz));
 
   uint16x8_t row0_diff = veorq_u16(vreinterpretq_u16_s16(abs_row0), row0_mask);
   uint16x8_t row1_diff = veorq_u16(vreinterpretq_u16_s16(abs_row1), row1_mask);
@@ -217,8 +224,6 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
   vst1q_s16(dp + 6 * DCTSIZE, row6_diff);
   vst1q_s16(dp + 7 * DCTSIZE, row7_diff);
 
-  const int idx      = 64 - __builtin_ctzll(bitmap);
-  const bool haveEOB = (idx != 64);
   bitmap <<= 1;
 
   //  EncodeDC(dp[0], bits[0], DC_cwd[c], DC_len[c], enc);
@@ -227,30 +232,25 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
     enc.put_bits(dp[0], bits[0]);
   }
   int count = 1;
-  int run   = 0;
-  while (count <= idx) {
-    int r = __builtin_clzll(bitmap);
-    if (r > 0) {
-      count += r;
-      bitmap <<= r;
-      run = r;
-    } else {
-      while (run > 15) {
-        //        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
-        enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
-        run -= 16;
-      }
-      //      EncodeAC(run, dp[count], bits[count], AC_cwd[c], AC_len[c], enc);
-      enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
-      enc.put_bits(dp[count], bits[count]);
-      run = 0;
-      count++;
-      bitmap <<= 1;
+  int run;
+  while (bitmap != 0) {
+    run = __builtin_clzll(bitmap);
+    count += run;
+    bitmap <<= run;
+    while (run > 15) {
+      //        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+      enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
+      run -= 16;
     }
+    //      EncodeAC(run, dp[count], bits[count], AC_cwd[c], AC_len[c], enc);
+    enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
+    enc.put_bits(dp[count], bits[count]);
+    count++;
+    bitmap <<= 1;
   }
-  if (haveEOB) {
-    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
+  if (count != 64) {
     //    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 #endif
 };
