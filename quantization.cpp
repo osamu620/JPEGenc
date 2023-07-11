@@ -6,6 +6,9 @@
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
 #endif
+#if defined(JPEG_USE_AVX2)
+  #include <x86intrin.h>
+#endif
 // clang-format off
 constexpr float qscale[64] = {
         0.125000000000000, 0.090119977750868, 0.095670858091272, 0.106303761845907, 0.125000000000000, 0.159094822571604, 0.230969883127822, 0.453063723176444
@@ -39,14 +42,41 @@ void create_qtable(int c, int QF, int *qtable) {
   }
 }
 
-static inline void quantize_fwd(int16_t *in, const int *qtable, int stride) {
-#if not defined(JPEG_USE_NEON)
+static inline void quantize_fwd(int16_t *in, const int *qtable) {
+#if not defined(JPEG_USE_NEON) && not defined(JPEG_USE_AVX2)
   int shift = 16;
   int half  = 1 << (shift - 1);
   for (int i = 0; i < DCTSIZE2; ++i) {
     in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
-#else
+#elif defined(JPEG_USE_AVX2)
+//  int shift = 16;
+//  int half  = 1 << (shift - 1);
+//  for (int i = 0; i < DCTSIZE2; ++i) {
+//    in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
+//  }
+  __m256i half = _mm256_set1_epi32(1 << 15);
+  for (int i = 0; i < DCTSIZE2; i += DCTSIZE * 2) {
+    __m256i ql = _mm256_load_si256((__m256i *) qtable);
+    __m256i qh = _mm256_load_si256((__m256i *) (qtable + 8));
+    __m256i v = _mm256_load_si256((__m256i *) in);
+    __m256i vl = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(v, 0));
+    __m256i vh = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(v, 1));
+    vl = _mm256_mullo_epi32(vl, ql);
+    vh = _mm256_mullo_epi32(vh, qh);
+    __m256i sl = vl;
+    __m256i sh = vh;
+    vl = _mm256_abs_epi32(vl);
+    vh = _mm256_abs_epi32(vh);
+    vl = _mm256_srai_epi32(_mm256_add_epi32(vl, half), 16);
+    vh = _mm256_srai_epi32(_mm256_add_epi32(vh, half), 16);
+    vl = _mm256_sign_epi32(vl, sl);
+    vh = _mm256_sign_epi32(vh, sh);
+    _mm256_store_si256((__m256i *) in, _mm256_permute4x64_epi64(_mm256_packs_epi32(vl, vh), 0xD8));
+    in += DCTSIZE * 2;
+    qtable += DCTSIZE * 2;
+  }
+#elif defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
     int32x4_t ql = vld1q_s32(qtable);
     int32x4_t qh = vld1q_s32(qtable + 4);
@@ -68,11 +98,11 @@ void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, 
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    quantize_fwd(in[0] + i, qtableL, 0);
+    quantize_fwd(in[0] + i, qtableL);
   }
   for (int c = 1; c < nc; ++c) {
     for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      quantize_fwd(in[c] + i, qtableC, 0);
+      quantize_fwd(in[c] + i, qtableC);
     }
   }
 }
