@@ -39,7 +39,7 @@ class imchunk {
   }
 
   ~imchunk() {
-    delete[] g_buf;
+    std::free(g_buf);
     delete[] buf;
   }
 };
