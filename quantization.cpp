@@ -78,21 +78,15 @@ static inline void quantize_fwd(int16_t *in, const int *qtable) {
   }
 #elif defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
-    int32x4_t ql     = vld1q_s32(qtable);
-    int32x4_t qh     = vld1q_s32(qtable + 4);
-    int16x8_t v      = vld1q_s16(in);
-    int32x4_t vl     = vmovl_s16(vget_low_s16(v));
-    int32x4_t vh     = vmovl_s16(vget_high_s16(v));
-    vl               = vmulq_s32(vl, ql);
-    vh               = vmulq_s32(vh, qh);
-    int32x4_t maskl  = vorrq_s32(vcltzq_s32(vl), vdupq_n_s32(1));
-    int32x4_t maskh  = vorrq_s32(vcltzq_s32(vh), vdupq_n_s32(1));
-    int32x4_t abs_vl = vabsq_s32(vl);
-    int32x4_t abs_vh = vabsq_s32(vh);
-    abs_vl           = vrshrq_n_s32(abs_vl, 16);
-    abs_vh           = vrshrq_n_s32(abs_vh, 16);
-    vl               = vmulq_s32(maskl, abs_vl);
-    vh               = vmulq_s32(maskh, abs_vh);
+    int32x4_t ql = vld1q_s32(qtable);
+    int32x4_t qh = vld1q_s32(qtable + 4);
+    int16x8_t v  = vld1q_s16(in);
+    int32x4_t vl = vmovl_s16(vget_low_s16(v));
+    int32x4_t vh = vmovl_s16(vget_high_s16(v));
+    vl           = vmulq_s32(vl, ql);
+    vh           = vmulq_s32(vh, qh);
+    vl           = vrshrq_n_s32(vl, 16);
+    vh           = vrshrq_n_s32(vh, 16);
     vst1q_s16(in, vcombine_s16(vmovn_s32(vl), vmovn_s32(vh)));
     in += DCTSIZE;
     qtable += DCTSIZE;
