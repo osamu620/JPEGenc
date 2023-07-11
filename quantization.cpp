@@ -50,41 +50,49 @@ static inline void quantize_fwd(int16_t *in, const int *qtable) {
     in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
 #elif defined(JPEG_USE_AVX2)
-//  int shift = 16;
-//  int half  = 1 << (shift - 1);
-//  for (int i = 0; i < DCTSIZE2; ++i) {
-//    in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
-//  }
+  //  int shift = 16;
+  //  int half  = 1 << (shift - 1);
+  //  for (int i = 0; i < DCTSIZE2; ++i) {
+  //    in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
+  //  }
   __m256i half = _mm256_set1_epi32(1 << 15);
   for (int i = 0; i < DCTSIZE2; i += DCTSIZE * 2) {
-    __m256i ql = _mm256_load_si256((__m256i *) qtable);
-    __m256i qh = _mm256_load_si256((__m256i *) (qtable + 8));
-    __m256i v = _mm256_load_si256((__m256i *) in);
+    __m256i ql = _mm256_load_si256((__m256i *)qtable);
+    __m256i qh = _mm256_load_si256((__m256i *)(qtable + 8));
+    __m256i v  = _mm256_load_si256((__m256i *)in);
     __m256i vl = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(v, 0));
     __m256i vh = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(v, 1));
-    vl = _mm256_mullo_epi32(vl, ql);
-    vh = _mm256_mullo_epi32(vh, qh);
+    vl         = _mm256_mullo_epi32(vl, ql);
+    vh         = _mm256_mullo_epi32(vh, qh);
     __m256i sl = vl;
     __m256i sh = vh;
-    vl = _mm256_abs_epi32(vl);
-    vh = _mm256_abs_epi32(vh);
-    vl = _mm256_srai_epi32(_mm256_add_epi32(vl, half), 16);
-    vh = _mm256_srai_epi32(_mm256_add_epi32(vh, half), 16);
-    vl = _mm256_sign_epi32(vl, sl);
-    vh = _mm256_sign_epi32(vh, sh);
-    _mm256_store_si256((__m256i *) in, _mm256_permute4x64_epi64(_mm256_packs_epi32(vl, vh), 0xD8));
+    vl         = _mm256_abs_epi32(vl);
+    vh         = _mm256_abs_epi32(vh);
+    vl         = _mm256_srai_epi32(_mm256_add_epi32(vl, half), 16);
+    vh         = _mm256_srai_epi32(_mm256_add_epi32(vh, half), 16);
+    vl         = _mm256_sign_epi32(vl, sl);
+    vh         = _mm256_sign_epi32(vh, sh);
+    _mm256_store_si256((__m256i *)in, _mm256_permute4x64_epi64(_mm256_packs_epi32(vl, vh), 0xD8));
     in += DCTSIZE * 2;
     qtable += DCTSIZE * 2;
   }
 #elif defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
-    int32x4_t ql = vld1q_s32(qtable);
-    int32x4_t qh = vld1q_s32(qtable + 4);
-    int16x8_t v  = vld1q_s16(in);
-    int32x4_t vl = vmovl_s16(vget_low_s16(v));
-    int32x4_t vh = vmovl_s16(vget_high_s16(v));
-    vl           = vrshrq_n_s32(vmulq_s32(vl, ql), 16);
-    vh           = vrshrq_n_s32(vmulq_s32(vh, qh), 16);
+    int32x4_t ql     = vld1q_s32(qtable);
+    int32x4_t qh     = vld1q_s32(qtable + 4);
+    int16x8_t v      = vld1q_s16(in);
+    int32x4_t vl     = vmovl_s16(vget_low_s16(v));
+    int32x4_t vh     = vmovl_s16(vget_high_s16(v));
+    vl               = vmulq_s32(vl, ql);
+    vh               = vmulq_s32(vh, qh);
+    int32x4_t maskl  = vorrq_s32(vcltzq_s32(vl), vdupq_n_s32(1));
+    int32x4_t maskh  = vorrq_s32(vcltzq_s32(vh), vdupq_n_s32(1));
+    int32x4_t abs_vl = vabsq_s32(vl);
+    int32x4_t abs_vh = vabsq_s32(vh);
+    abs_vl           = vrshrq_n_s32(abs_vl, 16);
+    abs_vh           = vrshrq_n_s32(abs_vh, 16);
+    vl               = vmulq_s32(maskl, abs_vl);
+    vh               = vmulq_s32(maskh, abs_vh);
     vst1q_s16(in, vcombine_s16(vmovn_s32(vl), vmovn_s32(vh)));
     in += DCTSIZE;
     qtable += DCTSIZE;
