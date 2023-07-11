@@ -10,8 +10,6 @@
   #define FORCE_INLINE inline
 #endif
 
-#define JPEG_USE_NEON
-
 constexpr int32_t DCTSIZE  = 8;
 constexpr int32_t DCTSIZE2 = DCTSIZE * DCTSIZE;
 constexpr size_t LINES     = 16;
