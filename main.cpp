@@ -60,8 +60,9 @@ int main(int argc, char *argv[]) {
   create_qtable(0, QF, qtable_L);
   create_qtable(1, QF, qtable_C);
 
+  bool use_RESET = false;
   bitstream enc;
-  create_mainheader(width, height, QF, YCCtype, enc);
+  create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
   size_t c0 = 0;
   auto s0   = std::chrono::high_resolution_clock::now();
 
@@ -75,7 +76,12 @@ int main(int argc, char *argv[]) {
     dct2(yuv, width, YCCtype);
     quantize(yuv, qtable_L, qtable_C, width, YCCtype);
     Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
+    if (use_RESET) {
+      enc.put_RST(n % 8);
+      prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
+    }
   }
+
   auto d0 = std::chrono::high_resolution_clock::now() - s0;
   c0 += std::chrono::duration_cast<std::chrono::microseconds>(d0).count();
   printf("Elapsed time for encoding : %7.3lf [ms]\n", static_cast<double>(c0) / 1000.0);

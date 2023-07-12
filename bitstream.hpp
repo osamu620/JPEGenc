@@ -64,6 +64,8 @@ class bitstream {
       bits -= 8;
       mask >>= 8;
     }
+    tmp  = 0;
+    bits = 0;
 #else
     if (bits) {
       // stuff bit = '1'
@@ -131,6 +133,10 @@ class bitstream {
 #endif
   }
 
+  void put_RST(int n) {
+    flush();
+    put_word(RST[n]);
+  }
   auto get_stream() {
     flush();
     return &stream;

@@ -9,6 +9,7 @@
 #include "zigzag_order.hpp"
 #include "jpgheaders.hpp"
 #include "quantization.hpp"
+#include "constants.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
   enc.put_word(SOF);
@@ -134,12 +135,12 @@ void create_DHT(int c, bitstream &enc) {
   tmp.clear();
 }
 
-void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc) {
+void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc, bool use_RESET) {
   const int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int qtable[64];
   auto create_qtable_DQT = [](int c, int QF, int *qtable) {
     float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < DCTSIZE2; ++i) {
       float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
       stepsize       = floor(stepsize);
       if (stepsize < 1.0) {
@@ -161,6 +162,13 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
   create_DHT(0, enc);
   if (nc > 1) {
     create_DHT(1, enc);
+  }
+  if (use_RESET) {
+    enc.put_word(DRI);
+    enc.put_word(4);
+    int mcu_x = width / (DCTSIZE * (YCC_HV[YCCtype][0] >> 4));
+    int mcu_y = LINES / (DCTSIZE * (YCC_HV[YCCtype][0] & 0xF));
+    enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);
 }
