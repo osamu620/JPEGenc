@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "ycctype.hpp"
+enum YCC { YUV444, YUV422, YUV411, YUV440, YUV420, YUV410, GRAY, GRAY2 };
 
 int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF, int &YCCtype) {
   YCCtype = YCC::YUV420;

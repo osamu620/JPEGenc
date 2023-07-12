@@ -142,7 +142,7 @@ class bitstream {
     return &stream;
   }
 
-  auto finalize() {
+  std::vector<uint8_t> finalize() {
     flush();
     put_word(EOI);
     return std::move(stream);
