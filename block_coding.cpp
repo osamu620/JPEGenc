@@ -272,7 +272,7 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         // Luma, Y
         for (int y = 0; y < Vl; ++y) {
           for (int x = 0; x < Hl; ++x) {
-            sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of a block
+            sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
             make_zigzag_blk(sp0, 0, prev_dc[0], enc);
           }
         }
