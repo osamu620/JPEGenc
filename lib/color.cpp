@@ -215,32 +215,32 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += DCTSIZE * 2) {
           auto sp = in + nc * i * width + nc * j;
-          auto v0 = vld3q_u8(sp + 0 * width * nc);
-          auto v1 = vld3q_u8(sp + 1 * width * nc);
-          auto v2 = vld3q_u8(sp + 2 * width * nc);
-          auto v3 = vld3q_u8(sp + 3 * width * nc);
-          auto v4 = vld3q_u8(sp + 4 * width * nc);
-          auto v5 = vld3q_u8(sp + 5 * width * nc);
-          auto v6 = vld3q_u8(sp + 6 * width * nc);
-          auto v7 = vld3q_u8(sp + 7 * width * nc);
-
-          vst1q_s16(out[0] + pos + 8 * 0, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 1, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 2, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v2.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 3, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v3.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 4, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v4.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 5, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v5.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 6, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v6.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 7, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v7.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 8, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 9, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 10, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v2.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 11, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v3.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 12, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v4.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 13, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v5.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 14, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v6.val[0]), c128)));
-          vst1q_s16(out[0] + pos + 8 * 15, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v7.val[0]), c128)));
-          pos += 128;
+          auto v0 = vld1q_u8(sp + 0 * width * nc);
+          auto v1 = vld1q_u8(sp + 1 * width * nc);
+          auto v2 = vld1q_u8(sp + 2 * width * nc);
+          auto v3 = vld1q_u8(sp + 3 * width * nc);
+          auto v4 = vld1q_u8(sp + 4 * width * nc);
+          auto v5 = vld1q_u8(sp + 5 * width * nc);
+          auto v6 = vld1q_u8(sp + 6 * width * nc);
+          auto v7 = vld1q_u8(sp + 7 * width * nc);
+          vst1q_s16(out[0] + pos + 8 * 0, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v0), c128)));
+          vst1q_s16(out[0] + pos + 8 * 1, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v1), c128)));
+          vst1q_s16(out[0] + pos + 8 * 2, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v2), c128)));
+          vst1q_s16(out[0] + pos + 8 * 3, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v3), c128)));
+          vst1q_s16(out[0] + pos + 8 * 4, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v4), c128)));
+          vst1q_s16(out[0] + pos + 8 * 5, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v5), c128)));
+          vst1q_s16(out[0] + pos + 8 * 6, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v6), c128)));
+          vst1q_s16(out[0] + pos + 8 * 7, vreinterpretq_s16_u16(vsubl_u8(vget_low_u8(v7), c128)));
+          pos += 64;
+          vst1q_s16(out[0] + pos + 8 * 0, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v0), c128)));
+          vst1q_s16(out[0] + pos + 8 * 1, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v1), c128)));
+          vst1q_s16(out[0] + pos + 8 * 2, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v2), c128)));
+          vst1q_s16(out[0] + pos + 8 * 3, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v3), c128)));
+          vst1q_s16(out[0] + pos + 8 * 4, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v4), c128)));
+          vst1q_s16(out[0] + pos + 8 * 5, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v5), c128)));
+          vst1q_s16(out[0] + pos + 8 * 6, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v6), c128)));
+          vst1q_s16(out[0] + pos + 8 * 7, vreinterpretq_s16_u16(vsubl_u8(vget_high_u8(v7), c128)));
+          pos += 64;
         }
       }
       break;
