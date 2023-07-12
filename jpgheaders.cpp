@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cstdint>
 #include <vector>
 
 #include "bitstream.hpp"
