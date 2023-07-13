@@ -1,0 +1,3 @@
+[submodule "thirdparty/highway"]
+	path = thirdparty/highway
+	url = https://github.com/google/highway.git
