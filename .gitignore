@@ -43,3 +43,5 @@ build/
 build-*/
 cmake-*/
 xcode*/
+
+thirdparty/highway/*
