@@ -8,23 +8,24 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_PREFIX_PATH "./include") # for include
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway EXCLUDE_FROM_ALL)
-add_library(libjpegenc ${SOURCES})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
+add_library(jpegenc ${SOURCES})
 target_include_directories(
-		libjpegenc
-		PRIVATE lib include
+		jpegenc
+		PRIVATE lib include thirdparty/hwy
 )
-target_include_directories(libjpegenc INTERFACE include)
+target_include_directories(jpegenc INTERFACE include)
+target_link_libraries(jpegenc PRIVATE hwy)
 add_subdirectory(lib)
-set_target_properties(libjpegenc PROPERTIES OUTPUT_NAME
-		$<IF:$<CONFIG:Debug>,libjpegenc_d,libjpegenc_R>)
+set_target_properties(jpegenc PROPERTIES OUTPUT_NAME
+		$<IF:$<CONFIG:Debug>,jpegenc_d,jpegenc_R>)
 
-add_executable(jpegenc)
+add_executable(jpenc)
 add_subdirectory(apps)
 set_target_properties(
-		jpegenc
+		jpenc
 		PROPERTIES OUTPUT_NAME
-		$<IF:$<CONFIG:Debug>,jpeg_dbg,jpegenc>)
+		$<IF:$<CONFIG:Debug>,jpenc_dbg,jpenc>)
 
 #include(DetectHostArch.cmake)
 #detect_host_arch()
@@ -46,7 +47,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC") # MSVC
 endif()
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64$") # aarch64
-	target_compile_definitions(libjpegenc PUBLIC "JPEG_USE_NEON")
+	target_compile_definitions(jpegenc PUBLIC "JPEG_USE_NEON")
 	if(APPLE)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m1")
 	else()
@@ -56,7 +57,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flax-vector-conversions")
 	endif()
 else()
-	target_compile_definitions(libjpegenc PUBLIC "JPEG_USE_AVX2")
+	target_compile_definitions(jpegenc PUBLIC "JPEG_USE_AVX2")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
 	else()
