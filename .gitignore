@@ -44,4 +44,7 @@ build-*/
 cmake-*/
 xcode*/
 
-thirdparty/highway/*
+thirdparty/highway/WORKSPACE
+thirdparty/highway/CMakeLists.txt.in
+thirdparty/highway/hwy/
+
