@@ -17,7 +17,7 @@
 // std::cout << "}" << std::endl;
 
 // clang-format off
-constexpr unsigned int DC_len[2][16] = {
+constexpr int DC_len[2][16] = {
     {2, 3, 3, 3, 3, 3, 4, 5, 6, 7,  8,  9, 0, 0, 0, 0}, //10, 11, 12, 13},
     {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 0, 0}  //12, 13, 14, 15},
 };
@@ -27,7 +27,7 @@ constexpr unsigned int DC_cwd[2][16] = {
     {0x0000, 0x0001, 0x0002, 0x0006, 0x000e, 0x001e, 0x003e, 0x007e, 0x00fe, 0x01fe, 0x03fe, 0x07fe, 0, 0, 0, 0}  // 0x0ffe, 0x1ffe, 0x3ffe, 0x7ffe}
 };
 
-constexpr unsigned int AC_len[2][256] = {
+constexpr int AC_len[2][256] = {
     { 4,  2,  2,  3,  4,  5,  7,  8, 10, 16, 16, 0, 0, 0, 0, 0,  
       0,  4,  5,  7,  9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0,    
       0,  5,  8, 10, 12, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0,    

@@ -96,8 +96,8 @@ class bitstream {
     put_byte(d & 0xFF);
   }
 
-  inline void put_bits(uint32_t cwd, uint32_t len) {
-    assert(len != 0);
+  inline void put_bits(uint32_t cwd, int32_t len) {
+    assert(len > 0);
 #if not defined(NAIVE)
     if ((bits + len) < 64) {
       tmp <<= len;

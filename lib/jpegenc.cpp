@@ -1,6 +1,5 @@
-#include "../include/jpegenc.hpp"
+#include <jpegenc.hpp>
 
-#include <utility>
 #include "aligned_unique_ptr.hpp"
 #include "block_coding.hpp"
 #include "color.hpp"
@@ -27,7 +26,7 @@ class jpeg_encoder_impl {
   bool use_RESET;
 
  public:
-  jpeg_encoder_impl(const std::string infile, int &qf, int &ycc)
+  jpeg_encoder_impl(const std::string &infile, int &qf, int &ycc)
       : image(infile),
         width(image.get_width()),
         height(image.get_height()),
@@ -35,6 +34,8 @@ class jpeg_encoder_impl {
         YCCtype(ycc),
         line_buffer(image.get_num_comps()),
         yuv(image.get_num_comps()),
+        qtable_L{0},
+        qtable_C{0},
         prev_dc(3, 0),
         use_RESET(false) {
     int nc = image.get_num_comps();
@@ -49,7 +50,7 @@ class jpeg_encoder_impl {
 
     // Prepare line-buffers
     line_buffer[0] = aligned_uptr<int16_t>(32, bufsize_L);
-    for (int c = 1; c < line_buffer.size(); ++c) {
+    for (size_t c = 1; c < line_buffer.size(); ++c) {
       line_buffer[c] = aligned_uptr<int16_t>(32, bufsize_C);
     }
 
@@ -82,20 +83,26 @@ class jpeg_encoder_impl {
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
   }
 
-  int get_width() const { return width; }
-  int get_height() const { return height; }
+  [[nodiscard]] int32_t get_width() const { return width; }
+  [[nodiscard]] int32_t get_height() const { return height; }
 
   ~jpeg_encoder_impl() = default;
 };
 
-jpeg_encoder::jpeg_encoder(const std::string &infile, int &QF, int &YCCtype, int &width, int &height) {
+/**********************************************************************************************************************/
+// Public interface
+/**********************************************************************************************************************/
+jpeg_encoder::jpeg_encoder(const std::string &infile, int &QF, int &YCCtype) {
   this->impl = std::make_unique<jpeg_encoder_impl>(infile, QF, YCCtype);
-  width      = this->impl->get_width();
-  height     = this->impl->get_height();
 }
+
+int32_t jpeg_encoder::get_width() { return this->impl->get_width(); }
+
+int32_t jpeg_encoder::get_height() { return this->impl->get_height(); }
 
 void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
 
 std::vector<uint8_t> jpeg_encoder::get_codestream() { return std::move(this->codestream); }
+
 jpeg_encoder::~jpeg_encoder() = default;
 }  // namespace jpegenc

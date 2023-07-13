@@ -15,7 +15,7 @@ class imchunk {
   int ncomp;
   uint8_t *g_buf;
   uint8_t *buf;
-  size_t cur_line;
+  int32_t cur_line;
 
  public:
   explicit imchunk(const std::string &name) : width(0), height(0), ncomp(1), cur_line(0) {

@@ -1,19 +1,19 @@
 #include <cstdio>
-#include "parse_args.hpp"
-#include "../include/jpegenc.hpp"
 #include <string>
+#include <jpegenc.hpp>
 #include <chrono>
+#include "parse_args.hpp"
 
 int main(int argc, char *argv[]) {
   int QF, YCCtype;
-  std::string infile;
-  FILE *out = nullptr;
-  if (parse_args(argc, argv, infile, &out, QF, YCCtype)) {
+  std::string infile, outfile;
+  if (parse_args(argc, argv, infile, outfile, QF, YCCtype)) {
     return EXIT_FAILURE;
   }
-  int width, height;
-  jpegenc::jpeg_encoder encoder(infile, QF, YCCtype, width, height);
-  size_t duration = 0;
+  jpegenc::jpeg_encoder encoder(infile, QF, YCCtype);
+  const int width  = encoder.get_width();
+  const int height = encoder.get_height();
+  size_t duration  = 0;
 
   auto start = std::chrono::high_resolution_clock::now();
   encoder.invoke();
@@ -26,6 +26,11 @@ int main(int argc, char *argv[]) {
   const std::vector<uint8_t> codestream = encoder.get_codestream();
   std::cout << "Codestream bytes = " << codestream.size() << std::endl;
 
+  FILE *out = fopen(outfile.c_str(), "wb");
+  if (out == nullptr) {
+    std::cerr << "Could not open '" << outfile << "' as an output file." << std::endl;
+    return EXIT_FAILURE;
+  }
   fwrite(codestream.data(), sizeof(uint8_t), codestream.size(), out);
   fclose(out);
 }

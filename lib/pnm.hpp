@@ -27,7 +27,7 @@ unsigned char *read_pnm(const std::string &name, int &width, int &height, int &n
   }
   int maxval;
   int status = 0;  // status, = 3 is DONE
-  char c;
+  int c;
   int val = 0;
   char comment[256];  // temporal buffer to eat comments
   c = fgetc(fp);
@@ -91,8 +91,8 @@ unsigned char *read_pnm(const std::string &name, int &width, int &height, int &n
     exit(EXIT_FAILURE);
   }
 
-  int numpixels      = width * height * ncomp;
-  unsigned char *buf = (unsigned char *)malloc(numpixels * sizeof(unsigned char));
+  int numpixels = width * height * ncomp;
+  auto *buf     = (unsigned char *)malloc(numpixels * sizeof(unsigned char));
   if (buf == nullptr) {
     printf("malloc() error\n");
     exit(EXIT_FAILURE);

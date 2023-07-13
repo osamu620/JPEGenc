@@ -6,26 +6,24 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_PREFIX_PATH "./include") # for include
 
 add_library(libjpegenc ${SOURCES})
 target_include_directories(
 		libjpegenc
-		PRIVATE lib
+		PRIVATE lib include
 )
 target_include_directories(libjpegenc INTERFACE include)
 add_subdirectory(lib)
 add_executable(jpegenc)
 add_subdirectory(apps)
 
-
-#add_executable(jpegenc main.cpp jpgheaders.cpp color.cpp dct.cpp quantization.cpp block_coding.cpp jpegenc.cpp)
-#add_executable(jpegenc main.cpp jpgheaders.cpp color.cpp dct.cpp quantization.cpp block_coding.cpp)
 #include(DetectHostArch.cmake)
 #detect_host_arch()
 #string (REPLACE ";" " " COMPILER_HOST_FLAGS "${HOST_FLAGS}")
 #message(STATUS "${CMAKE_CXX_COMPILER_ID} flags: ${COMPILER_HOST_FLAGS}")
 
-set(CMAKE_CXX_FLAGS "-Wall -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -fsanitize=address")

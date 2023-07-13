@@ -53,8 +53,8 @@ static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned in
 
 static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
   alignas(16) int16_t dp[64];
-  int dc = sp[0];
-  sp[0] -= prev_dc;
+  int dc  = sp[0];
+  sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
   prev_dc = dc;
 #if not defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE2; ++i) {
@@ -253,7 +253,7 @@ static void make_zigzag_blk(int16_t *sp, int c, int &prev_dc, bitstream &enc) {
     enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 #endif
-};
+}
 
 void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                  bitstream &enc) {

@@ -6,7 +6,7 @@
 
 enum YCC { YUV444, YUV422, YUV411, YUV440, YUV420, YUV410, GRAY, GRAY2 };
 
-int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF, int &YCCtype) {
+int parse_args(int argc, char *argv[], std::string &inname, std::string &outname, int &QF, int &YCCtype) {
   YCCtype = YCC::YUV420;
   QF      = 75;
   std::vector<std::string> args;
@@ -20,7 +20,7 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
     return EXIT_FAILURE;
   }
   bool ifile_exist = false, ofile_exist = false;
-  for (int i = 1; i < args.size(); ++i) {
+  for (size_t i = 1; i < args.size(); ++i) {
     switch (args[i][0]) {
       case '-':
         if (args[i].substr(1) == "i") {
@@ -32,16 +32,12 @@ int parse_args(int argc, char *argv[], std::string &inname, FILE **out, int &QF,
           inname      = args[i + 1];
           ++i;
         } else if (args[i].substr(1) == "o") {
-          *out = fopen(args[i + 1].c_str(), "wb");
-          if (*out == nullptr) {
-            std::cerr << "Could not open '" << args[i + 1] << "' as an output file." << std::endl;
-            return EXIT_FAILURE;
-          }
           ofile_exist = true;
+          outname     = args[i + 1];
           ++i;
         } else if (args[i].substr(1) == "q") {
           try {
-            QF = std::stol(args[i + 1], nullptr, 10);
+            QF = std::stoi(args[i + 1], nullptr, 10);
           } catch (std::invalid_argument &e) {
             std::cerr << "QF value is missing." << std::endl;
             return EXIT_FAILURE;

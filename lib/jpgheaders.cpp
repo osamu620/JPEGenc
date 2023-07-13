@@ -58,8 +58,8 @@ void create_DQT(int c, int *qtable, bitstream &enc) {
     Tq = 1;
   }
   enc.put_byte((Pq << 4) + Tq);
-  for (int i = 0; i < 64; ++i) {
-    enc.put_byte(qtable[scan[i]]);
+  for (size_t i : scan) {
+    enc.put_byte(qtable[i]);
   }
 }
 
@@ -75,8 +75,8 @@ void create_DHT(int c, bitstream &enc) {
   }
   std::vector<uint8_t> tmp;
   // Li
-  for (int i = 0; i < 16; ++i) {
-    tmp.push_back(freq[i]);
+  for (int f : freq) {
+    tmp.push_back(f);
   }
   // Vi
   for (int i = 0; i < 16; ++i) {
@@ -85,7 +85,7 @@ void create_DHT(int c, bitstream &enc) {
     }
   }
   enc.put_word(DHT);
-  Lh = tmp.size() + 2 + 1;
+  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
   enc.put_word(Lh);
   Tc = 0;
   Th = c;
@@ -94,8 +94,8 @@ void create_DHT(int c, bitstream &enc) {
     enc.put_byte(e);
   }
   tmp.clear();
-  for (int i = 0; i < 16; ++i) {
-    freq[i] = 0;
+  for (int &f : freq) {
+    f = 0;
   }
 
   // AC
@@ -112,8 +112,8 @@ void create_DHT(int c, bitstream &enc) {
     }
   }
   // Li
-  for (int i = 0; i < 16; ++i) {
-    tmp.push_back(freq[i]);
+  for (int f : freq) {
+    tmp.push_back(f);
   }
   // Vi
   for (int i = 0; i < 256; ++i) {
@@ -123,7 +123,7 @@ void create_DHT(int c, bitstream &enc) {
   }
 
   enc.put_word(DHT);
-  Lh = tmp.size() + 2 + 1;
+  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
   enc.put_word(Lh);
   Tc = 1;
   Th = c;
@@ -138,7 +138,7 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
   const int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int qtable[64];
   auto create_qtable_DQT = [](int c, int QF, int *qtable) {
-    float scale = (QF < 50) ? 5000.0F / QF : 200.0F - 2.0F * QF;
+    float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
     for (int i = 0; i < DCTSIZE2; ++i) {
       float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
       stepsize       = floor(stepsize);
@@ -165,8 +165,8 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
   if (use_RESET) {
     enc.put_word(DRI);
     enc.put_word(4);
-    int mcu_x = width / (DCTSIZE * (YCC_HV[YCCtype][0] >> 4));
-    int mcu_y = LINES / (DCTSIZE * (YCC_HV[YCCtype][0] & 0xF));
+    size_t mcu_x = width / (DCTSIZE * (YCC_HV[YCCtype][0] >> 4));
+    size_t mcu_y = LINES / (DCTSIZE * (YCC_HV[YCCtype][0] & 0xF));
     enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);

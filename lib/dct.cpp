@@ -168,9 +168,9 @@ void fast_dct2_neon(int16_t *data) {
 void fastdct2(int16_t *in, int stride) {
   //  0.382683433, 0.541196100, 0.707106781, 1.306562965 - 1.0
   static constexpr int16_t rotate[] = {12540, 17734, 23170, 10045};
-  int16_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
-  int16_t tmp10, tmp11, tmp12, tmp13;
-  int16_t z1, z2, z3, z4, z5, z11, z13;
+  int32_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+  int32_t tmp10, tmp11, tmp12, tmp13;
+  int32_t z1, z2, z3, z4, z5, z11, z13;
   int16_t *dataptr;
   int ctr;
   constexpr int half = 1 << 14;
@@ -195,12 +195,12 @@ void fastdct2(int16_t *in, int stride) {
     tmp11 = tmp1 + tmp2;
     tmp12 = tmp1 - tmp2;
 
-    dataptr[0] = (tmp10 + tmp11); /* phase 3 */
-    dataptr[4] = (tmp10 - tmp11);
+    dataptr[0] = static_cast<int16_t>((tmp10 + tmp11)); /* phase 3 */
+    dataptr[4] = static_cast<int16_t>((tmp10 - tmp11));
 
     z1         = ((int32_t)(tmp12 + tmp13) * rotate[2] + half) >> 15; /* c4 */
-    dataptr[2] = (tmp13 + z1);                                        /* phase 5 */
-    dataptr[6] = (tmp13 - z1);
+    dataptr[2] = static_cast<int16_t>((tmp13 + z1));                  /* phase 5 */
+    dataptr[6] = static_cast<int16_t>((tmp13 - z1));
 
     /* Odd part */
 
@@ -217,10 +217,10 @@ void fastdct2(int16_t *in, int stride) {
     z11 = tmp7 + z3; /* phase 5 */
     z13 = tmp7 - z3;
 
-    dataptr[5] = (z13 + z2); /* phase 6 */
-    dataptr[3] = (z13 - z2);
-    dataptr[1] = (z11 + z4);
-    dataptr[7] = (z11 - z4);
+    dataptr[5] = static_cast<int16_t>((z13 + z2)); /* phase 6 */
+    dataptr[3] = static_cast<int16_t>((z13 - z2));
+    dataptr[1] = static_cast<int16_t>((z11 + z4));
+    dataptr[7] = static_cast<int16_t>((z11 - z4));
 
     dataptr += DCTSIZE; /* advance pointer to next row */
   }
@@ -245,12 +245,12 @@ void fastdct2(int16_t *in, int stride) {
     tmp11 = tmp1 + tmp2;
     tmp12 = tmp1 - tmp2;
 
-    dataptr[stride * 0] = (tmp10 + tmp11); /* phase 3 */
-    dataptr[stride * 4] = (tmp10 - tmp11);
+    dataptr[stride * 0] = static_cast<int16_t>((tmp10 + tmp11)); /* phase 3 */
+    dataptr[stride * 4] = static_cast<int16_t>((tmp10 - tmp11));
 
     z1                  = ((int32_t)(tmp12 + tmp13) * rotate[2] + half) >> 15; /* c4 */
-    dataptr[stride * 2] = (tmp13 + z1);                                        /* phase 5 */
-    dataptr[stride * 6] = (tmp13 - z1);
+    dataptr[stride * 2] = static_cast<int16_t>((tmp13 + z1));                  /* phase 5 */
+    dataptr[stride * 6] = static_cast<int16_t>((tmp13 - z1));
 
     /* Odd part */
 
@@ -267,10 +267,10 @@ void fastdct2(int16_t *in, int stride) {
     z11 = tmp7 + z3; /* phase 5 */
     z13 = tmp7 - z3;
 
-    dataptr[stride * 5] = (z13 + z2); /* phase 6 */
-    dataptr[stride * 3] = (z13 - z2);
-    dataptr[stride * 1] = (z11 + z4);
-    dataptr[stride * 7] = (z11 - z4);
+    dataptr[stride * 5] = static_cast<int16_t>((z13 + z2)); /* phase 6 */
+    dataptr[stride * 3] = static_cast<int16_t>((z13 - z2));
+    dataptr[stride * 1] = static_cast<int16_t>((z11 + z4));
+    dataptr[stride * 7] = static_cast<int16_t>((z11 - z4));
 
     dataptr++; /* advance pointer to next column */
   }
