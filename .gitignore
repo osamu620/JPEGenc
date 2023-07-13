@@ -46,5 +46,5 @@ xcode*/
 
 thirdparty/highway/WORKSPACE
 thirdparty/highway/CMakeLists.txt.in
-thirdparty/highway/hwy/
+thirdparty/highway/hwy
 
