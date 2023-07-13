@@ -29,8 +29,8 @@ alignas(16) const uint8_t jsimd_huff_encode_one_block_consts[] = {
 
 #else
   #include "zigzag_order.hpp"
-static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable,
-                                  const unsigned int *Ltable, bitstream &enc) {
+static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable, const int *Ltable,
+                                  bitstream &enc) {
   enc.put_bits(Ctable[s], Ltable[s]);
   if (s != 0) {
     //    if (val < 0) {
@@ -42,7 +42,7 @@ static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable
 }
 
 static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable,
-                                  const unsigned int *Ltable, bitstream &enc) {
+                                  const int *Ltable, bitstream &enc) {
   enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
   if (s != 0) {
     val -= (val >> 31) & 1;
