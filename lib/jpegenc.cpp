@@ -9,6 +9,11 @@
 #include "quantization.hpp"
 #include "ycctype.hpp"
 
+#if defined(_MSC_VER)
+  #define JPEGENC_EXPORT __declspec(dllexport)
+#else
+  #define JPEGENC_EXPORT
+#endif
 namespace jpegenc {
 class jpeg_encoder_impl {
  private:
@@ -92,17 +97,17 @@ class jpeg_encoder_impl {
 /**********************************************************************************************************************/
 // Public interface
 /**********************************************************************************************************************/
-jpeg_encoder::jpeg_encoder(const std::string &infile, int &QF, int &YCCtype) {
+JPEGENC_EXPORT jpeg_encoder::jpeg_encoder(const std::string &infile, int &QF, int &YCCtype) {
   this->impl = std::make_unique<jpeg_encoder_impl>(infile, QF, YCCtype);
 }
 
-int32_t jpeg_encoder::get_width() { return this->impl->get_width(); }
+JPEGENC_EXPORT int32_t jpeg_encoder::get_width() { return this->impl->get_width(); }
 
-int32_t jpeg_encoder::get_height() { return this->impl->get_height(); }
+JPEGENC_EXPORT int32_t jpeg_encoder::get_height() { return this->impl->get_height(); }
 
-void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
+JPEGENC_EXPORT void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
 
-std::vector<uint8_t> jpeg_encoder::get_codestream() { return std::move(this->codestream); }
+JPEGENC_EXPORT std::vector<uint8_t> jpeg_encoder::get_codestream() { return std::move(this->codestream); }
 
-jpeg_encoder::~jpeg_encoder() = default;
+JPEGENC_EXPORT jpeg_encoder::~jpeg_encoder() = default;
 }  // namespace jpegenc

@@ -15,20 +15,33 @@ target_include_directories(
 )
 target_include_directories(libjpegenc INTERFACE include)
 add_subdirectory(lib)
+set_target_properties(libjpegenc PROPERTIES OUTPUT_NAME
+		$<IF:$<CONFIG:Debug>,libjpegenc_d,libjpegenc_R>)
+
 add_executable(jpegenc)
 add_subdirectory(apps)
+set_target_properties(
+		jpegenc
+		PROPERTIES OUTPUT_NAME
+		$<IF:$<CONFIG:Debug>,jpeg_dbg,jpegenc>)
 
 #include(DetectHostArch.cmake)
 #detect_host_arch()
 #string (REPLACE ";" " " COMPILER_HOST_FLAGS "${HOST_FLAGS}")
 #message(STATUS "${CMAKE_CXX_COMPILER_ID} flags: ${COMPILER_HOST_FLAGS}")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
-
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+	set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -fsanitize=address")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2")
 	set(CMAKE_CXX_FLAGS_RelWithDebInfo "${CMAKE_CXX_FLAGS} -O2 -g")
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC") # MSVC
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd5051 /EHsc /D \"_CRT_SECURE_NO_WARNINGS\"")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} /Od /DDEBUG /ZI")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} /Ox")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS} /O2 /ZI")
 endif()
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64$") # aarch64
@@ -43,7 +56,11 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64
 	endif()
 else()
 	target_compile_definitions(libjpegenc PUBLIC "JPEG_USE_AVX2")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native") # x86_64
+	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+	else()
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native") # x86_64
+	endif()
 endif()
 
 
