@@ -1,6 +1,216 @@
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "dct.cpp"  // this file
+#include <hwy/foreach_target.h>       // must come before highway.h
+#include <hwy/highway.h>
+
 #include "dct.hpp"
 #include "constants.hpp"
 #include "ycctype.hpp"
+
+namespace jpegenc_hwy {
+namespace HWY_NAMESPACE {  // required: unique per target
+namespace hn = hwy::HWY_NAMESPACE;
+
+alignas(16) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
+HWY_ATTR void fast_dct2_simd(int16_t *data) {
+  const hn::FixedTag<int16_t, 8> d16;
+  auto data1_0 = hn::Undefined(d16);
+  auto data1_1 = hn::Undefined(d16);
+  auto data1_2 = hn::Undefined(d16);
+  auto data1_3 = hn::Undefined(d16);
+  auto data2_0 = hn::Undefined(d16);
+  auto data2_1 = hn::Undefined(d16);
+  auto data2_2 = hn::Undefined(d16);
+  auto data2_3 = hn::Undefined(d16);
+  LoadInterleaved4(d16, data, data1_0, data1_1, data1_2, data1_3);
+  LoadInterleaved4(d16, data + 4 * DCTSIZE, data2_0, data2_1, data2_2, data2_3);
+  auto cols_04_0 = ConcatEven(d16, data2_0, data1_0);
+  auto cols_15_0 = ConcatEven(d16, data2_1, data1_1);
+  auto cols_26_0 = ConcatEven(d16, data2_2, data1_2);
+  auto cols_37_0 = ConcatEven(d16, data2_3, data1_3);
+  auto cols_04_1 = ConcatOdd(d16, data2_0, data1_0);
+  auto cols_15_1 = ConcatOdd(d16, data2_1, data1_1);
+  auto cols_26_1 = ConcatOdd(d16, data2_2, data1_2);
+  auto cols_37_1 = ConcatOdd(d16, data2_3, data1_3);
+
+  auto col0 = cols_04_0;
+  auto col1 = cols_15_0;
+  auto col2 = cols_26_0;
+  auto col3 = cols_37_0;
+  auto col4 = cols_04_1;
+  auto col5 = cols_15_1;
+  auto col6 = cols_26_1;
+  auto col7 = cols_37_1;
+
+  auto tmp0 = Add(col0, col7);
+  auto tmp7 = Sub(col0, col7);
+  auto tmp1 = Add(col1, col6);
+  auto tmp6 = Sub(col1, col6);
+  auto tmp2 = Add(col2, col5);
+  auto tmp5 = Sub(col2, col5);
+  auto tmp3 = Add(col3, col4);
+  auto tmp4 = Sub(col3, col4);
+
+  // Even part
+  auto tmp10 = Add(tmp0, tmp3);  // phase 2
+  auto tmp13 = Sub(tmp0, tmp3);
+  auto tmp11 = Add(tmp1, tmp2);
+  auto tmp12 = Sub(tmp1, tmp2);
+
+  col0 = Add(tmp10, tmp11);  // phase 3
+  col4 = Sub(tmp10, tmp11);
+
+  auto vcoeff0 = Set(d16, coeff[0]);
+  auto vcoeff1 = Set(d16, coeff[1]);
+  auto vcoeff2 = Set(d16, coeff[2]);
+  auto vcoeff3 = Set(d16, coeff[3]);
+  auto z1      = MulFixedPoint15(Add(tmp12, tmp13), vcoeff2);
+  col2         = Add(tmp13, z1);  // phase 5
+  col6         = Sub(tmp13, z1);
+
+  // Odd Part
+  tmp10 = Add(tmp4, tmp5);
+  tmp11 = Add(tmp5, tmp6);
+  tmp12 = Add(tmp6, tmp7);
+
+  auto z5 = MulFixedPoint15(Sub(tmp10, tmp12), vcoeff0);
+  auto z2 = MulFixedPoint15(tmp10, vcoeff1);
+  z2      = Add(z2, z5);
+  auto z4 = MulFixedPoint15(tmp12, vcoeff3);
+  z5      = Add(tmp12, z5);
+  z4      = Add(z4, z5);
+  auto z3 = MulFixedPoint15(tmp11, vcoeff2);
+
+  auto z11 = Add(tmp7, z3);  // phase 5
+  auto z13 = Sub(tmp7, z3);
+
+  col5 = Add(z13, z2);  // phase 6
+  col3 = Sub(z13, z2);
+  col1 = Add(z11, z4);
+  col7 = Sub(z11, z4);
+
+  // vtrnq
+  auto cols_01_0 = InterleaveLower(ConcatEven(d16, col0, col0), ConcatEven(d16, col1, col1));
+  auto cols_01_1 = InterleaveLower(ConcatOdd(d16, col0, col0), ConcatOdd(d16, col1, col1));
+  auto cols_23_0 = InterleaveLower(ConcatEven(d16, col2, col2), ConcatEven(d16, col3, col3));
+  auto cols_23_1 = InterleaveLower(ConcatOdd(d16, col2, col2), ConcatOdd(d16, col3, col3));
+  auto cols_45_0 = InterleaveLower(ConcatEven(d16, col4, col4), ConcatEven(d16, col5, col5));
+  auto cols_45_1 = InterleaveLower(ConcatOdd(d16, col4, col4), ConcatOdd(d16, col5, col5));
+  auto cols_67_0 = InterleaveLower(ConcatEven(d16, col6, col6), ConcatEven(d16, col7, col7));
+  auto cols_67_1 = InterleaveLower(ConcatOdd(d16, col6, col6), ConcatOdd(d16, col7, col7));
+
+  const hn::ScalableTag<int32_t> d32;
+  auto cols_0145_l_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
+                                       ConcatEven(d32, BitCast(d32, cols_45_0), BitCast(d32, cols_45_0)));
+  auto cols_0145_l_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
+                                       ConcatOdd(d32, BitCast(d32, cols_45_0), BitCast(d32, cols_45_0)));
+  auto cols_0145_h_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_01_1), BitCast(d32, cols_01_1)),
+                                       ConcatEven(d32, BitCast(d32, cols_45_1), BitCast(d32, cols_45_1)));
+  auto cols_0145_h_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_01_1), BitCast(d32, cols_01_1)),
+                                       ConcatOdd(d32, BitCast(d32, cols_45_1), BitCast(d32, cols_45_1)));
+  auto cols_2367_l_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_23_0), BitCast(d32, cols_23_0)),
+                                       ConcatEven(d32, BitCast(d32, cols_67_0), BitCast(d32, cols_67_0)));
+  auto cols_2367_l_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_23_0), BitCast(d32, cols_23_0)),
+                                       ConcatOdd(d32, BitCast(d32, cols_67_0), BitCast(d32, cols_67_0)));
+  auto cols_2367_h_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_23_1), BitCast(d32, cols_23_1)),
+                                       ConcatEven(d32, BitCast(d32, cols_67_1), BitCast(d32, cols_67_1)));
+  auto cols_2367_h_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_23_1), BitCast(d32, cols_23_1)),
+                                       ConcatOdd(d32, BitCast(d32, cols_67_1), BitCast(d32, cols_67_1)));
+  auto rows_04_0     = InterleaveLower(cols_0145_l_0, cols_2367_l_0);
+  auto rows_04_1     = InterleaveUpper(d32, cols_0145_l_0, cols_2367_l_0);
+  auto rows_15_0     = InterleaveLower(cols_0145_h_0, cols_2367_h_0);
+  auto rows_15_1     = InterleaveUpper(d32, cols_0145_h_0, cols_2367_h_0);
+  auto rows_26_0     = InterleaveLower(cols_0145_l_1, cols_2367_l_1);
+  auto rows_26_1     = InterleaveUpper(d32, cols_0145_l_1, cols_2367_l_1);
+  auto rows_37_0     = InterleaveLower(cols_0145_h_1, cols_2367_h_1);
+  auto rows_37_1     = InterleaveUpper(d32, cols_0145_h_1, cols_2367_h_1);
+
+  auto row0 = BitCast(d16, rows_04_0);
+  auto row1 = BitCast(d16, rows_15_0);
+  auto row2 = BitCast(d16, rows_26_0);
+  auto row3 = BitCast(d16, rows_37_0);
+  auto row4 = BitCast(d16, rows_04_1);
+  auto row5 = BitCast(d16, rows_15_1);
+  auto row6 = BitCast(d16, rows_26_1);
+  auto row7 = BitCast(d16, rows_37_1);
+
+  /* Pass 2: process columns. */
+  tmp0 = Add(row0, row7);
+  tmp7 = Sub(row0, row7);
+  tmp1 = Add(row1, row6);
+  tmp6 = Sub(row1, row6);
+  tmp2 = Add(row2, row5);
+  tmp5 = Sub(row2, row5);
+  tmp3 = Add(row3, row4);
+  tmp4 = Sub(row3, row4);
+
+  /* Even part */
+  tmp10 = Add(tmp0, tmp3); /* phase 2 */
+  tmp13 = Sub(tmp0, tmp3);
+  tmp11 = Add(tmp1, tmp2);
+  tmp12 = Sub(tmp1, tmp2);
+
+  row0 = Add(tmp10, tmp11); /* phase 3 */
+  row4 = Sub(tmp10, tmp11);
+
+  z1   = MulFixedPoint15(Add(tmp12, tmp13), vcoeff2);
+  row2 = Add(tmp13, z1); /* phase 5 */
+  row6 = Sub(tmp13, z1);
+
+  /* Odd part */
+  tmp10 = Add(tmp4, tmp5); /* phase 2 */
+  tmp11 = Add(tmp5, tmp6);
+  tmp12 = Add(tmp6, tmp7);
+
+  z5 = MulFixedPoint15(Sub(tmp10, tmp12), vcoeff0);
+  z2 = MulFixedPoint15(tmp10, vcoeff1);
+  z2 = Add(z2, z5);
+  z4 = MulFixedPoint15(tmp12, vcoeff3);
+  z5 = Add(tmp12, z5);
+  z4 = Add(z4, z5);
+  z3 = MulFixedPoint15(tmp11, vcoeff2);
+
+  z11 = Add(tmp7, z3); /* phase 5 */
+  z13 = Sub(tmp7, z3);
+
+  row5 = Add(z13, z2); /* phase 6 */
+  row3 = Sub(z13, z2);
+  row1 = Add(z11, z4);
+  row7 = Sub(z11, z4);
+
+  Store(row0, d16, data + 0 * DCTSIZE);
+  Store(row1, d16, data + 1 * DCTSIZE);
+  Store(row2, d16, data + 2 * DCTSIZE);
+  Store(row3, d16, data + 3 * DCTSIZE);
+  Store(row4, d16, data + 4 * DCTSIZE);
+  Store(row5, d16, data + 5 * DCTSIZE);
+  Store(row6, d16, data + 6 * DCTSIZE);
+  Store(row7, d16, data + 7 * DCTSIZE);
+}
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
+
+namespace jpegenc_hwy {
+// This macro declares a static array used for dynamic dispatch.
+HWY_EXPORT(fast_dct2_simd);
+
+void fast_dct2_hwy(int16_t *HWY_RESTRICT in) { return HWY_DYNAMIC_DISPATCH(fast_dct2_simd(in)); }
+
+void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
+  int scale_x = YCC_HV[YCCtype][0] >> 4;
+  int scale_y = YCC_HV[YCCtype][0] & 0xF;
+  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+
+  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
+    fast_dct2_hwy(in[0] + i);
+  }
+  for (int c = 1; c < nc; ++c) {
+    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
+      fast_dct2_hwy(in[c] + i);
+    }
+  }
+}
+}  // namespace jpegenc_hwy
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
@@ -56,7 +266,7 @@ void fast_dct2_neon(int16_t *data) {
   col0 = vaddq_s16(tmp10, tmp11); /* phase 3 */
   col4 = vsubq_s16(tmp10, tmp11);
 
-  int16x8_t z1 = vqdmulhq_lane_s16(vaddq_s16(tmp12, tmp13), consts, 2);
+  int16x8_t z1 = vqrdmulhq_lane_s16(vaddq_s16(tmp12, tmp13), consts, 2);
   col2         = vaddq_s16(tmp13, z1); /* phase 5 */
   col6         = vsubq_s16(tmp13, z1);
 
@@ -65,13 +275,13 @@ void fast_dct2_neon(int16_t *data) {
   tmp11 = vaddq_s16(tmp5, tmp6);
   tmp12 = vaddq_s16(tmp6, tmp7);
 
-  int16x8_t z5 = vqdmulhq_lane_s16(vsubq_s16(tmp10, tmp12), consts, 0);
-  int16x8_t z2 = vqdmulhq_lane_s16(tmp10, consts, 1);
+  int16x8_t z5 = vqrdmulhq_lane_s16(vsubq_s16(tmp10, tmp12), consts, 0);
+  int16x8_t z2 = vqrdmulhq_lane_s16(tmp10, consts, 1);
   z2           = vaddq_s16(z2, z5);
-  int16x8_t z4 = vqdmulhq_lane_s16(tmp12, consts, 3);
+  int16x8_t z4 = vqrdmulhq_lane_s16(tmp12, consts, 3);
   z5           = vaddq_s16(tmp12, z5);
   z4           = vaddq_s16(z4, z5);
-  int16x8_t z3 = vqdmulhq_lane_s16(tmp11, consts, 2);
+  int16x8_t z3 = vqrdmulhq_lane_s16(tmp11, consts, 2);
 
   int16x8_t z11 = vaddq_s16(tmp7, z3); /* phase 5 */
   int16x8_t z13 = vsubq_s16(tmp7, z3);
@@ -130,7 +340,7 @@ void fast_dct2_neon(int16_t *data) {
   row0 = vaddq_s16(tmp10, tmp11); /* phase 3 */
   row4 = vsubq_s16(tmp10, tmp11);
 
-  z1   = vqdmulhq_lane_s16(vaddq_s16(tmp12, tmp13), consts, 2);
+  z1   = vqrdmulhq_lane_s16(vaddq_s16(tmp12, tmp13), consts, 2);
   row2 = vaddq_s16(tmp13, z1); /* phase 5 */
   row6 = vsubq_s16(tmp13, z1);
 
@@ -139,13 +349,13 @@ void fast_dct2_neon(int16_t *data) {
   tmp11 = vaddq_s16(tmp5, tmp6);
   tmp12 = vaddq_s16(tmp6, tmp7);
 
-  z5 = vqdmulhq_lane_s16(vsubq_s16(tmp10, tmp12), consts, 0);
-  z2 = vqdmulhq_lane_s16(tmp10, consts, 1);
+  z5 = vqrdmulhq_lane_s16(vsubq_s16(tmp10, tmp12), consts, 0);
+  z2 = vqrdmulhq_lane_s16(tmp10, consts, 1);
   z2 = vaddq_s16(z2, z5);
-  z4 = vqdmulhq_lane_s16(tmp12, consts, 3);
+  z4 = vqrdmulhq_lane_s16(tmp12, consts, 3);
   z5 = vaddq_s16(tmp12, z5);
   z4 = vaddq_s16(z4, z5);
-  z3 = vqdmulhq_lane_s16(tmp11, consts, 2);
+  z3 = vqrdmulhq_lane_s16(tmp11, consts, 2);
 
   z11 = vaddq_s16(tmp7, z3); /* phase 5 */
   z13 = vsubq_s16(tmp7, z3);

@@ -1,7 +1,69 @@
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "quantization.cpp"  // this file
+#include <hwy/foreach_target.h>                // must come before highway.h
+#include <hwy/highway.h>
+
 #include <cmath>
 #include "ycctype.hpp"
 #include "constants.hpp"
 #include "quantization.hpp"
+
+namespace jpegenc_hwy {
+namespace HWY_NAMESPACE {  // required: unique per target
+namespace hn = hwy::HWY_NAMESPACE;
+HWY_ATTR void quantize_fwd(int16_t *in, const int *qtable) {
+  const hn::FixedTag<int16_t, 8> d16;
+  const hn::FixedTag<int32_t, 4> d32;
+  //  const hn::ScalableTag<int16_t> d16;
+  //  const hn::ScalableTag<int32_t> d32;
+  auto half = hn::Set(d32, 1 << 15);
+  for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
+    auto ql = Load(d32, qtable);
+    auto qh = Load(d32, qtable + 4);
+    auto v  = Load(d16, in);
+    auto vl = PromoteTo(d32, LowerHalf(v));
+    auto vh = PromoteTo(d32, UpperHalf(d16, v));
+
+    vl = Mul(vl, ql);
+    vh = Mul(vh, qh);
+    vl = Add(vl, half);
+    vh = Add(vh, half);
+    vl = ShiftRight<16>(vl);
+    vh = ShiftRight<16>(vh);
+
+    Store(Combine(d16, DemoteTo(d16, vh), DemoteTo(d16, vl)), d16, in);
+    in += DCTSIZE;
+    qtable += DCTSIZE;
+  }
+}
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
+
+#if HWY_ONCE
+
+namespace jpegenc_hwy {
+// This macro declares a static array used for dynamic dispatch.
+HWY_EXPORT(quantize_fwd);
+void quantize_fwd_hwy(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qtable) {
+  return HWY_DYNAMIC_DISPATCH(quantize_fwd)(in, qtable);
+}
+void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
+  int scale_x = YCC_HV[YCCtype][0] >> 4;
+  int scale_y = YCC_HV[YCCtype][0] & 0xF;
+  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+
+  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
+    quantize_fwd_hwy(in[0] + i, qtableL);
+  }
+  for (int c = 1; c < nc; ++c) {
+    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
+      quantize_fwd_hwy(in[c] + i, qtableC);
+    }
+  }
+}
+}  // namespace jpegenc_hwy
+
+#endif
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>

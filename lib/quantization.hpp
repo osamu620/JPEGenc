@@ -24,3 +24,6 @@ constexpr float qmatrix[2][64] = {
 
 void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype);
 void create_qtable(int, int, int *);
+namespace jpegenc_hwy {
+void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype);
+}

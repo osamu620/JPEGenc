@@ -1,3 +1,8 @@
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "jpegenc.cpp"  // this file
+#include <hwy/foreach_target.h>           // must come before highway.h
+#include <hwy/highway.h>
+
 #include <jpegenc.hpp>
 
 #include "aligned_unique_ptr.hpp"
@@ -76,8 +81,8 @@ class jpeg_encoder_impl {
         rgb2ycbcr(src, width);
       }
       subsample(src, yuv, width, YCCtype);
-      dct2(yuv, width, YCCtype);
-      quantize(yuv, qtable_L, qtable_C, width, YCCtype);
+      jpegenc_hwy::dct2(yuv, width, YCCtype);
+      jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, width, YCCtype);
       Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
       if (use_RESET) {
         enc.put_RST(n % 8);
@@ -89,6 +94,7 @@ class jpeg_encoder_impl {
   }
 
   [[nodiscard]] int32_t get_width() const { return width; }
+
   [[nodiscard]] int32_t get_height() const { return height; }
 
   ~jpeg_encoder_impl() = default;
