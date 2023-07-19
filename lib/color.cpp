@@ -1,6 +1,87 @@
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "color.cpp"  // this file
+#include <hwy/foreach_target.h>         // must come before highway.h
+#include <hwy/highway.h>
+
 #include "color.hpp"
 #include "ycctype.hpp"
 #include "constants.hpp"
+
+namespace jpegenc_hwy {
+namespace HWY_NAMESPACE {  // required: unique per target
+namespace hn = hwy::HWY_NAMESPACE;
+HWY_ATTR void rgb2ycbcr_simd(uint8_t *HWY_RESTRICT in, int width) {
+  const hn::ScalableTag<uint8_t> d8;
+  const hn::ScalableTag<uint16_t> d16;
+  const hn::ScalableTag<int16_t> s16;
+
+  alignas(16) constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
+                                                 21712, 32768,         27440, 5328};
+
+  auto v0         = Undefined(d8);
+  auto v1         = Undefined(d8);
+  auto v2         = Undefined(d8);
+  const size_t N  = Lanes(d8);
+  auto coeff0     = Set(d16, constants[0]);
+  auto coeff1     = Set(d16, constants[1]);
+  auto coeff2     = Set(d16, constants[2]);
+  auto coeff3     = Set(d16, constants[3]);
+  auto coeff4     = Set(d16, constants[4]);
+  auto coeff5     = Set(d16, constants[5]);
+  auto coeff6     = Set(d16, constants[6]);
+  auto coeff7     = Set(d16, constants[7]);
+  auto half       = Set(d16, 1);
+  auto scaled_128 = Set(d16, 128 << 1);
+  for (size_t i = width * LINES; i > 0; i -= N) {
+    LoadInterleaved3(d8, in, v0, v1, v2);
+    auto r_l = PromoteTo(d16, LowerHalf(v0));
+    auto g_l = PromoteTo(d16, LowerHalf(v1));
+    auto b_l = PromoteTo(d16, LowerHalf(v2));
+    auto r_h = PromoteTo(d16, UpperHalf(d8, v0));
+    auto g_h = PromoteTo(d16, UpperHalf(d8, v1));
+    auto b_h = PromoteTo(d16, UpperHalf(d8, v2));
+    auto yl  = BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), BitCast(s16, coeff0)));
+    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff1))));
+    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), BitCast(s16, coeff2))));
+    yl       = ShiftRight<1>(Add(Add(yl, g_l), half));
+    auto yh  = BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), BitCast(s16, coeff0)));
+    yh       = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff1))));
+    yh       = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), BitCast(s16, coeff2))));
+    yh       = ShiftRight<1>(Add(Add(yh, g_h), half));
+
+    auto cbl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), BitCast(s16, coeff3))));
+    cbl      = Sub(cbl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff4))));
+    cbl      = ShiftRight<1>(Add(Add(b_l, cbl), half));
+    auto cbh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), BitCast(s16, coeff3))));
+    cbh      = Sub(cbh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff4))));
+    cbh      = ShiftRight<1>(Add(Add(b_h, cbh), half));
+
+    auto crl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff6))));
+    crl      = Sub(crl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), BitCast(s16, coeff7))));
+    crl      = ShiftRight<1>(Add(Add(r_l, crl), half));
+    auto crh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff6))));
+    crh      = Sub(crh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), BitCast(s16, coeff7))));
+    crh      = ShiftRight<1>(Add(Add(r_h, crh), half));
+
+    v0 = Combine(d8, DemoteTo(d8, yh), DemoteTo(d8, yl));
+    v1 = Combine(d8, DemoteTo(d8, cbh), DemoteTo(d8, cbl));
+    v2 = Combine(d8, DemoteTo(d8, crh), DemoteTo(d8, crl));
+    StoreInterleaved3(v0, v1, v2, d8, in);
+    in += 3 * N;
+  }
+}
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
+
+#if HWY_ONCE
+namespace jpegenc_hwy {
+// This macro declares a static array used for dynamic dispatch.
+HWY_EXPORT(rgb2ycbcr_simd);
+void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
+  return HWY_DYNAMIC_DISPATCH(rgb2ycbcr_simd(in, width));
+}
+}  // namespace jpegenc_hwy
+#endif
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>

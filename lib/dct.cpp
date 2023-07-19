@@ -12,7 +12,7 @@ namespace HWY_NAMESPACE {  // required: unique per target
 namespace hn = hwy::HWY_NAMESPACE;
 
 alignas(16) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
-HWY_ATTR void fast_dct2_simd(int16_t *data) {
+HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   const hn::FixedTag<int16_t, 8> d16;
   auto data1_0 = hn::Undefined(d16);
   auto data1_1 = hn::Undefined(d16);
@@ -190,6 +190,7 @@ HWY_ATTR void fast_dct2_simd(int16_t *data) {
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
 
+#if HWY_ONCE
 namespace jpegenc_hwy {
 // This macro declares a static array used for dynamic dispatch.
 HWY_EXPORT(fast_dct2_simd);
@@ -211,6 +212,7 @@ void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   }
 }
 }  // namespace jpegenc_hwy
+#endif
 
 #if defined(JPEG_USE_NEON)
   #include <arm_neon.h>
