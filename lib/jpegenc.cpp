@@ -1,7 +1,7 @@
-#undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "jpegenc.cpp"  // this file
-#include <hwy/foreach_target.h>           // must come before highway.h
-#include <hwy/highway.h>
+// #undef HWY_TARGET_INCLUDE
+// #define HWY_TARGET_INCLUDE "jpegenc.cpp"  // this file
+// #include <hwy/foreach_target.h>           // must come before highway.h
+// #include <hwy/highway.h>
 
 #include <jpegenc.hpp>
 
@@ -86,6 +86,7 @@ class jpeg_encoder_impl {
       jpegenc_hwy::dct2(yuv, width, YCCtype);
       jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, width, YCCtype);
       Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
+      //      jpegenc_hwy::Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
       if (use_RESET) {
         enc.put_RST(n % 8);
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
