@@ -89,10 +89,10 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   }
   size_t pos        = 0;
   size_t pos_Chroma = 0;
-  const hn::ScalableTag<uint8_t> u8;
-  const hn::ScalableTag<uint16_t> u16;
-  const hn::ScalableTag<int16_t> s16;
-  const hn::ScalableTag<int32_t> s32;
+  const hn::FixedTag<uint8_t, 16> u8;
+  const hn::FixedTag<uint16_t, 8> u16;
+  const hn::FixedTag<int16_t, 8> s16;
+  const hn::FixedTag<int32_t, 4> s32;
   size_t N8  = Lanes(u8);
   auto c128  = Set(u8, 128);
   auto vhalf = Set(s16, half);
