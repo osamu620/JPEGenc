@@ -81,7 +81,8 @@ class jpeg_encoder_impl {
         //        rgb2ycbcr(src, width);
         jpegenc_hwy::rgb2ycbcr(src, width);
       }
-      subsample(src, yuv, width, YCCtype);
+      //      subsample(src, yuv, width, YCCtype);
+      jpegenc_hwy::subsample(src, yuv, width, YCCtype);
       jpegenc_hwy::dct2(yuv, width, YCCtype);
       jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, width, YCCtype);
       Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
