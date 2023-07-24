@@ -1,6 +1,3 @@
-#undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "quantization.cpp"  // this file
-#include <hwy/foreach_target.h>                // must come before highway.h
 #include <hwy/highway.h>
 
 #include <cmath>
@@ -8,10 +5,10 @@
 #include "constants.hpp"
 #include "quantization.hpp"
 
-namespace jpegenc_hwy {
-namespace HWY_NAMESPACE {  // required: unique per target
 namespace hn = hwy::HWY_NAMESPACE;
-HWY_ATTR void quantize_fwd(int16_t *in, const int *qtable) {
+
+namespace jpegenc_hwy {
+void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qtable) {
   const hn::FixedTag<int16_t, 8> d16;
   const hn::FixedTag<int32_t, 4> d32;
   //  const hn::ScalableTag<int16_t> d16;
@@ -36,41 +33,23 @@ HWY_ATTR void quantize_fwd(int16_t *in, const int *qtable) {
     qtable += DCTSIZE;
   }
 }
-}  // namespace HWY_NAMESPACE
-}  // namespace jpegenc_hwy
 
-#if HWY_ONCE
-
-namespace jpegenc_hwy {
-// This macro declares a static array used for dynamic dispatch.
-HWY_EXPORT(quantize_fwd);
-void quantize_fwd_hwy(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qtable) {
-  return HWY_DYNAMIC_DISPATCH(quantize_fwd)(in, qtable);
-}
 void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    quantize_fwd_hwy(in[0] + i, qtableL);
+    quantize_fwd(in[0] + i, qtableL);
   }
   for (int c = 1; c < nc; ++c) {
     for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      quantize_fwd_hwy(in[c] + i, qtableC);
+      quantize_fwd(in[c] + i, qtableC);
     }
   }
 }
 }  // namespace jpegenc_hwy
 
-#endif
-
-#if defined(JPEG_USE_NEON)
-  #include <arm_neon.h>
-#endif
-#if defined(JPEG_USE_AVX2)
-  #include <x86intrin.h>
-#endif
 // clang-format off
 constexpr float qscale[64] = {
         0.125000000000000, 0.090119977750868, 0.095670858091272, 0.106303761845907, 0.125000000000000, 0.159094822571604, 0.230969883127822, 0.453063723176444
@@ -104,14 +83,15 @@ void create_qtable(int c, int QF, int *qtable) {
   }
 }
 
+#if 0
 static inline void quantize_fwd(int16_t *in, const int *qtable) {
-#if not defined(JPEG_USE_NEON) && not defined(JPEG_USE_AVX2)
+  #if not defined(JPEG_USE_NEON) && not defined(JPEG_USE_AVX2)
   int shift = 16;
   int half  = 1 << (shift - 1);
   for (int i = 0; i < DCTSIZE2; ++i) {
     in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
   }
-#elif defined(JPEG_USE_AVX2)
+  #elif defined(JPEG_USE_AVX2)
   //  int shift = 16;
   //  int half  = 1 << (shift - 1);
   //  for (int i = 0; i < DCTSIZE2; ++i) {
@@ -138,7 +118,7 @@ static inline void quantize_fwd(int16_t *in, const int *qtable) {
     in += DCTSIZE * 2;
     qtable += DCTSIZE * 2;
   }
-#elif defined(JPEG_USE_NEON)
+  #elif defined(JPEG_USE_NEON)
   for (int i = 0; i < DCTSIZE2; i += DCTSIZE) {
     int32x4_t ql = vld1q_s32(qtable);
     int32x4_t qh = vld1q_s32(qtable + 4);
@@ -153,7 +133,7 @@ static inline void quantize_fwd(int16_t *in, const int *qtable) {
     in += DCTSIZE;
     qtable += DCTSIZE;
   }
-#endif
+  #endif
 }
 
 void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
@@ -170,3 +150,4 @@ void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, 
     }
   }
 }
+#endif

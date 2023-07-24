@@ -1,18 +1,14 @@
-#undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "dct.cpp"  // this file
-#include <hwy/foreach_target.h>       // must come before highway.h
 #include <hwy/highway.h>
 
 #include "dct.hpp"
 #include "constants.hpp"
 #include "ycctype.hpp"
 
-namespace jpegenc_hwy {
-namespace HWY_NAMESPACE {  // required: unique per target
 namespace hn = hwy::HWY_NAMESPACE;
 
+namespace jpegenc_hwy {
 alignas(16) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
-HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
+void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   const hn::FixedTag<int16_t, 8> d16;
   auto data1_0 = hn::Undefined(d16);
   auto data1_1 = hn::Undefined(d16);
@@ -187,15 +183,6 @@ HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   Store(row6, d16, data + 6 * DCTSIZE);
   Store(row7, d16, data + 7 * DCTSIZE);
 }
-}  // namespace HWY_NAMESPACE
-}  // namespace jpegenc_hwy
-
-#if HWY_ONCE
-namespace jpegenc_hwy {
-// This macro declares a static array used for dynamic dispatch.
-HWY_EXPORT(fast_dct2_simd);
-
-void fast_dct2_hwy(int16_t *HWY_RESTRICT in) { return HWY_DYNAMIC_DISPATCH(fast_dct2_simd(in)); }
 
 void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
@@ -203,23 +190,24 @@ void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    fast_dct2_hwy(in[0] + i);
+    fast_dct2_simd(in[0] + i);
   }
   for (int c = 1; c < nc; ++c) {
     for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      fast_dct2_hwy(in[c] + i);
+      fast_dct2_simd(in[c] + i);
     }
   }
 }
 }  // namespace jpegenc_hwy
-#endif
 
-#if defined(JPEG_USE_NEON)
-  #include <arm_neon.h>
-  #define F_0_382 12544
-  #define F_0_541 17792
-  #define F_0_707 23168
-  #define F_0_306 9984
+#if 0
+
+  #if defined(JPEG_USE_NEON)
+    #include <arm_neon.h>
+    #define F_0_382 12544
+    #define F_0_541 17792
+    #define F_0_707 23168
+    #define F_0_306 9984
 
 alignas(16) static const int16_t jsimd_fdct_ifast_neon_consts[] = {F_0_382, F_0_541, F_0_707, F_0_306};
 
@@ -376,7 +364,7 @@ void fast_dct2_neon(int16_t *data) {
   vst1q_s16(data + 6 * DCTSIZE, row6);
   vst1q_s16(data + 7 * DCTSIZE, row7);
 }
-#endif
+  #endif
 void fastdct2(int16_t *in, int stride) {
   //  0.382683433, 0.541196100, 0.707106781, 1.306562965 - 1.0
   static constexpr int16_t rotate[] = {12540, 17734, 23170, 10045};
@@ -494,19 +482,20 @@ void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-#if not defined(JPEG_USE_NEON)
+  #if not defined(JPEG_USE_NEON)
     fastdct2(in[0] + i, DCTSIZE);
-#else
+  #else
     fast_dct2_neon(in[0] + i);
-#endif
+  #endif
   }
   for (int c = 1; c < nc; ++c) {
     for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-#if not defined(JPEG_USE_NEON)
+  #if not defined(JPEG_USE_NEON)
       fastdct2(in[c] + i, DCTSIZE);
-#else
+  #else
       fast_dct2_neon(in[c] + i);
-#endif
+  #endif
     }
   }
 }
+#endif

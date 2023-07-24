@@ -1,16 +1,13 @@
-#undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "color.cpp"  // this file
-#include <hwy/foreach_target.h>         // must come before highway.h
 #include <hwy/highway.h>
 
 #include "color.hpp"
 #include "ycctype.hpp"
 #include "constants.hpp"
 
-namespace jpegenc_hwy {
-namespace HWY_NAMESPACE {  // required: unique per target
 namespace hn = hwy::HWY_NAMESPACE;
-HWY_ATTR void rgb2ycbcr_simd(uint8_t *HWY_RESTRICT in, int width) {
+
+namespace jpegenc_hwy {
+void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   const hn::ScalableTag<uint8_t> d8;
   const hn::ScalableTag<uint16_t> d16;
   const hn::ScalableTag<int16_t> s16;
@@ -72,7 +69,8 @@ HWY_ATTR void rgb2ycbcr_simd(uint8_t *HWY_RESTRICT in, int width) {
     in += 3 * N;
   }
 }
-HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
+
+void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
@@ -704,30 +702,18 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
   }
 }
-}  // namespace HWY_NAMESPACE
+
 }  // namespace jpegenc_hwy
 
-#if HWY_ONCE
-namespace jpegenc_hwy {
-// This macro declares a static array used for dynamic dispatch.
-HWY_EXPORT(rgb2ycbcr_simd);
-HWY_EXPORT(subsample_simd);
-void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
-  return HWY_DYNAMIC_DISPATCH(rgb2ycbcr_simd(in, width));
-}
-void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
-  return HWY_DYNAMIC_DISPATCH(subsample_simd(in, out, width, YCCtype));
-}
-}  // namespace jpegenc_hwy
-#endif
+#if 0
 
-#if defined(JPEG_USE_NEON)
-  #include <arm_neon.h>
-  #define FAST_COLOR_CONVERSION
-#endif
+  #if defined(JPEG_USE_NEON)
+    #include <arm_neon.h>
+    #define FAST_COLOR_CONVERSION
+  #endif
 
 void rgb2ycbcr(uint8_t *in, int width) {
-#if not defined(JPEG_USE_NEON)
+  #if not defined(JPEG_USE_NEON)
   uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
@@ -752,17 +738,17 @@ void rgb2ycbcr(uint8_t *in, int width) {
     I1 += 3;
     I2 += 3;
   }
-#else
-  #if defined(FAST_COLOR_CONVERSION)
+  #else
+    #if defined(FAST_COLOR_CONVERSION)
   alignas(16) constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
                                                  21712, 32768,         27440, 5328};
   const uint16x8_t coeff                      = vld1q_u16(constants);
   const uint16x8_t scaled_128                 = vdupq_n_u16(128 << 1);
-  #else
+    #else
   alignas(16) constexpr uint16_t constants[8] = {19595, 38470, 7471, 11056, 21712, 32768, 27440, 5328};
   const uint16x8_t coeff                      = vld1q_u16(constants);
   const uint32x4_t scaled_128_5               = vdupq_n_u32((128 << 16) + 32767);
-  #endif
+    #endif
   uint8x16x3_t v;
   for (size_t i = width * LINES; i > 0; i -= DCTSIZE * 2) {
     v              = vld3q_u8(in);
@@ -772,7 +758,7 @@ void rgb2ycbcr(uint8_t *in, int width) {
     uint16x8_t r_h = vmovl_u8(vget_high_u8(v.val[0]));
     uint16x8_t g_h = vmovl_u8(vget_high_u8(v.val[1]));
     uint16x8_t b_h = vmovl_u8(vget_high_u8(v.val[2]));
-  #if defined(FAST_COLOR_CONVERSION)
+    #if defined(FAST_COLOR_CONVERSION)
     auto yl        = vreinterpretq_s16_u16(vqrdmulhq_laneq_s16(r_l, coeff, 0));
     yl             = vreinterpretq_s16_u16(vqrdmlahq_laneq_s16(yl, g_l, coeff, 1));
     yl             = vreinterpretq_s16_u16(vqrdmlahq_laneq_s16(yl, b_l, coeff, 2));
@@ -801,7 +787,7 @@ void rgb2ycbcr(uint8_t *in, int width) {
     v.val[2] = vcombine_u8(vmovn_u16(crl), vmovn_u16(crh));
     vst3q_u8(in, v);
     in += 3 * DCTSIZE * 2;
-  #else
+    #else
     /* Compute Y = 0.29900 * R + 0.58700 * G + 0.11400 * B */
     uint32x4_t y_ll = vmull_laneq_u16(vget_low_u16(r_l), coeff, 0);
     y_ll            = vmlal_laneq_u16(y_ll, vget_low_u16(g_l), coeff, 1);
@@ -869,9 +855,9 @@ void rgb2ycbcr(uint8_t *in, int width) {
     v.val[2] = vcombine_u8(vmovn_u16(cr_l), vmovn_u16(cr_h));
     vst3q_u8(in, v);
     in += 3 * DCTSIZE * 2;
-  #endif
+    #endif
   }
-#endif
+  #endif
 }
 
 void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) {
@@ -890,7 +876,7 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
     half = 1 << (shift - 1);
   }
   size_t pos = 0;
-#if not defined(JPEG_USE_NEON)
+  #if not defined(JPEG_USE_NEON)
   // Luma, Y, just copying
   for (int i = 0; i < LINES; i += DCTSIZE) {
     for (int j = 0; j < width; j += DCTSIZE) {
@@ -926,7 +912,7 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       }
     }
   }
-#else
+  #else
   size_t pos_Chroma    = 0;
   const uint8x8_t c128 = vdup_n_u8(128);
   switch (YCCtype) {
@@ -1433,5 +1419,6 @@ void subsample(uint8_t *in, std::vector<int16_t *> out, int width, int YCCtype) 
       }
       break;
   }
-#endif
+  #endif
 }
+#endif
