@@ -1,14 +1,20 @@
+// Generates code for every target that this compiler can support.
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "dct.cpp"  // this file
+#include <hwy/foreach_target.h>       // must come before highway.h
 #include <hwy/highway.h>
 
 #include "dct.hpp"
 #include "constants.hpp"
 #include "ycctype.hpp"
 
+namespace jpegenc_hwy {
+namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
-namespace jpegenc_hwy {
-alignas(16) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
-void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
+alignas(32) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
+
+HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   const hn::FixedTag<int16_t, 8> d16;
   auto data1_0 = hn::Undefined(d16);
   auto data1_1 = hn::Undefined(d16);
@@ -183,22 +189,30 @@ void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   Store(row6, d16, data + 6 * DCTSIZE);
   Store(row7, d16, data + 7 * DCTSIZE);
 }
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
 
+#if HWY_ONCE
+
+namespace jpegenc_hwy {
+HWY_EXPORT(fast_dct2_simd);
 void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
 
   for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    fast_dct2_simd(in[0] + i);
+    HWY_DYNAMIC_DISPATCH(fast_dct2_simd)(in[0] + i);
   }
   for (int c = 1; c < nc; ++c) {
     for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      fast_dct2_simd(in[c] + i);
+      HWY_DYNAMIC_DISPATCH(fast_dct2_simd)(in[c] + i);
     }
   }
 }
+
 }  // namespace jpegenc_hwy
+#endif
 
 #if 0
 

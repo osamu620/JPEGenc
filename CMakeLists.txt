@@ -27,9 +27,10 @@ set_target_properties(
 		PROPERTIES OUTPUT_NAME
 		$<IF:$<CONFIG:Debug>,jpenc_dbg,jpenc>)
 
-add_executable(hwytest apps/hwytest.cpp)
-target_include_directories(hwytest PRIVATE thirdparty/hwy)
-target_link_libraries(hwytest PRIVATE hwy)
+#add_executable(hwytest apps/hwytest.cpp)
+#target_include_directories(hwytest PRIVATE thirdparty/hwy)
+#target_link_libraries(hwytest PRIVATE hwy)
+
 #include(DetectHostArch.cmake)
 #detect_host_arch()
 #string (REPLACE ";" " " COMPILER_HOST_FLAGS "${HOST_FLAGS}")
