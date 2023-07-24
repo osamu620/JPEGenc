@@ -8,9 +8,10 @@ namespace hn = hwy::HWY_NAMESPACE;
 
 namespace jpegenc_hwy {
 void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
-  const hn::ScalableTag<uint8_t> d8;
-  const hn::ScalableTag<uint16_t> d16;
-  const hn::ScalableTag<int16_t> s16;
+  //  const hn::FixedTag<uint8_t, 8> d8_h;
+  const hn::FixedTag<uint8_t, 16> d8;
+  const hn::FixedTag<uint16_t, 8> d16;
+  const hn::FixedTag<int16_t, 8> s16;
 
   alignas(16) constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
                                                  21712, 32768,         27440, 5328};
@@ -61,9 +62,9 @@ void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     crh      = Sub(crh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), BitCast(s16, coeff7))));
     crh      = AverageRound(r_h, crh);
 
-    v0 = Combine(d8, DemoteTo(d8, yh), DemoteTo(d8, yl));
-    v1 = Combine(d8, DemoteTo(d8, cbh), DemoteTo(d8, cbl));
-    v2 = Combine(d8, DemoteTo(d8, crh), DemoteTo(d8, crl));
+    v0 = OrderedTruncate2To(d8, yl, yh);
+    v1 = OrderedDemote2To(d8, cbl, cbh);
+    v2 = OrderedDemote2To(d8, crl, crh);
     StoreInterleaved3(v0, v1, v2, d8, in);
 
     in += 3 * N;
@@ -268,30 +269,15 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
           auto cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
 
           // clang-format off
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 0);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 1);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 2);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 3);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 4);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 5);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 6);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 7);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 4);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 5);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 6);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
+
           // clang-format on
           cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
           cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -310,30 +296,15 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
           cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
           cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
           // clang-format off
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 0);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 1);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 2);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 3);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 4);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 5);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 6);
-          Store(ShiftRight<1>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)))), vhalf)),
-          s16, out[2] + pos_Chroma + 8 * 7);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 4);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 5);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 6);
+          Store(ShiftRight<1>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)),WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 7);
+
           // clang-format on
           pos += 128;
           pos_Chroma += 64;
@@ -498,18 +469,11 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
           auto cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
           //  auto ttt = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Vec), Set(s16, 1)));
           // clang-format off
-          Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb01, cb11)), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb00, cb10)), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 0);
-          Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb21, cb31)), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb20, cb30)), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 1);
-          Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb41, cb51)), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb40, cb50)), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 2);
-          Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb61, cb71)), Set(s16, 1))),
-            DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb60, cb70)), Set(s16, 1)))), vhalf)),
-          s16, out[1] + pos_Chroma + 8 * 3);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb00, cb10)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb01, cb11)), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb20, cb30)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb21, cb31)), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb40, cb50)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb41, cb51)), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb60, cb70)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb61, cb71)), Set(s16, 1))), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
+
           // clang-format on
 
           auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -530,18 +494,11 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
           auto cr71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
           //  auto ttt = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Vec), Set(s16, 1)));
           // clang-format off
-            Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr01, cr11)), Set(s16, 1))),
-              DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr00, cr10)), Set(s16, 1)))), vhalf)),
-            s16, out[2] + pos_Chroma + 8 * 0);
-            Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr21, cr31)), Set(s16, 1))),
-              DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr20, cr30)), Set(s16, 1)))), vhalf)),
-            s16, out[2] + pos_Chroma + 8 * 1);
-            Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr41, cr51)), Set(s16, 1))),
-              DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr40, cr50)), Set(s16, 1)))), vhalf)),
-            s16, out[2] + pos_Chroma + 8 * 2);
-            Store(ShiftRight<2>(Add(Combine(s16, DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr61, cr71)), Set(s16, 1))),
-              DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr60, cr70)), Set(s16, 1)))), vhalf)),
-            s16, out[2] + pos_Chroma + 8 * 3);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr00, cr10)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr01, cr11)), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr20, cr30)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr21, cr31)), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr40, cr50)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr41, cr51)), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(ShiftRight<2>(Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr60, cr70)), Set(s16, 1)), WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr61, cr71)), Set(s16, 1))), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+
           // clang-format on
           pos += 128;
         }
@@ -577,15 +534,14 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
             auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
             auto cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto tb00 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)));
-            auto tb01 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            auto t0   = Combine(s16, tb01, tb00);
-            auto tb10 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)));
-            auto tb11 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
-            auto t1   = Combine(s16, tb11, tb10);
-            tb00      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1)));
-            tb01      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1)));
-            Store(ShiftRight<2>(Add(Combine(s16, tb01, tb00), vhalf)), s16, out[1] + pos_Chroma + p);
+            auto t0   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
+                                         WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
+            auto t1   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
+                                         WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
+            auto tb00 = WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1));
+            auto tb01 = WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1));
+            Store(ShiftRight<2>(Add(OrderedDemote2To(s16, tb00, tb01), vhalf)), s16,
+                  out[1] + pos_Chroma + p);
 
             // Cr
             cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -593,16 +549,14 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
             cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
             cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
 
-            tb00 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)));
-            tb01 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            t0   = Combine(s16, tb01, tb00);
-            tb10 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)));
-            tb11 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
-            t1   = Combine(s16, tb11, tb10);
-            tb00 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1)));
-            tb01 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1)));
-            Store(ShiftRight<2>(Add(Combine(s16, tb01, tb00), vhalf)), s16, out[2] + pos_Chroma + p);
-
+            t0   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
+                                    WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
+            t1   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
+                                    WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
+            tb00 = WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1));
+            tb01 = WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1));
+            Store(ShiftRight<2>(Add(OrderedDemote2To(s16, tb00, tb01), vhalf)), s16,
+                  out[2] + pos_Chroma + p);
             p += 8;
           }
           pos += 256;
@@ -642,14 +596,10 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
             auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
             auto cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto tb00 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)));
-            auto tb01 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            auto tb0  = Combine(s16, tb01, tb00);
-            auto tb10 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)));
-            auto tb11 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
-            auto tb1  = Combine(s16, tb11, tb10);
-            tb00      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb0), Set(s16, 1)));
-            tb01      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb1), Set(s16, 1)));
+            auto tb0 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
+                                        WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
+            auto tb1 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
+                                        WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
 
             // Cr
             auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -657,21 +607,25 @@ void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, 
             auto cr10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
             auto cr11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto tr00 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr00), Set(s16, 1)));
-            auto tr01 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr01), Set(s16, 1)));
-            auto tr0  = Combine(s16, tr01, tr00);
-            auto tr10 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr10), Set(s16, 1)));
-            auto tr11 = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr11), Set(s16, 1)));
-            auto tr1  = Combine(s16, tr11, tr10);
-            tr00      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr0), Set(s16, 1)));
-            tr01      = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr1), Set(s16, 1)));
+            auto tr0 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr00), Set(s16, 1)),
+                                        WidenMulPairwiseAdd(s32, BitCast(s16, cr01), Set(s16, 1)));
+            auto tr1 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr10), Set(s16, 1)),
+                                        WidenMulPairwiseAdd(s32, BitCast(s16, cr11), Set(s16, 1)));
 
             if (y % 2 == 0) {
-              cb = Combine(s16, tb01, tb00);
-              cr = Combine(s16, tr01, tr00);
+              cb = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb0), Set(s16, 1)),
+                                    WidenMulPairwiseAdd(s32, BitCast(s16, tb1), Set(s16, 1)));
+              cr = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr0), Set(s16, 1)),
+                                    WidenMulPairwiseAdd(s32, BitCast(s16, tr1), Set(s16, 1)));
             } else {
-              cb = ShiftRight<3>(Add(Add(cb, Combine(s16, tb01, tb00)), vhalf));
-              cr = ShiftRight<3>(Add(Add(cr, Combine(s16, tr01, tr00)), vhalf));
+              cb = ShiftRight<3>(Add(
+                  Add(cb, OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb0), Set(s16, 1)),
+                                           WidenMulPairwiseAdd(s32, BitCast(s16, tb1), Set(s16, 1)))),
+                  vhalf));
+              cr = ShiftRight<3>(Add(
+                  Add(cr, OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr0), Set(s16, 1)),
+                                           WidenMulPairwiseAdd(s32, BitCast(s16, tr1), Set(s16, 1)))),
+                  vhalf));
               Store(cb, s16, out[1] + pos_Chroma + pc);
               Store(cr, s16, out[2] + pos_Chroma + pc);
               pc += 8;

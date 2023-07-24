@@ -27,8 +27,7 @@ void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qtable) {
     vh = Add(vh, half);
     vl = ShiftRight<16>(vl);
     vh = ShiftRight<16>(vh);
-
-    Store(Combine(d16, DemoteTo(d16, vh), DemoteTo(d16, vl)), d16, in);
+    Store(OrderedDemote2To(d16, vl, vh), d16, in);
     in += DCTSIZE;
     qtable += DCTSIZE;
   }
