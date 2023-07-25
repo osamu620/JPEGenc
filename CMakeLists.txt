@@ -34,7 +34,7 @@ set_target_properties(
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -fsanitize=address")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 	set(CMAKE_CXX_FLAGS_RelWithDebInfo "${CMAKE_CXX_FLAGS} -O2 -g")
 endif()
 
