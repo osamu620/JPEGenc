@@ -1,3 +1,7 @@
+// Generates code for every target that this compiler can support.
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "block_coding.cpp"  // this file
+#include <hwy/foreach_target.h>                // must come before highway.h
 #include <hwy/highway.h>
 
 #include "block_coding.hpp"
@@ -5,30 +9,30 @@
 #include "huffman_tables.hpp"
 #include "ycctype.hpp"
 
+namespace jpegenc_hwy {
+namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
-namespace jpegenc_hwy {
-
 // clang-format off
-    alignas(16) int16_t indices[]  =  {
-            0,  1,  8,  0,  9,  2,  3, 10,
-            0,  0,  0,  0,  0, 11,  4,  5,
-            1,  8,  0,  9,  2,  0,  0,  0,
-            0,  0,  0,  1,  8,  0,  9,  2,
-            11,  4,  0,  0,  0,  0,  5, 12,
-            0,  0, 13,  6,  7, 14,  0,  0,
-            3, 10,  0,  0,  0,  0, 11,  4,
-            0,  0,  1,  8,  9,  2,  0,  0,
-            13,  6,  0,  7, 14,  0,  0,  0,
-            0,  0,  0, 13,  6,  0,  7, 14,
-            10, 11,  4,  0,  0,  0,  0,  0,
-            5, 12, 13,  6,  0,  7, 14, 15
-    };
+        alignas(16) int16_t indices[] = {
+                0, 1, 8, 0, 9, 2, 3, 10,
+                0, 0, 0, 0, 0, 11, 4, 5,
+                1, 8, 0, 9, 2, 0, 0, 0,
+                0, 0, 0, 1, 8, 0, 9, 2,
+                11, 4, 0, 0, 0, 0, 5, 12,
+                0, 0, 13, 6, 7, 14, 0, 0,
+                3, 10, 0, 0, 0, 0, 11, 4,
+                0, 0, 1, 8, 9, 2, 0, 0,
+                13, 6, 0, 7, 14, 0, 0, 0,
+                0, 0, 0, 13, 6, 0, 7, 14,
+                10, 11, 4, 0, 0, 0, 0, 0,
+                5, 12, 13, 6, 0, 7, 14, 15
+        };
 // clang-format on
 
 #define Padd(d, V2, V1) ConcatEven((d), Add(DupEven((V1)), DupOdd((V1))), Add(DupEven((V2)), DupOdd((V2))))
 
-static void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
   const hn::FixedTag<uint8_t, 16> u8;
   const hn::FixedTag<uint8_t, 8> u8_64;
   const hn::FixedTag<uint64_t, 1> u64_64;
@@ -221,6 +225,13 @@ static void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, 
     enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 }
+
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
+
+#if HWY_ONCE
+namespace jpegenc_hwy {
+HWY_EXPORT(make_zigzag_blk_simd);
 void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                  bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
@@ -239,14 +250,14 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         for (int y = 0; y < Vl; ++y) {
           for (int x = 0; x < Hl; ++x) {
             sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
-            make_zigzag_blk_simd(sp0, 0, prev_dc[0], enc);
+            HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp0, 0, prev_dc[0], enc);
           }
         }
         // Chroma, Cb
-        make_zigzag_blk_simd(sp1, 1, prev_dc[1], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp1, 1, prev_dc[1], enc);
         sp1 += DCTSIZE2;
         // Chroma, Cr
-        make_zigzag_blk_simd(sp2, 1, prev_dc[2], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp2, 1, prev_dc[2], enc);
         sp2 += DCTSIZE2;
       }
     }
@@ -255,13 +266,14 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
     for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
-        make_zigzag_blk_simd(sp0, 0, prev_dc[0], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp0, 0, prev_dc[0], enc);
         sp0 += DCTSIZE2;
       }
     }
   }
 }
 }  // namespace jpegenc_hwy
+#endif
 
 #if 0
 
