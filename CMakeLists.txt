@@ -27,6 +27,10 @@ set_target_properties(
 		PROPERTIES OUTPUT_NAME
 		$<IF:$<CONFIG:Debug>,jpenc_dbg,jpenc>)
 
+#add_executable(hwytest apps/hwytest.cpp)
+#target_include_directories(hwytest PRIVATE thirdparty/hwy)
+#target_link_libraries(hwytest PRIVATE hwy)
+
 #include(DetectHostArch.cmake)
 #detect_host_arch()
 #string (REPLACE ";" " " COMPILER_HOST_FLAGS "${HOST_FLAGS}")
@@ -47,7 +51,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC") # MSVC
 endif()
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64$") # aarch64
-	target_compile_definitions(jpegenc PUBLIC "JPEG_USE_NEON")
 	if(APPLE)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m1")
 	else()
@@ -57,7 +60,6 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flax-vector-conversions")
 	endif()
 else()
-	target_compile_definitions(jpegenc PUBLIC "JPEG_USE_AVX2")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
 	else()
