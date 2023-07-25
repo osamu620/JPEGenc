@@ -78,14 +78,11 @@ class jpeg_encoder_impl {
     for (int n = 0; n < height / LINES; ++n) {
       uint8_t *src = image.get_lines_from(n);
       if (image.get_num_comps() == 3) {
-        //        rgb2ycbcr(src, width);
         jpegenc_hwy::rgb2ycbcr(src, width);
       }
-      //      subsample(src, yuv, width, YCCtype);
       jpegenc_hwy::subsample(src, yuv, width, YCCtype);
       jpegenc_hwy::dct2(yuv, width, YCCtype);
       jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, width, YCCtype);
-      //      Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
       jpegenc_hwy::Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
       if (use_RESET) {
         enc.put_RST(n % 8);
