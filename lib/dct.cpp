@@ -16,6 +16,7 @@ alignas(32) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
 
 HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   const hn::FixedTag<int16_t, 8> d16;
+  const hn::FixedTag<int32_t, 4> d32;
   auto data1_0 = hn::Undefined(d16);
   auto data1_1 = hn::Undefined(d16);
   auto data1_2 = hn::Undefined(d16);
@@ -101,7 +102,6 @@ HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   auto cols_67_0 = InterleaveLower(ConcatEven(d16, col6, col6), ConcatEven(d16, col7, col7));
   auto cols_67_1 = InterleaveLower(ConcatOdd(d16, col6, col6), ConcatOdd(d16, col7, col7));
 
-  const hn::ScalableTag<int32_t> d32;
   auto cols_0145_l_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
                                        ConcatEven(d32, BitCast(d32, cols_45_0), BitCast(d32, cols_45_0)));
   auto cols_0145_l_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
