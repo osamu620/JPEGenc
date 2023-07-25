@@ -1,4 +1,4 @@
 # JPEGenc
-A naive implementation of JPEG-1 jpeg_encoder in C++17
+An implementation of JPEG-1 Encoder in C++ with SIMD optimization
 
-- with SIMD optimization (can be off by commenting a single line out. Currently only ARM NEON us supported)  
+- For SIMD optimization, [google highway](https://github.com/google/highway) has been used.
