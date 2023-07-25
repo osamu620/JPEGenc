@@ -22,20 +22,19 @@ HWY_ATTR void rgb2ycbcr_simd(uint8_t *HWY_RESTRICT in, int width) {
   alignas(32) constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
                                                  21712, 32768,         27440, 5328};
 
-  auto v0         = Undefined(d8);
-  auto v1         = Undefined(d8);
-  auto v2         = Undefined(d8);
-  const size_t N  = Lanes(d8);
-  auto coeff0     = Set(d16, constants[0]);
-  auto coeff1     = Set(d16, constants[1]);
-  auto coeff2     = Set(d16, constants[2]);
-  auto coeff3     = Set(d16, constants[3]);
-  auto coeff4     = Set(d16, constants[4]);
-  auto coeff5     = Set(d16, constants[5]);
-  auto coeff6     = Set(d16, constants[6]);
-  auto coeff7     = Set(d16, constants[7]);
-  auto half       = Set(d16, 1);
-  auto scaled_128 = Set(d16, 128 << 1);
+  auto v0                      = Undefined(d8);
+  auto v1                      = Undefined(d8);
+  auto v2                      = Undefined(d8);
+  const size_t N               = Lanes(d8);
+  auto coeff0                  = Set(d16, constants[0]);
+  auto coeff1                  = Set(d16, constants[1]);
+  auto coeff2                  = Set(d16, constants[2]);
+  auto coeff3                  = Set(d16, constants[3]);
+  auto coeff4                  = Set(d16, constants[4]);
+  [[maybe_unused]] auto coeff5 = Set(d16, constants[5]);
+  auto coeff6                  = Set(d16, constants[6]);
+  auto coeff7                  = Set(d16, constants[7]);
+  auto scaled_128              = Set(d16, 128 << 1);
   for (size_t i = width * LINES; i > 0; i -= N) {
     LoadInterleaved3(d8, in, v0, v1, v2);
     auto r_l = PromoteTo(d16, LowerHalf(v0));
@@ -95,10 +94,7 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   size_t pos        = 0;
   size_t pos_Chroma = 0;
   const hn::FixedTag<uint8_t, 16> u8;
-  const hn::FixedTag<uint16_t, 8> u16;
   const hn::FixedTag<int16_t, 8> s16;
-  const hn::FixedTag<int32_t, 4> s32;
-  size_t N8  = Lanes(u8);
   auto c128  = Set(u8, 128);
   auto vhalf = Set(s16, half);
   switch (YCCtype) {
