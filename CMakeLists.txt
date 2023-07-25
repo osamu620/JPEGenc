@@ -31,11 +31,6 @@ set_target_properties(
 #target_include_directories(hwytest PRIVATE thirdparty/hwy)
 #target_link_libraries(hwytest PRIVATE hwy)
 
-#include(DetectHostArch.cmake)
-#detect_host_arch()
-#string (REPLACE ";" " " COMPILER_HOST_FLAGS "${HOST_FLAGS}")
-#message(STATUS "${CMAKE_CXX_COMPILER_ID} flags: ${COMPILER_HOST_FLAGS}")
-
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -fsanitize=address")
