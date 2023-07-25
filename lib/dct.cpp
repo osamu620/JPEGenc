@@ -12,7 +12,7 @@ namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
-alignas(32) static const int16_t coeff[] = {12544, 17792, 23168, 9984};
+HWY_ALIGN static const int16_t coeff[] = {12544, 17792, 23168, 9984};
 
 HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   const hn::FixedTag<int16_t, 8> d16;

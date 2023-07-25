@@ -14,7 +14,7 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 // clang-format off
-alignas(16) int16_t indices[] = {
+HWY_ALIGN int16_t indices[] = {
         0, 1, 8, 0, 9, 2, 3, 10,
         0, 0, 0, 0, 0, 11, 4, 5,
         1, 8, 0, 9, 2, 0, 0, 0,
@@ -37,7 +37,7 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
   const hn::FixedTag<uint16_t, 8> u16;
   const hn::FixedTag<int16_t, 8> s16;
 
-  alignas(16) int16_t dp[64];
+  HWY_ALIGN int16_t dp[64];
   int dc  = sp[0];
   sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
   prev_dc = dc;
@@ -66,10 +66,10 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
   auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
   row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
 
-  auto m5                       = FirstN(s16, 5);
-  auto m3                       = FirstN(s16, 3);
-  alignas(16) uint8_t mask34[8] = {0b00111100};
-  auto m34                      = LoadMaskBits(s16, mask34);
+  auto m5                     = FirstN(s16, 5);
+  auto m3                     = FirstN(s16, 3);
+  HWY_ALIGN uint8_t mask34[8] = {0b00111100};
+  auto m34                    = LoadMaskBits(s16, mask34);
 
   row1   = IfThenZeroElse(m5, row1);
   row1_1 = IfThenElseZero(m5, row1_1);
@@ -115,8 +115,8 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
   auto row76_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row6_ne_0), ResizeBitCast(u8, row7_ne_0));
 
   /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
-  alignas(16) uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
-                              0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+  HWY_ALIGN uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+                            0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 
   auto bitmap_mask = Load(u8, bm);
 
@@ -131,7 +131,7 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
   auto bitmap_all = Padd(u8_64, LowerHalf(bitmap_rows_76543210), UpperHalf(u8, bitmap_rows_76543210));
   /* Move bitmap to 64-bit scalar register. */
   uint64_t bitmap = GetLane(BitCast(u64_64, bitmap_all));
-  alignas(16) uint8_t bits[64];
+  HWY_ALIGN uint8_t bits[64];
 
   auto abs_row0 = Abs(row0);
   auto abs_row1 = Abs(row1);

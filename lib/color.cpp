@@ -19,8 +19,8 @@ HWY_ATTR void rgb2ycbcr_simd(uint8_t *HWY_RESTRICT in, int width) {
   const hn::ScalableTag<uint16_t> d16;
   const hn::ScalableTag<int16_t> s16;
 
-  alignas(32) constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
-                                                 21712, 32768,         27440, 5328};
+  HWY_ALIGN constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
+                                               21712, 32768,         27440, 5328};
 
   auto v0                      = Undefined(d8);
   auto v1                      = Undefined(d8);
