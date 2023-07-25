@@ -5,7 +5,7 @@
 
 #include <jpegenc.hpp>
 
-#include "aligned_unique_ptr.hpp"
+// #include "aligned_unique_ptr.hpp"
 #include "block_coding.hpp"
 #include "color.hpp"
 #include "dct.hpp"
@@ -13,6 +13,7 @@
 #include "jpgheaders.hpp"
 #include "quantization.hpp"
 #include "ycctype.hpp"
+#include "hwy/aligned_allocator.h"
 
 #if defined(_MSC_VER)
   #define JPEGENC_EXPORT __declspec(dllexport)
@@ -21,6 +22,7 @@
 #endif
 namespace jpegenc {
 namespace hn = hwy::HWY_NAMESPACE;
+
 class jpeg_encoder_impl {
  private:
   imchunk image;
@@ -28,7 +30,8 @@ class jpeg_encoder_impl {
   const int height;
   int QF;
   int YCCtype;
-  std::vector<unique_ptr_aligned<int16_t>> line_buffer;
+  std::vector<std::unique_ptr<int16_t[], hwy::AlignedFreer>> line_buffer;
+  //  std::vector<unique_ptr_aligned<int16_t>> line_buffer;
   std::vector<int16_t *> yuv;
   HWY_ALIGN int qtable_L[64];
   HWY_ALIGN int qtable_C[64];
@@ -60,12 +63,16 @@ class jpeg_encoder_impl {
     const size_t bufsize_C = width / scale_x * LINES / scale_y;
 
     // Prepare line-buffers
-    hn::ScalableTag<uint8_t> u8;
-    const size_t Nalign = hn::Lanes(u8);
-    line_buffer[0]      = aligned_uptr<int16_t>(Nalign, bufsize_L);
+    line_buffer[0] = hwy::AllocateAligned<int16_t>(bufsize_L);
     for (size_t c = 1; c < line_buffer.size(); ++c) {
-      line_buffer[c] = aligned_uptr<int16_t>(Nalign, bufsize_C);
+      line_buffer[c] = hwy::AllocateAligned<int16_t>(bufsize_C);
     }
+    //    hn::ScalableTag<uint8_t> u8;
+    //    const size_t Nalign = hn::Lanes(u8);
+    //    line_buffer[0]      = aligned_uptr<int16_t>(Nalign, bufsize_L);
+    //    for (size_t c = 1; c < line_buffer.size(); ++c) {
+    //      line_buffer[c] = aligned_uptr<int16_t>(Nalign, bufsize_C);
+    //    }
 
     yuv[0] = line_buffer[0].get();
     for (int c = 1; c < nc; ++c) {
