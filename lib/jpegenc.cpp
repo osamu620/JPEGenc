@@ -1,7 +1,7 @@
 // #undef HWY_TARGET_INCLUDE
 // #define HWY_TARGET_INCLUDE "jpegenc.cpp"  // this file
 // #include <hwy/foreach_target.h>           // must come before highway.h
-// #include <hwy/highway.h>
+#include <hwy/highway.h>
 
 #include <jpegenc.hpp>
 
@@ -20,6 +20,7 @@
   #define JPEGENC_EXPORT
 #endif
 namespace jpegenc {
+namespace hn = hwy::HWY_NAMESPACE;
 class jpeg_encoder_impl {
  private:
   imchunk image;
@@ -29,8 +30,8 @@ class jpeg_encoder_impl {
   int YCCtype;
   std::vector<unique_ptr_aligned<int16_t>> line_buffer;
   std::vector<int16_t *> yuv;
-  alignas(32) int qtable_L[64];
-  alignas(32) int qtable_C[64];
+  HWY_ALIGN int qtable_L[64];
+  HWY_ALIGN int qtable_C[64];
   std::vector<int> prev_dc;
   bitstream enc;
   bool use_RESET;
@@ -59,9 +60,11 @@ class jpeg_encoder_impl {
     const size_t bufsize_C = width / scale_x * LINES / scale_y;
 
     // Prepare line-buffers
-    line_buffer[0] = aligned_uptr<int16_t>(32, bufsize_L);
+    hn::ScalableTag<uint8_t> u8;
+    const size_t Nalign = hn::Lanes(u8);
+    line_buffer[0]      = aligned_uptr<int16_t>(Nalign, bufsize_L);
     for (size_t c = 1; c < line_buffer.size(); ++c) {
-      line_buffer[c] = aligned_uptr<int16_t>(32, bufsize_C);
+      line_buffer[c] = aligned_uptr<int16_t>(Nalign, bufsize_C);
     }
 
     yuv[0] = line_buffer[0].get();
