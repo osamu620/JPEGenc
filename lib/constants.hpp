@@ -13,3 +13,5 @@
 constexpr int32_t DCTSIZE  = 8;
 constexpr int32_t DCTSIZE2 = DCTSIZE * DCTSIZE;
 constexpr int32_t LINES    = 16;
+
+#define Padd(d, V2, V1) ConcatEven((d), Add(DupEven((V1)), DupOdd((V1))), Add(DupEven((V2)), DupOdd((V2))))

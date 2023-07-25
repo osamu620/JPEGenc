@@ -14,23 +14,21 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 // clang-format off
-        alignas(16) int16_t indices[] = {
-                0, 1, 8, 0, 9, 2, 3, 10,
-                0, 0, 0, 0, 0, 11, 4, 5,
-                1, 8, 0, 9, 2, 0, 0, 0,
-                0, 0, 0, 1, 8, 0, 9, 2,
-                11, 4, 0, 0, 0, 0, 5, 12,
-                0, 0, 13, 6, 7, 14, 0, 0,
-                3, 10, 0, 0, 0, 0, 11, 4,
-                0, 0, 1, 8, 9, 2, 0, 0,
-                13, 6, 0, 7, 14, 0, 0, 0,
-                0, 0, 0, 13, 6, 0, 7, 14,
-                10, 11, 4, 0, 0, 0, 0, 0,
-                5, 12, 13, 6, 0, 7, 14, 15
-        };
+alignas(16) int16_t indices[] = {
+        0, 1, 8, 0, 9, 2, 3, 10,
+        0, 0, 0, 0, 0, 11, 4, 5,
+        1, 8, 0, 9, 2, 0, 0, 0,
+        0, 0, 0, 1, 8, 0, 9, 2,
+        11, 4, 0, 0, 0, 0, 5, 12,
+        0, 0, 13, 6, 7, 14, 0, 0,
+        3, 10, 0, 0, 0, 0, 11, 4,
+        0, 0, 1, 8, 9, 2, 0, 0,
+        13, 6, 0, 7, 14, 0, 0, 0,
+        0, 0, 0, 13, 6, 0, 7, 14,
+        10, 11, 4, 0, 0, 0, 0, 0,
+        5, 12, 13, 6, 0, 7, 14, 15
+};
 // clang-format on
-
-#define Padd(d, V2, V1) ConcatEven((d), Add(DupEven((V1)), DupOdd((V1))), Add(DupEven((V2)), DupOdd((V2))))
 
 HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
   const hn::FixedTag<uint8_t, 16> u8;
@@ -38,7 +36,7 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
   const hn::FixedTag<uint64_t, 1> u64_64;
   const hn::FixedTag<uint16_t, 8> u16;
   const hn::FixedTag<int16_t, 8> s16;
-  const hn::FixedTag<int32_t, 4> s32;
+
   alignas(16) int16_t dp[64];
   int dc  = sp[0];
   sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);

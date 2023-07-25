@@ -5,6 +5,8 @@
 
 #include <hwy/highway.h>
 
+#include <utility>
+
 #include "color.hpp"
 #include "ycctype.hpp"
 #include "constants.hpp"
@@ -113,42 +115,40 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto v6 = Load(u8, sp + 6 * width * nc);
           auto v7 = Load(u8, sp + 7 * width * nc);
 
-          // clang-format off
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        pos += 64;
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        pos += 64;
-          // clang-format on
+          Store(Sub(PromoteTo(s16, LowerHalf(v0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 7);
+          pos += 64;
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 7);
+          pos += 64;
         }
       }
       break;
@@ -157,139 +157,123 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
         for (int j = 0; j < width; j += DCTSIZE * 2) {
           auto sp = in + nc * i * width + nc * j;
           // clang-format off
-                        auto v0_0 = Undefined(u8);
-                        auto v0_1 = Undefined(u8);
-                        auto v0_2 = Undefined(u8);
-                        auto v1_0 = Undefined(u8);
-                        auto v1_1 = Undefined(u8);
-                        auto v1_2 = Undefined(u8);
-                        auto v2_0 = Undefined(u8);
-                        auto v2_1 = Undefined(u8);
-                        auto v2_2 = Undefined(u8);
-                        auto v3_0 = Undefined(u8);
-                        auto v3_1 = Undefined(u8);
-                        auto v3_2 = Undefined(u8);
-                        auto v4_0 = Undefined(u8);
-                        auto v4_1 = Undefined(u8);
-                        auto v4_2 = Undefined(u8);
-                        auto v5_0 = Undefined(u8);
-                        auto v5_1 = Undefined(u8);
-                        auto v5_2 = Undefined(u8);
-                        auto v6_0 = Undefined(u8);
-                        auto v6_1 = Undefined(u8);
-                        auto v6_2 = Undefined(u8);
-                        auto v7_0 = Undefined(u8);
-                        auto v7_1 = Undefined(u8);
-                        auto v7_2 = Undefined(u8);
-
-                        LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-                        LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-                        LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-                        LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-                        LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-                        LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-                        LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-                        LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
-
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 15);
-
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[1] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[1] + pos + 8 * 15);
-
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[2] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[2] + pos + 8 * 15);
+          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
           // clang-format on
+
+          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 15);
+
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[1] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[1] + pos + 8 * 15);
+
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[2] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[2] + pos + 8 * 15);
           pos += 128;
         }
       }
@@ -298,74 +282,59 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += DCTSIZE * 2) {
           auto sp = in + nc * i * width + nc * j;
+
           // clang-format off
-                        auto v0_0 = Undefined(u8);
-                        auto v0_1 = Undefined(u8);
-                        auto v0_2 = Undefined(u8);
-                        auto v1_0 = Undefined(u8);
-                        auto v1_1 = Undefined(u8);
-                        auto v1_2 = Undefined(u8);
-                        auto v2_0 = Undefined(u8);
-                        auto v2_1 = Undefined(u8);
-                        auto v2_2 = Undefined(u8);
-                        auto v3_0 = Undefined(u8);
-                        auto v3_1 = Undefined(u8);
-                        auto v3_2 = Undefined(u8);
-                        auto v4_0 = Undefined(u8);
-                        auto v4_1 = Undefined(u8);
-                        auto v4_2 = Undefined(u8);
-                        auto v5_0 = Undefined(u8);
-                        auto v5_1 = Undefined(u8);
-                        auto v5_2 = Undefined(u8);
-                        auto v6_0 = Undefined(u8);
-                        auto v6_1 = Undefined(u8);
-                        auto v6_2 = Undefined(u8);
-                        auto v7_0 = Undefined(u8);
-                        auto v7_1 = Undefined(u8);
-                        auto v7_2 = Undefined(u8);
-
-                        LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-                        LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-                        LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-                        LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-                        LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-                        LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-                        LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-                        LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
-
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 15);
+          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
           // clang-format on
+
+          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 15);
 
           auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
           auto cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
@@ -385,40 +354,16 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
 
           // clang-format off
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 4);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 5);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 6);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))),
-                                    vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
-
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01)), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11)), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb20), BitCast(s16, cb21)), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb30), BitCast(s16, cb31)), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb40), BitCast(s16, cb41)), vhalf)), s16, out[1] + pos_Chroma + 8 * 4);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb50), BitCast(s16, cb51)), vhalf)), s16, out[1] + pos_Chroma + 8 * 5);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb60), BitCast(s16, cb61)), vhalf)), s16, out[1] + pos_Chroma + 8 * 6);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb70), BitCast(s16, cb71)), vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
           // clang-format on
+
           cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
           cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
           cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -435,40 +380,16 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           cb61 = Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
           cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
           cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          // clang-format off
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb20), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb21), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb30), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb31), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb40), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb41), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 4);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb50), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb51), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 5);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb60), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb61), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 6);
-                        Store(ShiftRight<1>(
-                                Add(OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb70), Set(s16, 1)),
-                                                     WidenMulPairwiseAdd(s32, BitCast(s16, cb71), Set(s16, 1))),
-                                    vhalf)), s16, out[2] + pos_Chroma + 8 * 7);
 
+          // clang-format off
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01)), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11)), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb20), BitCast(s16, cb21)), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb30), BitCast(s16, cb31)), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb40), BitCast(s16, cb41)), vhalf)), s16, out[2] + pos_Chroma + 8 * 4);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb50), BitCast(s16, cb51)), vhalf)), s16, out[2] + pos_Chroma + 8 * 5);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb60), BitCast(s16, cb61)), vhalf)), s16, out[2] + pos_Chroma + 8 * 6);
+          Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb70), BitCast(s16, cb71)), vhalf)), s16, out[2] + pos_Chroma + 8 * 7);
           // clang-format on
           pos += 128;
           pos_Chroma += 64;
@@ -481,73 +402,57 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto sp    = in + nc * i * width + nc * j;
           pos_Chroma = j * 8 + i * 4;
           // clang-format off
-                        auto v0_0 = Undefined(u8);
-                        auto v0_1 = Undefined(u8);
-                        auto v0_2 = Undefined(u8);
-                        auto v1_0 = Undefined(u8);
-                        auto v1_1 = Undefined(u8);
-                        auto v1_2 = Undefined(u8);
-                        auto v2_0 = Undefined(u8);
-                        auto v2_1 = Undefined(u8);
-                        auto v2_2 = Undefined(u8);
-                        auto v3_0 = Undefined(u8);
-                        auto v3_1 = Undefined(u8);
-                        auto v3_2 = Undefined(u8);
-                        auto v4_0 = Undefined(u8);
-                        auto v4_1 = Undefined(u8);
-                        auto v4_2 = Undefined(u8);
-                        auto v5_0 = Undefined(u8);
-                        auto v5_1 = Undefined(u8);
-                        auto v5_2 = Undefined(u8);
-                        auto v6_0 = Undefined(u8);
-                        auto v6_1 = Undefined(u8);
-                        auto v6_2 = Undefined(u8);
-                        auto v7_0 = Undefined(u8);
-                        auto v7_1 = Undefined(u8);
-                        auto v7_2 = Undefined(u8);
-
-                        LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-                        LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-                        LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-                        LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-                        LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-                        LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-                        LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-                        LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
-
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 15);
+          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
           // clang-format on
+
+          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 15);
 
           auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
           auto cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
@@ -566,14 +471,14 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cb70 = Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128)));
           auto cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
 
-          Store(ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 0);
-          Store(ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 1);
-          Store(ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 2);
-          Store(ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 3);
-          Store(ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 8);
-          Store(ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 9);
-          Store(ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 10);
-          Store(ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 11);
 
           cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
           cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -592,14 +497,14 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
           cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
 
-          Store(ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 3);
-          Store(ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 8);
-          Store(ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 9);
-          Store(ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 10);
-          Store(ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 11);
 
           pos += 128;
         }
@@ -611,72 +516,57 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto sp    = in + nc * i * width + nc * j;
           pos_Chroma = j * 4 + i * 4;
           // clang-format off
-                        auto v0_0 = Undefined(u8);
-                        auto v0_1 = Undefined(u8);
-                        auto v0_2 = Undefined(u8);
-                        auto v1_0 = Undefined(u8);
-                        auto v1_1 = Undefined(u8);
-                        auto v1_2 = Undefined(u8);
-                        auto v2_0 = Undefined(u8);
-                        auto v2_1 = Undefined(u8);
-                        auto v2_2 = Undefined(u8);
-                        auto v3_0 = Undefined(u8);
-                        auto v3_1 = Undefined(u8);
-                        auto v3_2 = Undefined(u8);
-                        auto v4_0 = Undefined(u8);
-                        auto v4_1 = Undefined(u8);
-                        auto v4_2 = Undefined(u8);
-                        auto v5_0 = Undefined(u8);
-                        auto v5_1 = Undefined(u8);
-                        auto v5_2 = Undefined(u8);
-                        auto v6_0 = Undefined(u8);
-                        auto v6_1 = Undefined(u8);
-                        auto v6_2 = Undefined(u8);
-                        auto v7_0 = Undefined(u8);
-                        auto v7_1 = Undefined(u8);
-                        auto v7_2 = Undefined(u8);
+          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
+          // clang-format on
 
-                        LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-                        LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-                        LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-                        LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-                        LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-                        LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-                        LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-                        LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
-                        Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 0);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 1);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 2);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 3);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 4);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 5);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 6);
-                        Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                              out[0] + pos + 8 * 7);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 8);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 9);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 10);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 11);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 12);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 13);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 14);
-                        Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
-                              out[0] + pos + 8 * 15);
+          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 0);
+          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 1);
+          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 2);
+          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 3);
+          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 4);
+          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 5);
+          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 6);
+          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 8);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v1_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 9);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v2_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 10);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v3_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 11);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v4_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 12);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v5_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 13);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v6_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 14);
+          Store(Sub(PromoteTo(s16, UpperHalf(u8, v7_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                out[0] + pos + 8 * 15);
           // clang-format on
 
           auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
@@ -695,33 +585,12 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cb61 = Sub(PromoteTo(s16, UpperHalf(u8, v6_1)), PromoteTo(s16, LowerHalf(c128)));
           auto cb70 = Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128)));
           auto cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
-          //  auto ttt = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Vec), Set(s16, 1)));
-          // clang-format off
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb00, cb10)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb01, cb11)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[1] + pos_Chroma + 8 * 0);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb20, cb30)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb21, cb31)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[1] + pos_Chroma + 8 * 1);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb40, cb50)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb41, cb51)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[1] + pos_Chroma + 8 * 2);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb60, cb70)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cb61, cb71)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[1] + pos_Chroma + 8 * 3);
 
+          // clang-format off
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb00, cb10)), BitCast(s16, Add(cb01, cb11))), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb20, cb30)), BitCast(s16, Add(cb21, cb31))), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb40, cb50)), BitCast(s16, Add(cb41, cb51))), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb60, cb70)), BitCast(s16, Add(cb61, cb71))), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
           // clang-format on
 
           auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -740,34 +609,14 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cr61 = Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
           auto cr70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
           auto cr71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          //  auto ttt = DemoteTo(s16, WidenMulPairwiseAdd(s32, BitCast(s16, Vec), Set(s16, 1)));
-          // clang-format off
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr00, cr10)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr01, cr11)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[2] + pos_Chroma + 8 * 0);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr20, cr30)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr21, cr31)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[2] + pos_Chroma + 8 * 1);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr40, cr50)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr41, cr51)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[2] + pos_Chroma + 8 * 2);
-                        Store(ShiftRight<2>(Add(OrderedDemote2To(s16,
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr60, cr70)),
-                                                                                     Set(s16, 1)),
-                                                                 WidenMulPairwiseAdd(s32, BitCast(s16, Add(cr61, cr71)),
-                                                                                     Set(s16, 1))), vhalf)), s16,
-                              out[2] + pos_Chroma + 8 * 3);
 
+          // clang-format off
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr00, cr10)), BitCast(s16, Add(cr01, cr11))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr20, cr30)), BitCast(s16, Add(cr21, cr31))), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr40, cr50)), BitCast(s16, Add(cr41, cr51))), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr60, cr70)), BitCast(s16, Add(cr61, cr71))), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
           // clang-format on
+
           pos += 128;
         }
       }
@@ -806,14 +655,10 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
             auto cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto t0   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
-                                         WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            auto t1   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
-                                         WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
-            auto tb00 = WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1));
-            auto tb01 = WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1));
-            Store(ShiftRight<2>(Add(OrderedDemote2To(s16, tb00, tb01), vhalf)), s16,
-                  out[1] + pos_Chroma + p);
+            auto t0   = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
+            auto t1   = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
+            auto tb00 = Padd(s16, t0, t1);
+            Store(hn::ShiftRight<2>(Add(Padd(s16, t0, t1), vhalf)), s16, out[1] + pos_Chroma + p);
 
             // Cr
             cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -821,14 +666,10 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
             cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
 
-            t0   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
-                                    WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            t1   = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
-                                    WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
-            tb00 = WidenMulPairwiseAdd(s32, BitCast(s16, t0), Set(s16, 1));
-            tb01 = WidenMulPairwiseAdd(s32, BitCast(s16, t1), Set(s16, 1));
-            Store(ShiftRight<2>(Add(OrderedDemote2To(s16, tb00, tb01), vhalf)), s16,
-                  out[2] + pos_Chroma + p);
+            t0   = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
+            t1   = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
+            tb00 = Padd(s16, t0, t1);
+            Store(hn::ShiftRight<2>(Add(Padd(s16, t0, t1), vhalf)), s16, out[2] + pos_Chroma + p);
             p += 8;
           }
           pos += 256;
@@ -846,12 +687,8 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cr    = Undefined(s16);
           for (int y = 0; y < DCTSIZE; ++y) {
             // clang-format off
-                            auto v0_0 = Undefined(u8);
-                            auto v0_1 = Undefined(u8);
-                            auto v0_2 = Undefined(u8);
-                            auto v1_0 = Undefined(u8);
-                            auto v1_1 = Undefined(u8);
-                            auto v1_2 = Undefined(u8);
+            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+            auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
@@ -872,10 +709,8 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
             auto cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto tb0 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb00), Set(s16, 1)),
-                                        WidenMulPairwiseAdd(s32, BitCast(s16, cb01), Set(s16, 1)));
-            auto tb1 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cb10), Set(s16, 1)),
-                                        WidenMulPairwiseAdd(s32, BitCast(s16, cb11), Set(s16, 1)));
+            auto tb0 = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
+            auto tb1 = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
 
             // Cr
             auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
@@ -883,25 +718,15 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             auto cr10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
             auto cr11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
 
-            auto tr0 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr00), Set(s16, 1)),
-                                        WidenMulPairwiseAdd(s32, BitCast(s16, cr01), Set(s16, 1)));
-            auto tr1 = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, cr10), Set(s16, 1)),
-                                        WidenMulPairwiseAdd(s32, BitCast(s16, cr11), Set(s16, 1)));
+            auto tr0 = Padd(s16, BitCast(s16, cr00), BitCast(s16, cr01));
+            auto tr1 = Padd(s16, BitCast(s16, cr10), BitCast(s16, cr11));
 
             if (y % 2 == 0) {
-              cb = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb0), Set(s16, 1)),
-                                    WidenMulPairwiseAdd(s32, BitCast(s16, tb1), Set(s16, 1)));
-              cr = OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr0), Set(s16, 1)),
-                                    WidenMulPairwiseAdd(s32, BitCast(s16, tr1), Set(s16, 1)));
+              cb = Padd(s16, tb0, tb1);
+              cr = Padd(s16, tr0, tr1);
             } else {
-              cb = ShiftRight<3>(Add(
-                  Add(cb, OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tb0), Set(s16, 1)),
-                                           WidenMulPairwiseAdd(s32, BitCast(s16, tb1), Set(s16, 1)))),
-                  vhalf));
-              cr = ShiftRight<3>(Add(
-                  Add(cr, OrderedDemote2To(s16, WidenMulPairwiseAdd(s32, BitCast(s16, tr0), Set(s16, 1)),
-                                           WidenMulPairwiseAdd(s32, BitCast(s16, tr1), Set(s16, 1)))),
-                  vhalf));
+              cb = hn::ShiftRight<3>(Add(Add(cb, Padd(s16, tb0, tb1)), vhalf));
+              cr = hn::ShiftRight<3>(Add(Add(cr, Padd(s16, tr0, tr1)), vhalf));
               Store(cb, s16, out[1] + pos_Chroma + pc);
               Store(cr, s16, out[2] + pos_Chroma + pc);
               pc += 8;
@@ -918,9 +743,7 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto sp = in + nc * i * width + nc * j;
           for (int y = 0; y < DCTSIZE; ++y) {
             // clang-format off
-                            auto v0_0 = Undefined(u8);
-                            auto v0_1 = Undefined(u8);
-                            auto v0_2 = Undefined(u8);
+            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
@@ -944,7 +767,7 @@ HWY_EXPORT(subsample_simd);
 
 void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) { HWY_DYNAMIC_DISPATCH(rgb2ycbcr_simd)(in, width); }
 void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
-  HWY_DYNAMIC_DISPATCH(subsample_simd)(in, out, width, YCCtype);
+  HWY_DYNAMIC_DISPATCH(subsample_simd)(in, std::move(out), width, YCCtype);
 };
 }  // namespace jpegenc_hwy
 #endif
