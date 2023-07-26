@@ -15,6 +15,7 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qtable) {
+#if HWY_TARGET != HWY_SCALAR
   const hn::ScalableTag<int16_t> d16;
   const hn::ScalableTag<int32_t> d32;
   const size_t L16 = Lanes(d16);
@@ -37,6 +38,13 @@ HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qta
     in += L16;
     qtable += L16;
   }
+#else
+  int shift = 16;
+  int half  = 1 << (shift - 1);
+  for (int i = 0; i < DCTSIZE2; ++i) {
+    in[i] = static_cast<int16_t>((in[i] * qtable[i] + half) >> shift);
+  }
+#endif
 }
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy

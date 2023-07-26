@@ -8,6 +8,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_PREFIX_PATH "./include") # for include
 
+#add_definitions("-DHWY_COMPILE_ONLY_SCALAR") # uncomment to build non-simd code
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
 add_library(jpegenc ${SOURCES})
 target_include_directories(

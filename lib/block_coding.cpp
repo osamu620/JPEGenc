@@ -29,8 +29,8 @@ HWY_ALIGN int16_t indices[] = {
         5, 12, 13, 6, 0, 7, 14, 15
 };
 // clang-format on
-
-HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
+#if HWY_TARGET != HWY_SCALAR
+HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
   HWY_CAPPED(uint8_t, 16) u8;
   HWY_CAPPED(uint8_t, 8) u8_64;
   HWY_CAPPED(uint64_t, 1) u64_64;
@@ -223,13 +223,83 @@ HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc
     enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 }
+#else
+  #include "zigzag_order.hpp"
+static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable, const int *Ltable,
+                                  bitstream &enc) {
+  enc.put_bits(Ctable[s], Ltable[s]);
+  if (s != 0) {
+    //    if (val < 0) {
+    //      val -= 1;
+    //    }
+    val -= (val >> 31) & 1;
+    enc.put_bits(val, s);
+  }
+}
+
+static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable,
+                                  const int *Ltable, bitstream &enc) {
+  enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
+  if (s != 0) {
+    val -= (val >> 31) & 1;
+    enc.put_bits(val, s);
+  }
+}
+
+HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
+  alignas(16) int16_t dp[64];
+  int dc  = sp[0];
+  sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
+  prev_dc = dc;
+  for (int i = 0; i < DCTSIZE2; ++i) {
+    dp[i] = sp[scan[i]];
+  }
+  int run = 0;
+  //  Branchless abs:
+  //  https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
+  uint32_t uval = (dp[0] + (dp[0] >> 31)) ^ (dp[0] >> 31);
+  int16_t s     = 0;
+  int bound     = 1;
+  while (uval >= bound) {
+    bound += bound;
+    s++;
+  }
+  EncodeDC(dp[0], s, DC_cwd[c], DC_len[c], enc);
+  int ac;
+  for (int i = 1; i < 64; ++i) {
+    ac = dp[i];
+    if (ac == 0) {
+      run++;
+    } else {
+      while (run > 15) {
+        // ZRL
+        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+        run -= 16;
+      }
+      s     = 0;
+      bound = 1;
+      uval  = (ac + (ac >> 31)) ^ (ac >> 31);
+      while (uval >= bound) {
+        bound += bound;
+        s++;
+      }
+      EncodeAC(run, ac, s, AC_cwd[c], AC_len[c], enc);
+      run = 0;
+    }
+  }
+  if (run) {
+    // EOB
+    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+  }
+}
+#endif
 
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
 
 #if HWY_ONCE
 namespace jpegenc_hwy {
-HWY_EXPORT(make_zigzag_blk_simd);
+HWY_EXPORT(make_zigzag_blk);
 void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                  bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
@@ -248,14 +318,14 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         for (int y = 0; y < Vl; ++y) {
           for (int x = 0; x < Hl; ++x) {
             sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
-            HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp0, 0, prev_dc[0], enc);
+            HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, 0, prev_dc[0], enc);
           }
         }
         // Chroma, Cb
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp1, 1, prev_dc[1], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp1, 1, prev_dc[1], enc);
         sp1 += DCTSIZE2;
         // Chroma, Cr
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp2, 1, prev_dc[2], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp2, 1, prev_dc[2], enc);
         sp2 += DCTSIZE2;
       }
     }
@@ -264,7 +334,7 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
     for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk_simd)(sp0, 0, prev_dc[0], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, 0, prev_dc[0], enc);
         sp0 += DCTSIZE2;
       }
     }
