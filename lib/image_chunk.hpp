@@ -34,7 +34,7 @@ class imchunk {
       exit(EXIT_FAILURE);
     }
     uint8_t *p = g_buf + width * cur_line * ncomp;
-    memcpy(buf, p, width * LINES * ncomp);
+    memcpy(buf, p, static_cast<size_t>(width) * LINES * ncomp);
     return buf;
   }
 
