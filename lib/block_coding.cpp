@@ -204,7 +204,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
   int count = 1;
   int run;
   while (bitmap != 0) {
-    run = __builtin_clzll(bitmap);
+    run = JPEGENC_CLZ(bitmap);
     count += run;
     bitmap <<= run;
     while (run > 15) {
@@ -225,7 +225,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
 }
 #else
   #include "zigzag_order.hpp"
-static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable, const int *Ltable,
+static FORCE_INLINE void EncodeDC(int val, int16_t s, const uint16_t *Ctable, const int16_t *Ltable,
                                   bitstream &enc) {
   enc.put_bits(Ctable[s], Ltable[s]);
   if (s != 0) {
@@ -237,8 +237,8 @@ static FORCE_INLINE void EncodeDC(int val, int16_t s, const unsigned int *Ctable
   }
 }
 
-static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const unsigned int *Ctable,
-                                  const int *Ltable, bitstream &enc) {
+static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const uint16_t *Ctable,
+                                  const int16_t *Ltable, bitstream &enc) {
   enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
   if (s != 0) {
     val -= (val >> 31) & 1;

@@ -26,7 +26,6 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   auto v0                      = Undefined(d8);
   auto v1                      = Undefined(d8);
   auto v2                      = Undefined(d8);
-  const size_t N               = Lanes(d8);
   auto coeff0                  = Set(d16, constants[0]);
   auto coeff1                  = Set(d16, constants[1]);
   auto coeff2                  = Set(d16, constants[2]);
@@ -36,7 +35,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   auto coeff6                  = Set(d16, constants[6]);
   auto coeff7                  = Set(d16, constants[7]);
   auto scaled_128              = Set(d16, 128 << 1);
-  for (size_t i = width * LINES; i > 0; i -= N) {
+  for (size_t i = width * LINES; i > 0; i -= Lanes(d8)) {
     LoadInterleaved3(d8, in, v0, v1, v2);
     auto r_l = PromoteTo(d16, LowerHalf(v0));
     auto g_l = PromoteTo(d16, LowerHalf(v1));
@@ -73,7 +72,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     v2 = OrderedDemote2To(d8, crl, crh);
     StoreInterleaved3(v0, v1, v2, d8, in);
 
-    in += 3 * N;
+    in += 3 * Lanes(d8);
   }
 }
 

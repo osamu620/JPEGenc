@@ -18,12 +18,11 @@ HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qta
 #if HWY_TARGET != HWY_SCALAR
   const hn::ScalableTag<int16_t> d16;
   const hn::ScalableTag<int32_t> d32;
-  const size_t L16 = Lanes(d16);
-  const size_t L32 = Lanes(d32);
-  auto half        = hn::Set(d32, 1 << 15);
-  for (int i = 0; i < DCTSIZE2; i += L16) {
+  auto half = hn::Set(d32, 1 << 15);
+
+  for (int i = 0; i < DCTSIZE2; i += Lanes(d16)) {
     auto ql = Load(d32, qtable);
-    auto qh = Load(d32, qtable + L32);
+    auto qh = Load(d32, qtable + Lanes(d32));
     auto v  = Load(d16, in);
     auto vl = PromoteTo(d32, LowerHalf(v));
     auto vh = PromoteTo(d32, UpperHalf(d16, v));
@@ -35,8 +34,8 @@ HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qta
     vl = hn::ShiftRight<16>(vl);
     vh = hn::ShiftRight<16>(vh);
     Store(OrderedDemote2To(d16, vl, vh), d16, in);
-    in += L16;
-    qtable += L16;
+    in += Lanes(d16);
+    qtable += Lanes(d16);
   }
 #else
   int shift = 16;

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 
+#include <hwy/aligned_allocator.h>
+
 #include "constants.hpp"
 #include "pnm.hpp"
 
@@ -14,13 +16,13 @@ class imchunk {
   int height;
   int ncomp;
   uint8_t *g_buf;
-  uint8_t *buf;
+  std::unique_ptr<uint8_t[], hwy::AlignedFreer> buf;
   int32_t cur_line;
 
  public:
   explicit imchunk(const std::string &name) : width(0), height(0), ncomp(1), cur_line(0) {
     g_buf = read_pnm(name, width, height, ncomp);
-    buf   = new uint8_t[width * ncomp * LINES];
+    buf   = hwy::AllocateAligned<uint8_t>(width * ncomp * LINES);
   }
 
   [[nodiscard]] int get_width() const { return width; }
@@ -34,12 +36,12 @@ class imchunk {
       exit(EXIT_FAILURE);
     }
     uint8_t *p = g_buf + width * cur_line * ncomp;
-    memcpy(buf, p, static_cast<size_t>(width) * LINES * ncomp);
-    return buf;
+    memcpy(buf.get(), p, static_cast<size_t>(width) * LINES * ncomp);
+    return buf.get();
   }
 
   ~imchunk() {
     std::free(g_buf);
-    delete[] buf;
+    //    delete[] buf;
   }
 };

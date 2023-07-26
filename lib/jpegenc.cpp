@@ -1,8 +1,5 @@
-// #undef HWY_TARGET_INCLUDE
-// #define HWY_TARGET_INCLUDE "jpegenc.cpp"  // this file
-// #include <hwy/foreach_target.h>           // must come before highway.h
 #include <hwy/highway.h>
-
+#include <hwy/aligned_allocator.h>
 #include <jpegenc.hpp>
 
 // #include "aligned_unique_ptr.hpp"
@@ -13,7 +10,6 @@
 #include "jpgheaders.hpp"
 #include "quantization.hpp"
 #include "ycctype.hpp"
-#include "hwy/aligned_allocator.h"
 
 #if defined(_MSC_VER)
   #define JPEGENC_EXPORT __declspec(dllexport)
