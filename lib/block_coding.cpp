@@ -31,11 +31,11 @@ HWY_ALIGN int16_t indices[] = {
 // clang-format on
 
 HWY_ATTR void make_zigzag_blk_simd(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
-  const hn::FixedTag<uint8_t, 16> u8;
-  const hn::FixedTag<uint8_t, 8> u8_64;
-  const hn::FixedTag<uint64_t, 1> u64_64;
-  const hn::FixedTag<uint16_t, 8> u16;
-  const hn::FixedTag<int16_t, 8> s16;
+  HWY_CAPPED(uint8_t, 16) u8;
+  HWY_CAPPED(uint8_t, 8) u8_64;
+  HWY_CAPPED(uint64_t, 1) u64_64;
+  HWY_CAPPED(uint16_t, 8) u16;
+  HWY_CAPPED(int16_t, 8) s16;
 
   HWY_ALIGN int16_t dp[64];
   int dc  = sp[0];

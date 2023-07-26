@@ -84,10 +84,7 @@ class bitstream {
   }
 
  public:
-  bitstream() : bits(0), tmp(0) {
-    stream.reserve(3007773);
-    put_word(SOI);
-  }
+  bitstream() : bits(0), tmp(0) { put_word(SOI); }
 
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 

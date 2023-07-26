@@ -93,8 +93,8 @@ HWY_ATTR void subsample_simd(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   }
   size_t pos        = 0;
   size_t pos_Chroma = 0;
-  const hn::FixedTag<uint8_t, 16> u8;
-  const hn::FixedTag<int16_t, 8> s16;
+  HWY_CAPPED(uint8_t, 16) u8;
+  HWY_CAPPED(int16_t, 16) s16;
   auto c128  = Set(u8, 128);
   auto vhalf = Set(s16, half);
   switch (YCCtype) {

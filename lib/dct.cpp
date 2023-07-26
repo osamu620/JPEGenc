@@ -15,26 +15,26 @@ namespace hn = hwy::HWY_NAMESPACE;
 HWY_ALIGN static const int16_t coeff[] = {12544, 17792, 23168, 9984};
 
 HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
-  const hn::FixedTag<int16_t, 8> d16;
-  const hn::FixedTag<int32_t, 4> d32;
-  auto data1_0 = hn::Undefined(d16);
-  auto data1_1 = hn::Undefined(d16);
-  auto data1_2 = hn::Undefined(d16);
-  auto data1_3 = hn::Undefined(d16);
-  auto data2_0 = hn::Undefined(d16);
-  auto data2_1 = hn::Undefined(d16);
-  auto data2_2 = hn::Undefined(d16);
-  auto data2_3 = hn::Undefined(d16);
-  LoadInterleaved4(d16, data, data1_0, data1_1, data1_2, data1_3);
-  LoadInterleaved4(d16, data + 4 * DCTSIZE, data2_0, data2_1, data2_2, data2_3);
-  auto cols_04_0 = ConcatEven(d16, data2_0, data1_0);
-  auto cols_15_0 = ConcatEven(d16, data2_1, data1_1);
-  auto cols_26_0 = ConcatEven(d16, data2_2, data1_2);
-  auto cols_37_0 = ConcatEven(d16, data2_3, data1_3);
-  auto cols_04_1 = ConcatOdd(d16, data2_0, data1_0);
-  auto cols_15_1 = ConcatOdd(d16, data2_1, data1_1);
-  auto cols_26_1 = ConcatOdd(d16, data2_2, data1_2);
-  auto cols_37_1 = ConcatOdd(d16, data2_3, data1_3);
+  HWY_CAPPED(int16_t, 8) s16;
+  HWY_CAPPED(int32_t, 4) s32;
+  auto data1_0 = hn::Undefined(s16);
+  auto data1_1 = hn::Undefined(s16);
+  auto data1_2 = hn::Undefined(s16);
+  auto data1_3 = hn::Undefined(s16);
+  auto data2_0 = hn::Undefined(s16);
+  auto data2_1 = hn::Undefined(s16);
+  auto data2_2 = hn::Undefined(s16);
+  auto data2_3 = hn::Undefined(s16);
+  LoadInterleaved4(s16, data, data1_0, data1_1, data1_2, data1_3);
+  LoadInterleaved4(s16, data + 4 * DCTSIZE, data2_0, data2_1, data2_2, data2_3);
+  auto cols_04_0 = ConcatEven(s16, data2_0, data1_0);
+  auto cols_15_0 = ConcatEven(s16, data2_1, data1_1);
+  auto cols_26_0 = ConcatEven(s16, data2_2, data1_2);
+  auto cols_37_0 = ConcatEven(s16, data2_3, data1_3);
+  auto cols_04_1 = ConcatOdd(s16, data2_0, data1_0);
+  auto cols_15_1 = ConcatOdd(s16, data2_1, data1_1);
+  auto cols_26_1 = ConcatOdd(s16, data2_2, data1_2);
+  auto cols_37_1 = ConcatOdd(s16, data2_3, data1_3);
 
   auto col0 = cols_04_0;
   auto col1 = cols_15_0;
@@ -63,10 +63,10 @@ HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   col0 = Add(tmp10, tmp11);  // phase 3
   col4 = Sub(tmp10, tmp11);
 
-  auto vcoeff0 = Set(d16, coeff[0]);
-  auto vcoeff1 = Set(d16, coeff[1]);
-  auto vcoeff2 = Set(d16, coeff[2]);
-  auto vcoeff3 = Set(d16, coeff[3]);
+  auto vcoeff0 = Set(s16, coeff[0]);
+  auto vcoeff1 = Set(s16, coeff[1]);
+  auto vcoeff2 = Set(s16, coeff[2]);
+  auto vcoeff3 = Set(s16, coeff[3]);
   auto z1      = MulFixedPoint15(Add(tmp12, tmp13), vcoeff2);
   col2         = Add(tmp13, z1);  // phase 5
   col6         = Sub(tmp13, z1);
@@ -93,48 +93,48 @@ HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   col7 = Sub(z11, z4);
 
   // vtrnq
-  auto cols_01_0 = InterleaveLower(ConcatEven(d16, col0, col0), ConcatEven(d16, col1, col1));
-  auto cols_01_1 = InterleaveLower(ConcatOdd(d16, col0, col0), ConcatOdd(d16, col1, col1));
-  auto cols_23_0 = InterleaveLower(ConcatEven(d16, col2, col2), ConcatEven(d16, col3, col3));
-  auto cols_23_1 = InterleaveLower(ConcatOdd(d16, col2, col2), ConcatOdd(d16, col3, col3));
-  auto cols_45_0 = InterleaveLower(ConcatEven(d16, col4, col4), ConcatEven(d16, col5, col5));
-  auto cols_45_1 = InterleaveLower(ConcatOdd(d16, col4, col4), ConcatOdd(d16, col5, col5));
-  auto cols_67_0 = InterleaveLower(ConcatEven(d16, col6, col6), ConcatEven(d16, col7, col7));
-  auto cols_67_1 = InterleaveLower(ConcatOdd(d16, col6, col6), ConcatOdd(d16, col7, col7));
+  auto cols_01_0 = InterleaveLower(ConcatEven(s16, col0, col0), ConcatEven(s16, col1, col1));
+  auto cols_01_1 = InterleaveLower(ConcatOdd(s16, col0, col0), ConcatOdd(s16, col1, col1));
+  auto cols_23_0 = InterleaveLower(ConcatEven(s16, col2, col2), ConcatEven(s16, col3, col3));
+  auto cols_23_1 = InterleaveLower(ConcatOdd(s16, col2, col2), ConcatOdd(s16, col3, col3));
+  auto cols_45_0 = InterleaveLower(ConcatEven(s16, col4, col4), ConcatEven(s16, col5, col5));
+  auto cols_45_1 = InterleaveLower(ConcatOdd(s16, col4, col4), ConcatOdd(s16, col5, col5));
+  auto cols_67_0 = InterleaveLower(ConcatEven(s16, col6, col6), ConcatEven(s16, col7, col7));
+  auto cols_67_1 = InterleaveLower(ConcatOdd(s16, col6, col6), ConcatOdd(s16, col7, col7));
 
-  auto cols_0145_l_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
-                                       ConcatEven(d32, BitCast(d32, cols_45_0), BitCast(d32, cols_45_0)));
-  auto cols_0145_l_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_01_0), BitCast(d32, cols_01_0)),
-                                       ConcatOdd(d32, BitCast(d32, cols_45_0), BitCast(d32, cols_45_0)));
-  auto cols_0145_h_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_01_1), BitCast(d32, cols_01_1)),
-                                       ConcatEven(d32, BitCast(d32, cols_45_1), BitCast(d32, cols_45_1)));
-  auto cols_0145_h_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_01_1), BitCast(d32, cols_01_1)),
-                                       ConcatOdd(d32, BitCast(d32, cols_45_1), BitCast(d32, cols_45_1)));
-  auto cols_2367_l_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_23_0), BitCast(d32, cols_23_0)),
-                                       ConcatEven(d32, BitCast(d32, cols_67_0), BitCast(d32, cols_67_0)));
-  auto cols_2367_l_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_23_0), BitCast(d32, cols_23_0)),
-                                       ConcatOdd(d32, BitCast(d32, cols_67_0), BitCast(d32, cols_67_0)));
-  auto cols_2367_h_0 = InterleaveLower(ConcatEven(d32, BitCast(d32, cols_23_1), BitCast(d32, cols_23_1)),
-                                       ConcatEven(d32, BitCast(d32, cols_67_1), BitCast(d32, cols_67_1)));
-  auto cols_2367_h_1 = InterleaveLower(ConcatOdd(d32, BitCast(d32, cols_23_1), BitCast(d32, cols_23_1)),
-                                       ConcatOdd(d32, BitCast(d32, cols_67_1), BitCast(d32, cols_67_1)));
+  auto cols_0145_l_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_01_0), BitCast(s32, cols_01_0)),
+                                       ConcatEven(s32, BitCast(s32, cols_45_0), BitCast(s32, cols_45_0)));
+  auto cols_0145_l_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_01_0), BitCast(s32, cols_01_0)),
+                                       ConcatOdd(s32, BitCast(s32, cols_45_0), BitCast(s32, cols_45_0)));
+  auto cols_0145_h_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_01_1), BitCast(s32, cols_01_1)),
+                                       ConcatEven(s32, BitCast(s32, cols_45_1), BitCast(s32, cols_45_1)));
+  auto cols_0145_h_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_01_1), BitCast(s32, cols_01_1)),
+                                       ConcatOdd(s32, BitCast(s32, cols_45_1), BitCast(s32, cols_45_1)));
+  auto cols_2367_l_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_23_0), BitCast(s32, cols_23_0)),
+                                       ConcatEven(s32, BitCast(s32, cols_67_0), BitCast(s32, cols_67_0)));
+  auto cols_2367_l_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_23_0), BitCast(s32, cols_23_0)),
+                                       ConcatOdd(s32, BitCast(s32, cols_67_0), BitCast(s32, cols_67_0)));
+  auto cols_2367_h_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_23_1), BitCast(s32, cols_23_1)),
+                                       ConcatEven(s32, BitCast(s32, cols_67_1), BitCast(s32, cols_67_1)));
+  auto cols_2367_h_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_23_1), BitCast(s32, cols_23_1)),
+                                       ConcatOdd(s32, BitCast(s32, cols_67_1), BitCast(s32, cols_67_1)));
   auto rows_04_0     = InterleaveLower(cols_0145_l_0, cols_2367_l_0);
-  auto rows_04_1     = InterleaveUpper(d32, cols_0145_l_0, cols_2367_l_0);
+  auto rows_04_1     = InterleaveUpper(s32, cols_0145_l_0, cols_2367_l_0);
   auto rows_15_0     = InterleaveLower(cols_0145_h_0, cols_2367_h_0);
-  auto rows_15_1     = InterleaveUpper(d32, cols_0145_h_0, cols_2367_h_0);
+  auto rows_15_1     = InterleaveUpper(s32, cols_0145_h_0, cols_2367_h_0);
   auto rows_26_0     = InterleaveLower(cols_0145_l_1, cols_2367_l_1);
-  auto rows_26_1     = InterleaveUpper(d32, cols_0145_l_1, cols_2367_l_1);
+  auto rows_26_1     = InterleaveUpper(s32, cols_0145_l_1, cols_2367_l_1);
   auto rows_37_0     = InterleaveLower(cols_0145_h_1, cols_2367_h_1);
-  auto rows_37_1     = InterleaveUpper(d32, cols_0145_h_1, cols_2367_h_1);
+  auto rows_37_1     = InterleaveUpper(s32, cols_0145_h_1, cols_2367_h_1);
 
-  auto row0 = BitCast(d16, rows_04_0);
-  auto row1 = BitCast(d16, rows_15_0);
-  auto row2 = BitCast(d16, rows_26_0);
-  auto row3 = BitCast(d16, rows_37_0);
-  auto row4 = BitCast(d16, rows_04_1);
-  auto row5 = BitCast(d16, rows_15_1);
-  auto row6 = BitCast(d16, rows_26_1);
-  auto row7 = BitCast(d16, rows_37_1);
+  auto row0 = BitCast(s16, rows_04_0);
+  auto row1 = BitCast(s16, rows_15_0);
+  auto row2 = BitCast(s16, rows_26_0);
+  auto row3 = BitCast(s16, rows_37_0);
+  auto row4 = BitCast(s16, rows_04_1);
+  auto row5 = BitCast(s16, rows_15_1);
+  auto row6 = BitCast(s16, rows_26_1);
+  auto row7 = BitCast(s16, rows_37_1);
 
   /* Pass 2: process columns. */
   tmp0 = Add(row0, row7);
@@ -180,14 +180,14 @@ HWY_ATTR void fast_dct2_simd(int16_t *HWY_RESTRICT data) {
   row1 = Add(z11, z4);
   row7 = Sub(z11, z4);
 
-  Store(row0, d16, data + 0 * DCTSIZE);
-  Store(row1, d16, data + 1 * DCTSIZE);
-  Store(row2, d16, data + 2 * DCTSIZE);
-  Store(row3, d16, data + 3 * DCTSIZE);
-  Store(row4, d16, data + 4 * DCTSIZE);
-  Store(row5, d16, data + 5 * DCTSIZE);
-  Store(row6, d16, data + 6 * DCTSIZE);
-  Store(row7, d16, data + 7 * DCTSIZE);
+  Store(row0, s16, data + 0 * DCTSIZE);
+  Store(row1, s16, data + 1 * DCTSIZE);
+  Store(row2, s16, data + 2 * DCTSIZE);
+  Store(row3, s16, data + 3 * DCTSIZE);
+  Store(row4, s16, data + 4 * DCTSIZE);
+  Store(row5, s16, data + 5 * DCTSIZE);
+  Store(row6, s16, data + 6 * DCTSIZE);
+  Store(row7, s16, data + 7 * DCTSIZE);
 }
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
