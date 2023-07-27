@@ -14,7 +14,7 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 // clang-format off
-HWY_ALIGN int16_t indices[] = {
+HWY_ALIGN constexpr int16_t indices[] = {
         0, 1, 8, 0, 9, 2, 3, 10,
         0, 0, 0, 0, 0, 11, 4, 5,
         1, 8, 0, 9, 2, 0, 0, 0,
@@ -115,8 +115,8 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto row76_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row6_ne_0), ResizeBitCast(u8, row7_ne_0));
 
   /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
-  HWY_ALIGN uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
-                            0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+  HWY_ALIGN constexpr uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+                                      0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 
   auto bitmap_mask = Load(u8, bm);
 
