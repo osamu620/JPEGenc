@@ -30,7 +30,7 @@ HWY_ALIGN int16_t indices[] = {
 };
 // clang-format on
 #if HWY_TARGET != HWY_SCALAR
-HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   HWY_CAPPED(uint8_t, 16) u8;
   HWY_CAPPED(uint8_t, 8) u8_64;
   HWY_CAPPED(uint64_t, 1) u64_64;
@@ -101,14 +101,14 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
    * means that the corresponding coefficient != 0.
    */
   auto zero       = Zero(s16);
-  auto row0_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row0), zero)));
-  auto row1_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row1), zero)));
-  auto row2_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row2), zero)));
-  auto row3_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row3), zero)));
-  auto row4_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row4), zero)));
-  auto row5_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row5), zero)));
-  auto row6_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row6), zero)));
-  auto row7_ne_0  = VecFromMask(s16, Not(Lt(HighestSetBitIndex(row7), zero)));
+  auto row0_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row0), zero));
+  auto row1_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row1), zero));
+  auto row2_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row2), zero));
+  auto row3_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row3), zero));
+  auto row4_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row4), zero));
+  auto row5_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row5), zero));
+  auto row6_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row6), zero));
+  auto row7_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row7), zero));
   auto row10_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row0_ne_0), ResizeBitCast(u8, row1_ne_0));
   auto row32_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row2_ne_0), ResizeBitCast(u8, row3_ne_0));
   auto row54_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row4_ne_0), ResizeBitCast(u8, row5_ne_0));
@@ -120,10 +120,10 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
 
   auto bitmap_mask = Load(u8, bm);
 
-  auto bitmap_rows_10 = And(row10_ne_0, bitmap_mask);
-  auto bitmap_rows_32 = And(row32_ne_0, bitmap_mask);
-  auto bitmap_rows_54 = And(row54_ne_0, bitmap_mask);
-  auto bitmap_rows_76 = And(row76_ne_0, bitmap_mask);
+  auto bitmap_rows_10 = AndNot(row10_ne_0, bitmap_mask);
+  auto bitmap_rows_32 = AndNot(row32_ne_0, bitmap_mask);
+  auto bitmap_rows_54 = AndNot(row54_ne_0, bitmap_mask);
+  auto bitmap_rows_76 = AndNot(row76_ne_0, bitmap_mask);
 
   auto bitmap_rows_3210     = Padd(u8, bitmap_rows_32, bitmap_rows_10);
   auto bitmap_rows_7654     = Padd(u8, bitmap_rows_76, bitmap_rows_54);
@@ -197,7 +197,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
   bitmap <<= 1;
 
   // EncodeDC
-  enc.put_bits(DC_cwd[c][bits[0]], DC_len[c][bits[0]]);
+  enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);
   if (bits[0] != 0) {
     enc.put_bits(dp[0], bits[0]);
   }
@@ -210,24 +210,24 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
     bitmap <<= run;
     while (run > 15) {
       // ZRL
-      enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
+      enc.put_bits(tab.AC_cwd[0xF0], tab.AC_len[0xF0]);
       run -= 16;
     }
     // EncodeAC
-    enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
+    enc.put_bits(tab.AC_cwd[(run << 4) + bits[count]], tab.AC_len[(run << 4) + bits[count]]);
     enc.put_bits(dp[count], bits[count]);
     count++;
     bitmap <<= 1;
   }
   if (count != 64) {
     // EOB
-    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
+    enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
   }
 }
 #else
   #include "zigzag_order.hpp"
 
-HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   alignas(16) int16_t dp[64];
   int dc          = sp[0];
   sp[0]           = static_cast<int16_t>(sp[0] - prev_dc);
@@ -245,7 +245,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
   s             = 32 - JPEGENC_CLZ32(uval);
 
   //  EncodeDC
-  enc.put_bits(DC_cwd[c][s], DC_len[c][s]);
+  enc.put_bits(tab.DC_cwd[s], tab.DC_len[s]);
   if (s != 0) {
     dp[0] -= (dp[0] >> 15) & 1;
     enc.put_bits(dp[0], s);
@@ -259,13 +259,13 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
     bitmap <<= run;
     while (run > 15) {
       // ZRL
-      enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
+      enc.put_bits(tab.AC_cwd[0xF0], tab.AC_len[0xF0]);
       run -= 16;
     }
     // Encode AC
     uval = (dp[count] + (dp[count] >> 15)) ^ (dp[count] >> 15);
     s    = 32 - JPEGENC_CLZ32(uval);
-    enc.put_bits(AC_cwd[c][(run << 4) + s], AC_len[c][(run << 4) + s]);
+    enc.put_bits(tab.AC_cwd[(run << 4) + s], tab.AC_len[(run << 4) + s]);
     dp[count] -= (dp[count] >> 15) & 1;
     enc.put_bits(dp[count], s);
     count++;
@@ -273,7 +273,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
   }
   if (count != 64) {
     // EOB
-    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
+    enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
   }
 }
 #endif
@@ -285,7 +285,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
 namespace jpegenc_hwy {
 HWY_EXPORT(make_zigzag_blk);
 void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
-                 bitstream &enc) {
+                 huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -302,14 +302,14 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         for (int y = 0; y < Vl; ++y) {
           for (int x = 0; x < Hl; ++x) {
             sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
-            HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, 0, prev_dc[0], enc);
+            HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, tab_Y, prev_dc[0], enc);
           }
         }
         // Chroma, Cb
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp1, 1, prev_dc[1], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp1, tab_C, prev_dc[1], enc);
         sp1 += DCTSIZE2;
         // Chroma, Cr
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp2, 1, prev_dc[2], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp2, tab_C, prev_dc[2], enc);
         sp2 += DCTSIZE2;
       }
     }
@@ -318,7 +318,7 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
     for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, 0, prev_dc[0], enc);
+        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, tab_Y, prev_dc[0], enc);
         sp0 += DCTSIZE2;
       }
     }

@@ -1,4 +1,5 @@
 #pragma once
+#include <hwy/highway.h>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -18,17 +19,17 @@
 // std::cout << "}" << std::endl;
 
 // clang-format off
-constexpr int16_t DC_len[2][16] = {
+HWY_ALIGN constexpr uint8_t DC_len[2][16] = {
     {2, 3, 3, 3, 3, 3, 4, 5, 6, 7,  8,  9, 0, 0, 0, 0}, //10, 11, 12, 13},
     {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 0, 0}  //12, 13, 14, 15},
 };
 
-constexpr uint16_t DC_cwd[2][16] = {
+HWY_ALIGN constexpr uint16_t DC_cwd[2][16] = {
     {0x0000, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x000e, 0x001e, 0x003e, 0x007e, 0x00fe, 0x01fe, 0, 0, 0, 0}, // 0x03fe, 0x07fe, 0x0ffe, 0x1ffe},
     {0x0000, 0x0001, 0x0002, 0x0006, 0x000e, 0x001e, 0x003e, 0x007e, 0x00fe, 0x01fe, 0x03fe, 0x07fe, 0, 0, 0, 0}  // 0x0ffe, 0x1ffe, 0x3ffe, 0x7ffe}
 };
 
-constexpr int16_t AC_len[2][256] = {
+HWY_ALIGN constexpr uint8_t AC_len[2][256] = {
     { 4,  2,  2,  3,  4,  5,  7,  8, 10, 16, 16, 0, 0, 0, 0, 0,  
       0,  4,  5,  7,  9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0,    
       0,  5,  8, 10, 12, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0,    
@@ -63,7 +64,7 @@ constexpr int16_t AC_len[2][256] = {
      10, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0}
 };
 
-constexpr uint16_t AC_cwd[2][256] = {
+HWY_ALIGN constexpr uint16_t AC_cwd[2][256] = {
     {
      0x000a, 0x0000, 0x0001, 0x0004, 0x000b, 0x001a, 0x0078, 0x00f8, 0x03f6, 0xff82, 0xff83, 0, 0, 0, 0, 0,
      0x0000, 0x000c, 0x001b, 0x0079, 0x01f6, 0x07f6, 0xff84, 0xff85, 0xff86, 0xff87, 0xff88, 0, 0, 0, 0, 0,
@@ -102,6 +103,8 @@ constexpr uint16_t AC_cwd[2][256] = {
     }
 };
 // clang-format on
+
+/* INFORMATION to GENERATE TABLES
 // Table: K-5: Luminance AC coefficients
 const std::vector<std::vector<std::string>> AC_LUMA_HUFF_CODES = {
     {
@@ -487,3 +490,4 @@ const std::vector<std::vector<std::string>> AC_CHROMA_HUFF_CODES = {
      "1111111111111101",   // F/9
      "1111111111111110"}   // F/A
 };
+ */

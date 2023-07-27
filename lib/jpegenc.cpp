@@ -7,6 +7,7 @@
 #include "color.hpp"
 #include "dct.hpp"
 #include "image_chunk.hpp"
+#include "huffman_tables.hpp"
 #include "jpgheaders.hpp"
 #include "quantization.hpp"
 #include "ycctype.hpp"
@@ -81,6 +82,10 @@ class jpeg_encoder_impl {
   }
 
   void invoke(std::vector<uint8_t> &codestream) {
+    jpegenc_hwy::huff_info tab_Y((const uint16_t *)DC_cwd[0], (const uint16_t *)AC_cwd[0],
+                                 (const uint8_t *)DC_len[0], (const uint8_t *)AC_len[0]);
+    jpegenc_hwy::huff_info tab_C((const uint16_t *)DC_cwd[1], (const uint16_t *)AC_cwd[1],
+                                 (const uint8_t *)DC_len[1], (const uint8_t *)AC_len[1]);
     for (int n = 0; n < height / LINES; ++n) {
       uint8_t *src = image.get_lines_from(n);
       if (image.get_num_comps() == 3) {
@@ -89,7 +94,7 @@ class jpeg_encoder_impl {
       jpegenc_hwy::subsample(src, yuv, width, YCCtype);
       jpegenc_hwy::dct2(yuv, width, YCCtype);
       jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, width, YCCtype);
-      jpegenc_hwy::Encode_MCUs(yuv, width, YCCtype, prev_dc, enc);
+      jpegenc_hwy::Encode_MCUs(yuv, width, YCCtype, prev_dc, tab_Y, tab_C, enc);
       if (use_RESET) {
         enc.put_RST(n % 8);
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
