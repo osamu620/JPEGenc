@@ -93,14 +93,16 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   }
   size_t pos        = 0;
   size_t pos_Chroma = 0;
-  HWY_CAPPED(uint8_t, 16) u8;
-  HWY_CAPPED(int16_t, 8) s16;
+  //  HWY_CAPPED(uint8_t, 16) u8;
+  //  HWY_CAPPED(int16_t, 8) s16;
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<int16_t, 8> s16;
   auto c128  = Set(u8, 128);
   auto vhalf = Set(s16, half);
   switch (YCCtype) {
     case YCC::GRAY:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp = in + nc * i * width + nc * j;
           auto v0 = Load(u8, sp + 0 * width * nc);
           auto v1 = Load(u8, sp + 1 * width * nc);
@@ -150,7 +152,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV444:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp = in + nc * i * width + nc * j;
           // clang-format off
           auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
@@ -276,7 +278,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV422:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp = in + nc * i * width + nc * j;
 
           // clang-format off
@@ -394,7 +396,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV440:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp    = in + nc * i * width + nc * j;
           pos_Chroma = j * 8 + i * 4;
           // clang-format off
@@ -508,7 +510,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV420:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 2) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp    = in + nc * i * width + nc * j;
           pos_Chroma = j * 4 + i * 4;
           // clang-format off
@@ -619,7 +621,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV411:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 4) {
+        for (int j = 0; j < width; j += Lanes(u8) * 2) {
           auto sp  = in + nc * i * width + nc * j;
           size_t p = 0;
           for (int y = 0; y < DCTSIZE; ++y) {
@@ -633,7 +635,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            LoadInterleaved3(u8, sp + y * width * nc + nc * DCTSIZE * 2, v1_0, v1_1, v1_2);
+            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
 
             // Y
             Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
@@ -675,7 +677,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::YUV410:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE * 4) {
+        for (int j = 0; j < width; j += Lanes(u8) * 2) {
           auto sp  = in + nc * i * width + nc * j;
           size_t p = 0, pc = 0;
           pos_Chroma = j * 2 + i * 4;
@@ -688,7 +690,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            LoadInterleaved3(u8, sp + y * width * nc + nc * DCTSIZE * 2, v1_0, v1_1, v1_2);
+            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
 
             // Y
             Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
@@ -735,7 +737,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
       break;
     case YCC::GRAY2:
       for (int i = 0; i < LINES; i += DCTSIZE) {
-        for (int j = 0; j < width; j += DCTSIZE) {
+        for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp = in + nc * i * width + nc * j;
           for (int y = 0; y < DCTSIZE; ++y) {
             // clang-format off
@@ -743,9 +745,12 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16, out[0] + pos);
-            pos += 8;
+            Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+                  out[0] + pos + y * DCTSIZE);
+            Store(Sub(PromoteTo(s16, UpperHalf(u8, v0_0)), PromoteTo(s16, UpperHalf(u8, c128))), s16,
+                  out[0] + pos + 64 + y * DCTSIZE);
           }
+          pos += 128;
         }
       }
       break;

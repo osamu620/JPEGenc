@@ -196,100 +196,84 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bit
 
   bitmap <<= 1;
 
-  // EncodeDC(dp[0], bits[0], DC_cwd[c], DC_len[c], enc);
+  // EncodeDC
   enc.put_bits(DC_cwd[c][bits[0]], DC_len[c][bits[0]]);
   if (bits[0] != 0) {
     enc.put_bits(dp[0], bits[0]);
   }
+
   int count = 1;
   int run;
   while (bitmap != 0) {
-    run = JPEGENC_CLZ(bitmap);
+    run = JPEGENC_CLZ64(bitmap);
     count += run;
     bitmap <<= run;
     while (run > 15) {
-      // EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+      // ZRL
       enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
       run -= 16;
     }
-    // EncodeAC(run, dp[count], bits[count], AC_cwd[c], AC_len[c], enc);
+    // EncodeAC
     enc.put_bits(AC_cwd[c][(run << 4) + bits[count]], AC_len[c][(run << 4) + bits[count]]);
     enc.put_bits(dp[count], bits[count]);
     count++;
     bitmap <<= 1;
   }
   if (count != 64) {
-    // EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+    // EOB
     enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 }
 #else
   #include "zigzag_order.hpp"
-static FORCE_INLINE void EncodeDC(int val, int16_t s, const uint16_t *Ctable, const int16_t *Ltable,
-                                  bitstream &enc) {
-  enc.put_bits(Ctable[s], Ltable[s]);
-  if (s != 0) {
-    //    if (val < 0) {
-    //      val -= 1;
-    //    }
-    val -= (val >> 31) & 1;
-    enc.put_bits(val, s);
-  }
-}
-
-static FORCE_INLINE void EncodeAC(int run, int val, int16_t s, const uint16_t *Ctable,
-                                  const int16_t *Ltable, bitstream &enc) {
-  enc.put_bits(Ctable[(run << 4) + s], Ltable[(run << 4) + s]);
-  if (s != 0) {
-    val -= (val >> 31) & 1;
-    enc.put_bits(val, s);
-  }
-}
 
 HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, int c, int &prev_dc, bitstream &enc) {
   alignas(16) int16_t dp[64];
-  int dc  = sp[0];
-  sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
-  prev_dc = dc;
+  int dc          = sp[0];
+  sp[0]           = static_cast<int16_t>(sp[0] - prev_dc);
+  prev_dc         = dc;
+  uint64_t bitmap = 0;
   for (int i = 0; i < DCTSIZE2; ++i) {
     dp[i] = sp[scan[i]];
+    bitmap |= (dp[i] != 0);
+    bitmap <<= 1;
   }
-  int run = 0;
+  int32_t s;
   //  Branchless abs:
   //  https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
-  uint32_t uval = (dp[0] + (dp[0] >> 31)) ^ (dp[0] >> 31);
-  int16_t s     = 0;
-  int bound     = 1;
-  while (uval >= bound) {
-    bound += bound;
-    s++;
+  uint32_t uval = (dp[0] + (dp[0] >> 15)) ^ (dp[0] >> 15);
+  s             = 32 - JPEGENC_CLZ32(uval);
+
+  //  EncodeDC
+  enc.put_bits(DC_cwd[c][s], DC_len[c][s]);
+  if (s != 0) {
+    dp[0] -= (dp[0] >> 15) & 1;
+    enc.put_bits(dp[0], s);
   }
-  EncodeDC(dp[0], s, DC_cwd[c], DC_len[c], enc);
-  int ac;
-  for (int i = 1; i < 64; ++i) {
-    ac = dp[i];
-    if (ac == 0) {
-      run++;
-    } else {
-      while (run > 15) {
-        // ZRL
-        EncodeAC(0xF, 0x0, 0, AC_cwd[c], AC_len[c], enc);
-        run -= 16;
-      }
-      s     = 0;
-      bound = 1;
-      uval  = (ac + (ac >> 31)) ^ (ac >> 31);
-      while (uval >= bound) {
-        bound += bound;
-        s++;
-      }
-      EncodeAC(run, ac, s, AC_cwd[c], AC_len[c], enc);
-      run = 0;
+
+  int count = 1;
+  int run;
+  while (bitmap != 0) {
+    run = JPEGENC_CLZ64(bitmap);
+    count += run;
+    bitmap <<= run;
+    while (run > 15) {
+      // ZRL
+      enc.put_bits(AC_cwd[c][0xF0], AC_len[c][0xF0]);
+      run -= 16;
     }
+    // Encode AC
+    uval = (dp[count] + (dp[count] >> 15)) ^ (dp[count] >> 15);
+    s    = 32 - JPEGENC_CLZ32(uval);
+    enc.put_bits(AC_cwd[c][(run << 4) + s], AC_len[c][(run << 4) + s]);
+    dp[count] -= (dp[count] >> 15) & 1;
+    enc.put_bits(dp[count], s);
+    count++;
+    bitmap <<= 1;
   }
-  if (run) {
+  if (count != 64) {
     // EOB
-    EncodeAC(0x0, 0x0, 0, AC_cwd[c], AC_len[c], enc);
+    enc.put_bits(AC_cwd[c][0x00], AC_len[c][0x00]);
   }
 }
 #endif
