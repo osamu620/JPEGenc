@@ -96,20 +96,21 @@ class bitstream {
   inline void put_bits(uint32_t cwd, int32_t len) {
     assert(len > 0);
 #if not defined(NAIVE)
-    if ((bits + len) < 64) {
+    const int32_t exlen = bits + len;
+    if (exlen < 64) {
       tmp <<= len;
       tmp |= (uint64_t)cwd & ((1 << len) - 1);
-      bits += len;
+      bits = exlen;
     } else {
       tmp <<= 64 - bits;
-      uint64_t mask = (~(0xFFFFFFFFU << (bits + len - 64)));
+      uint64_t mask = (~(0xFFFFFFFFFFFFFFFFU << (exlen - 64)));
       uint64_t val  = cwd & mask;
       cwd &= ((1 << len) - 1);
-      cwd >>= (bits + len - 64);
+      cwd >>= (exlen - 64);
       tmp |= cwd;
       emit_qword(tmp);
       tmp  = val;
-      bits = bits + len - 64;
+      bits = exlen - 64;
     }
 #else
     while (len) {

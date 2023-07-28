@@ -32,7 +32,6 @@ class jpeg_encoder_impl {
   std::vector<int16_t *> yuv;
   HWY_ALIGN int qtable_L[64];
   HWY_ALIGN int qtable_C[64];
-  std::vector<int> prev_dc;
   bitstream enc;
   bool use_RESET;
 
@@ -47,7 +46,6 @@ class jpeg_encoder_impl {
         yuv(image.get_num_comps()),
         qtable_L{0},
         qtable_C{0},
-        prev_dc(3, 0),
         use_RESET(false) {
     int nc = image.get_num_comps();
     if (nc == 1) {
@@ -86,6 +84,7 @@ class jpeg_encoder_impl {
                                  (const uint8_t *)DC_len[0], (const uint8_t *)AC_len[0]);
     jpegenc_hwy::huff_info tab_C((const uint16_t *)DC_cwd[1], (const uint16_t *)AC_cwd[1],
                                  (const uint8_t *)DC_len[1], (const uint8_t *)AC_len[1]);
+    std::vector<int> prev_dc(3, 0);
     for (int n = 0; n < height / LINES; ++n) {
       uint8_t *src = image.get_lines_from(n);
       if (image.get_num_comps() == 3) {
