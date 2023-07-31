@@ -135,6 +135,7 @@ void create_DHT(int c, bitstream &enc) {
 }
 
 void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc, bool use_RESET) {
+  enc.put_word(SOI);
   const int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int qtable[64];
   auto create_qtable_DQT = [](int c, int QF, int *qtable) {
