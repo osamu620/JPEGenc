@@ -591,28 +591,28 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb60, cb70)), BitCast(s16, Add(cb61, cb71))), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
           // clang-format on
 
-          auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr20 = Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr21 = Sub(PromoteTo(s16, UpperHalf(u8, v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr30 = Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr31 = Sub(PromoteTo(s16, UpperHalf(u8, v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr40 = Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr41 = Sub(PromoteTo(s16, UpperHalf(u8, v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr50 = Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr51 = Sub(PromoteTo(s16, UpperHalf(u8, v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr60 = Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr61 = Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          auto cr71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb01 = Sub(PromoteTo(s16, UpperHalf(u8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb11 = Sub(PromoteTo(s16, UpperHalf(u8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb20 = Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb21 = Sub(PromoteTo(s16, UpperHalf(u8, v2_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb30 = Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb31 = Sub(PromoteTo(s16, UpperHalf(u8, v3_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb40 = Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb41 = Sub(PromoteTo(s16, UpperHalf(u8, v4_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb50 = Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb51 = Sub(PromoteTo(s16, UpperHalf(u8, v5_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb60 = Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb61 = Sub(PromoteTo(s16, UpperHalf(u8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb71 = Sub(PromoteTo(s16, UpperHalf(u8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
 
           // clang-format off
-          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr00, cr10)), BitCast(s16, Add(cr01, cr11))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr20, cr30)), BitCast(s16, Add(cr21, cr31))), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr40, cr50)), BitCast(s16, Add(cr41, cr51))), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cr60, cr70)), BitCast(s16, Add(cr61, cr71))), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb00, cb10)), BitCast(s16, Add(cb01, cb11))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb20, cb30)), BitCast(s16, Add(cb21, cb31))), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb40, cb50)), BitCast(s16, Add(cb41, cb51))), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb60, cb70)), BitCast(s16, Add(cb61, cb71))), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
           // clang-format on
 
           pos += 128;
