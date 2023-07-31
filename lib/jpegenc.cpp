@@ -25,6 +25,7 @@ class jpeg_encoder_impl {
   imchunk image;
   const int width;
   const int height;
+  const int ncomp;
   int QF;
   int YCCtype;
   std::vector<std::unique_ptr<int16_t[], hwy::AlignedFreer>> line_buffer;
@@ -36,18 +37,19 @@ class jpeg_encoder_impl {
   bool use_RESET;
 
  public:
-  jpeg_encoder_impl(const std::string &infile, int &qf, int &ycc)
-      : image(infile),
-        width(image.get_width()),
-        height(image.get_height()),
+  jpeg_encoder_impl(im_info &inimg, int &qf, int &ycc)
+      : image(inimg.data, inimg.width, inimg.height, inimg.nc),
+        width(inimg.width),
+        height(inimg.height),
+        ncomp(inimg.nc),
         QF(qf),
         YCCtype(ycc),
-        line_buffer(image.get_num_comps()),
-        yuv(image.get_num_comps()),
+        line_buffer(ncomp),
+        yuv(ncomp),
         qtable_L{0},
         qtable_C{0},
         use_RESET(false) {
-    int nc = image.get_num_comps();
+    int nc = inimg.nc;
     if (nc == 1) {
       YCCtype = YCC::GRAY;
     }
@@ -85,9 +87,9 @@ class jpeg_encoder_impl {
     jpegenc_hwy::huff_info tab_C((const uint16_t *)DC_cwd[1], (const uint16_t *)AC_cwd[1],
                                  (const uint8_t *)DC_len[1], (const uint8_t *)AC_len[1]);
     std::vector<int> prev_dc(3, 0);
-    for (int n = 0; n < height / LINES; ++n) {
+    for (int n = 0; n < height; n += LINES) {
       uint8_t *src = image.get_lines_from(n);
-      if (image.get_num_comps() == 3) {
+      if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, width);
       }
       jpegenc_hwy::subsample(src, yuv, width, YCCtype);
@@ -103,23 +105,15 @@ class jpeg_encoder_impl {
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
   }
 
-  [[nodiscard]] int32_t get_width() const { return width; }
-
-  [[nodiscard]] int32_t get_height() const { return height; }
-
   ~jpeg_encoder_impl() = default;
 };
 
 /**********************************************************************************************************************/
 // Public interface
 /**********************************************************************************************************************/
-JPEGENC_EXPORT jpeg_encoder::jpeg_encoder(const std::string &infile, int &QF, int &YCCtype) {
-  this->impl = std::make_unique<jpeg_encoder_impl>(infile, QF, YCCtype);
+JPEGENC_EXPORT jpeg_encoder::jpeg_encoder(im_info &inimg, int &QF, int &YCCtype) {
+  this->impl = std::make_unique<jpeg_encoder_impl>(inimg, QF, YCCtype);
 }
-
-JPEGENC_EXPORT int32_t jpeg_encoder::get_width() { return this->impl->get_width(); }
-
-JPEGENC_EXPORT int32_t jpeg_encoder::get_height() { return this->impl->get_height(); }
 
 JPEGENC_EXPORT void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
 

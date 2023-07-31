@@ -8,7 +8,6 @@
 #include <hwy/aligned_allocator.h>
 
 #include "constants.hpp"
-#include "pnm.hpp"
 
 class imchunk {
  private:
@@ -20,17 +19,13 @@ class imchunk {
   int32_t cur_line;
 
  public:
-  explicit imchunk(const std::string &name) : width(0), height(0), ncomp(1), cur_line(0) {
-    g_buf = read_pnm(name, width, height, ncomp);
-    buf   = hwy::AllocateAligned<uint8_t>(width * ncomp * LINES);
+  explicit imchunk(uint8_t *imdata, const int w, const int h, const int nc)
+      : width(w), height(h), ncomp(nc), g_buf(imdata), cur_line(0) {
+    buf = hwy::AllocateAligned<uint8_t>(width * ncomp * LINES);
   }
 
-  [[nodiscard]] int get_width() const { return width; }
-  [[nodiscard]] int get_height() const { return height; }
-  [[nodiscard]] int get_num_comps() const { return ncomp; }
-
   uint8_t *get_lines_from(int n) {
-    cur_line = n * LINES;
+    cur_line = n;
     if (cur_line > height) {
       std::cerr << "ERROR: Exceed height of the image." << std::endl;
       exit(EXIT_FAILURE);
@@ -41,7 +36,7 @@ class imchunk {
   }
 
   ~imchunk() {
-    std::free(g_buf);
+    //    std::free(g_buf);
     //    delete[] buf;
   }
 };
