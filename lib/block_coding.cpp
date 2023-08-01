@@ -194,13 +194,12 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   Store(BitCast(s16, row6_diff), s16, dp + 6 * DCTSIZE);
   Store(BitCast(s16, row7_diff), s16, dp + 7 * DCTSIZE);
 
-  bitmap <<= 1;
-
   // EncodeDC
   enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);
-  if (bits[0] != 0) {
+  if (bitmap & 0x8000000000000000) {
     enc.put_bits(dp[0], bits[0]);
   }
+  bitmap <<= 1;
 
   int count = 1;
   int run;
