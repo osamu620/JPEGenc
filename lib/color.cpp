@@ -20,21 +20,12 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   const hn::ScalableTag<uint16_t> d16;
   const hn::ScalableTag<int16_t> s16;
 
-  HWY_ALIGN constexpr uint16_t constants[8] = {19595, 38470 - 32768, 7471,  11056,
-                                               21712, 32768,         27440, 5328};
-
-  auto v0                      = Undefined(d8);
-  auto v1                      = Undefined(d8);
-  auto v2                      = Undefined(d8);
-  auto coeff0                  = Set(d16, constants[0]);
-  auto coeff1                  = Set(d16, constants[1]);
-  auto coeff2                  = Set(d16, constants[2]);
-  auto coeff3                  = Set(d16, constants[3]);
-  auto coeff4                  = Set(d16, constants[4]);
-  [[maybe_unused]] auto coeff5 = Set(d16, constants[5]);
-  auto coeff6                  = Set(d16, constants[6]);
-  auto coeff7                  = Set(d16, constants[7]);
-  auto scaled_128              = Set(d16, 128 << 1);
+  HWY_ALIGN constexpr int16_t constants[8] = {19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328};
+  const auto coeffs                        = Load(s16, constants);
+  auto v0                                  = Undefined(d8);
+  auto v1                                  = Undefined(d8);
+  auto v2                                  = Undefined(d8);
+  auto scaled_128                          = Set(d16, 128 << 1);
   for (size_t i = width * LINES; i > 0; i -= Lanes(d8)) {
     LoadInterleaved3(d8, in, v0, v1, v2);
     auto r_l = PromoteTo(d16, LowerHalf(v0));
@@ -43,30 +34,31 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     auto r_h = PromoteTo(d16, UpperHalf(d8, v0));
     auto g_h = PromoteTo(d16, UpperHalf(d8, v1));
     auto b_h = PromoteTo(d16, UpperHalf(d8, v2));
-    auto yl  = BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), BitCast(s16, coeff0)));
-    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff1))));
-    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), BitCast(s16, coeff2))));
+    // clang-format off
+    auto yl  = BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), hn::BroadcastLane<0>(coeffs)));
+    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), hn::BroadcastLane<1>(coeffs))));
+    yl       = Add(yl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), hn::BroadcastLane<2>(coeffs))));
     //    yl       = ShiftRight<1>(Add(Add(yl, g_l), half));
     yl      = AverageRound(yl, g_l);
-    auto yh = BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), BitCast(s16, coeff0)));
-    yh      = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff1))));
-    yh      = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), BitCast(s16, coeff2))));
+    auto yh = BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), hn::BroadcastLane<0>(coeffs)));
+    yh      = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), hn::BroadcastLane<1>(coeffs))));
+    yh      = Add(yh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), hn::BroadcastLane<2>(coeffs))));
     yh      = AverageRound(yh, g_h);
 
-    auto cbl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), BitCast(s16, coeff3))));
-    cbl      = Sub(cbl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff4))));
+    auto cbl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_l), hn::BroadcastLane<3>(coeffs))));
+    cbl      = Sub(cbl, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), hn::BroadcastLane<4>(coeffs))));
     cbl      = AverageRound(b_l, cbl);
-    auto cbh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), BitCast(s16, coeff3))));
-    cbh      = Sub(cbh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff4))));
+    auto cbh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, r_h), hn::BroadcastLane<3>(coeffs))));
+    cbh      = Sub(cbh, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), hn::BroadcastLane<4>(coeffs))));
     cbh      = AverageRound(b_h, cbh);
 
-    auto crl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), BitCast(s16, coeff6))));
-    crl      = Sub(crl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), BitCast(s16, coeff7))));
+    auto crl = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_l), hn::BroadcastLane<6>(coeffs))));
+    crl      = Sub(crl, BitCast(d16, MulFixedPoint15(BitCast(s16, b_l), hn::BroadcastLane<7>(coeffs))));
     crl      = AverageRound(r_l, crl);
-    auto crh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), BitCast(s16, coeff6))));
-    crh      = Sub(crh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), BitCast(s16, coeff7))));
+    auto crh = Sub(scaled_128, BitCast(d16, MulFixedPoint15(BitCast(s16, g_h), hn::BroadcastLane<6>(coeffs))));
+    crh      = Sub(crh, BitCast(d16, MulFixedPoint15(BitCast(s16, b_h), hn::BroadcastLane<7>(coeffs))));
     crh      = AverageRound(r_h, crh);
-
+    // clang-format on
     v0 = OrderedTruncate2To(d8, yl, yh);
     v1 = OrderedDemote2To(d8, cbl, cbh);
     v2 = OrderedDemote2To(d8, crl, crh);
