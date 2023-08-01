@@ -27,10 +27,8 @@ HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qta
     auto vl = PromoteTo(d32, LowerHalf(v));
     auto vh = PromoteTo(d32, UpperHalf(d16, v));
 
-    vl = Mul(vl, ql);
-    vh = Mul(vh, qh);
-    vl = Add(vl, half);
-    vh = Add(vh, half);
+    vl = MulAdd(vl, ql, half);
+    vh = MulAdd(vh, qh, half);
     vl = hn::ShiftRight<16>(vl);
     vh = hn::ShiftRight<16>(vh);
     Store(OrderedDemote2To(d16, vl, vh), d16, in);
