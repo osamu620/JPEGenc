@@ -32,6 +32,7 @@ HWY_ALIGN constexpr int16_t indices[] = {
 #if HWY_TARGET != HWY_SCALAR
 HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   HWY_CAPPED(uint8_t, 16) u8;
+  HWY_CAPPED(int8_t, 16) s8;
   HWY_CAPPED(uint8_t, 8) u8_64;
   HWY_CAPPED(uint64_t, 1) u64_64;
   HWY_CAPPED(uint16_t, 8) u16;
@@ -51,50 +52,170 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto v6 = hn::Load(s16, sp + 48);
   auto v7 = hn::Load(s16, sp + 56);
 
-  auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
-  row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
-  auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
-  auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
-  auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
-  auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
-  auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
-  auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
-  auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
-  auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
-  auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
-  auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
-  auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
-  row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
+  //  auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
+  //  row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
+  //  auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
+  //  auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
+  //  auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
+  //  auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
+  //  auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+  //  auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
+  //  auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
+  //  auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
+  //  auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
+  //  auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
+  //  auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
+  //  row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
+  //
+  //  auto m5                     = FirstN(s16, 5);
+  //  auto m3                     = FirstN(s16, 3);
+  //  HWY_ALIGN uint8_t mask34[8] = {0b00111100};
+  //  auto m34                    = LoadMaskBits(s16, mask34);
+  //
+  //  row1   = IfThenZeroElse(m5, row1);
+  //  row1_1 = IfThenElseZero(m5, row1_1);
+  //  row1   = Or(row1, row1_1);
+  //  row1   = InsertLane(row1, 2, ExtractLane(v4, 0));
+  //  row2   = IfThenZeroElse(m3, row2);
+  //  row2   = InsertLane(row2, 0, ExtractLane(v1, 4));
+  //  row2   = InsertLane(row2, 1, ExtractLane(v2, 3));
+  //  row2   = InsertLane(row2, 2, ExtractLane(v3, 2));
+  //  row2   = InsertLane(row2, 5, ExtractLane(v6, 0));
+  //  row3   = IfThenZeroElse(m34, row3);
+  //  row3_1 = IfThenElseZero(m34, row3_1);
+  //  row3   = Or(row3, row3_1);
+  //  row4   = IfThenZeroElse(m34, row4);
+  //  row4_1 = IfThenElseZero(m34, row4_1);
+  //  row4   = Or(row4, row4_1);
+  //  row5   = IfThenZeroElse(Not(m5), row5);
+  //  row5   = InsertLane(row5, 2, ExtractLane(v1, 7));
+  //  row5   = InsertLane(row5, 5, ExtractLane(v4, 5));
+  //  row5   = InsertLane(row5, 6, ExtractLane(v5, 4));
+  //  row5   = InsertLane(row5, 7, ExtractLane(v6, 3));
+  //  row6   = IfThenZeroElse(m3, row6);
+  //  row6_1 = IfThenElseZero(m3, row6_1);
+  //  row6   = Or(row6, row6_1);
+  //  row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
 
-  auto m5                     = FirstN(s16, 5);
-  auto m3                     = FirstN(s16, 3);
-  HWY_ALIGN uint8_t mask34[8] = {0b00111100};
-  auto m34                    = LoadMaskBits(s16, mask34);
+  // clang-format off
+              HWY_ALIGN int8_t idx[] = {
+                      0, 1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, -1, -1,
+                      -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5,
+                      -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, 10, 11,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1, -1, -1,
+                      2, 3, -1, -1, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1,
+                      -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5,
+                      -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1,
+                      -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1,
+                      6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9,
+                      -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1,
+                      -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1,
+                      10, 11, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7,
+                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1,
+                      -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13,
+                      -1, -1, -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      4, 5, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                      -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1,
+                      10, 11, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1,
+                      -1, -1, 8, 9, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13, 14, 15
+              };
+  // clang-format on
 
-  row1   = IfThenZeroElse(m5, row1);
-  row1_1 = IfThenElseZero(m5, row1_1);
-  row1   = Or(row1, row1_1);
-  row1   = InsertLane(row1, 2, ExtractLane(v4, 0));
-  row2   = IfThenZeroElse(m3, row2);
-  row2   = InsertLane(row2, 0, ExtractLane(v1, 4));
-  row2   = InsertLane(row2, 1, ExtractLane(v2, 3));
-  row2   = InsertLane(row2, 2, ExtractLane(v3, 2));
-  row2   = InsertLane(row2, 5, ExtractLane(v6, 0));
-  row3   = IfThenZeroElse(m34, row3);
-  row3_1 = IfThenElseZero(m34, row3_1);
-  row3   = Or(row3, row3_1);
-  row4   = IfThenZeroElse(m34, row4);
-  row4_1 = IfThenElseZero(m34, row4_1);
-  row4   = Or(row4, row4_1);
-  row5   = IfThenZeroElse(Not(m5), row5);
-  row5   = InsertLane(row5, 2, ExtractLane(v1, 7));
-  row5   = InsertLane(row5, 5, ExtractLane(v4, 5));
-  row5   = InsertLane(row5, 6, ExtractLane(v5, 4));
-  row5   = InsertLane(row5, 7, ExtractLane(v6, 3));
-  row6   = IfThenZeroElse(m3, row6);
-  row6_1 = IfThenElseZero(m3, row6_1);
-  row6   = Or(row6, row6_1);
-  row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
+  auto t0   = TableLookupBytesOr0(v0, Load(s8, idx + 16 * 0));
+  auto t1   = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 1));
+  auto t    = Or(t0, t1);
+  auto t2   = TableLookupBytesOr0(v2, Load(s8, idx + 16 * 2));
+  t         = Or(t, t2);
+  auto row0 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v0, Load(s8, idx + 16 * 3));
+  t1        = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 4));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v2, Load(s8, idx + 16 * 5));
+  t         = Or(t, t2);
+  auto t3   = TableLookupBytesOr0(v3, Load(s8, idx + 16 * 6));
+  t         = Or(t, t3);
+  auto t4   = TableLookupBytesOr0(v4, Load(s8, idx + 16 * 7));
+  t         = Or(t, t4);
+  auto row1 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 8));
+  t1        = TableLookupBytesOr0(v2, Load(s8, idx + 16 * 9));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v3, Load(s8, idx + 16 * 10));
+  t         = Or(t, t2);
+  t3        = TableLookupBytesOr0(v4, Load(s8, idx + 16 * 11));
+  t         = Or(t, t3);
+  t4        = TableLookupBytesOr0(v5, Load(s8, idx + 16 * 12));
+  t         = Or(t, t4);
+  auto t5   = TableLookupBytesOr0(v6, Load(s8, idx + 16 * 13));
+  t         = Or(t, t5);
+  auto row2 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v0, Load(s8, idx + 16 * 14));
+  t1        = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 15));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v2, Load(s8, idx + 16 * 16));
+  t         = Or(t, t2);
+  t3        = TableLookupBytesOr0(v3, Load(s8, idx + 16 * 17));
+  t         = Or(t, t3);
+  auto row3 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v4, Load(s8, idx + 16 * 17));
+  t1        = TableLookupBytesOr0(v5, Load(s8, idx + 16 * 18));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v6, Load(s8, idx + 16 * 19));
+  t         = Or(t, t2);
+  t3        = TableLookupBytesOr0(v7, Load(s8, idx + 16 * 20));
+  t         = Or(t, t3);
+  auto row4 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 21));
+  t1        = TableLookupBytesOr0(v2, Load(s8, idx + 16 * 22));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v3, Load(s8, idx + 16 * 23));
+  t         = Or(t, t2);
+  t3        = TableLookupBytesOr0(v4, Load(s8, idx + 16 * 24));
+  t         = Or(t, t3);
+  t4        = TableLookupBytesOr0(v5, Load(s8, idx + 16 * 25));
+  t         = Or(t, t4);
+  t5        = TableLookupBytesOr0(v6, Load(s8, idx + 16 * 26));
+  t         = Or(t, t5);
+  auto row5 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v3, Load(s8, idx + 16 * 27));
+  t1        = TableLookupBytesOr0(v4, Load(s8, idx + 16 * 28));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v5, Load(s8, idx + 16 * 29));
+  t         = Or(t, t2);
+  t3        = TableLookupBytesOr0(v6, Load(s8, idx + 16 * 30));
+  t         = Or(t, t3);
+  t4        = TableLookupBytesOr0(v7, Load(s8, idx + 16 * 31));
+  t         = Or(t, t4);
+  auto row6 = BitCast(s16, t);
+
+  t0        = TableLookupBytesOr0(v5, Load(s8, idx + 16 * 32));
+  t1        = TableLookupBytesOr0(v6, Load(s8, idx + 16 * 33));
+  t         = Or(t0, t1);
+  t2        = TableLookupBytesOr0(v7, Load(s8, idx + 16 * 34));
+  t         = Or(t, t2);
+  auto row7 = BitCast(s16, t);
   /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
   /* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
