@@ -13,22 +13,64 @@ namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
+#if 0
 // clang-format off
-HWY_ALIGN constexpr int16_t indices[] = {
-        0, 1, 8, 0, 9, 2, 3, 10,
-        0, 0, 0, 0, 0, 11, 4, 5,
-        1, 8, 0, 9, 2, 0, 0, 0,
-        0, 0, 0, 1, 8, 0, 9, 2,
-        11, 4, 0, 0, 0, 0, 5, 12,
-        0, 0, 13, 6, 7, 14, 0, 0,
-        3, 10, 0, 0, 0, 0, 11, 4,
-        0, 0, 1, 8, 9, 2, 0, 0,
-        13, 6, 0, 7, 14, 0, 0, 0,
-        0, 0, 0, 13, 6, 0, 7, 14,
-        10, 11, 4, 0, 0, 0, 0, 0,
-        5, 12, 13, 6, 0, 7, 14, 15
-};
+ HWY_ALIGN constexpr int16_t indices[] = {
+         0, 1, 8, 0, 9, 2, 3, 10,
+         0, 0, 0, 0, 0, 11, 4, 5,
+         1, 8, 0, 9, 2, 0, 0, 0,
+         0, 0, 0, 1, 8, 0, 9, 2,
+         11, 4, 0, 0, 0, 0, 5, 12,
+         0, 0, 13, 6, 7, 14, 0, 0,
+         3, 10, 0, 0, 0, 0, 11, 4,
+         0, 0, 1, 8, 9, 2, 0, 0,
+         13, 6, 0, 7, 14, 0, 0, 0,
+         0, 0, 0, 13, 6, 0, 7, 14,
+         10, 11, 4, 0, 0, 0, 0, 0,
+         5, 12, 13, 6, 0, 7, 14, 15
+ };
 // clang-format on
+#else
+// clang-format off
+        HWY_ALIGN constexpr int8_t idx[] = {
+                0, 1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, -1, -1,
+                -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5,
+                -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, 10, 11,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1, -1, -1,
+                2, 3, -1, -1, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1,
+                -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5,
+                -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1,
+                -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1,
+                6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9,
+                -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1,
+                -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1,
+                10, 11, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7,
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1,
+                -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13,
+                -1, -1, -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                4, 5, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1,
+                10, 11, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1,
+                -1, -1, 8, 9, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13, 14, 15
+        };
+// clang-format on
+#endif
 #if HWY_TARGET != HWY_SCALAR
 HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   HWY_CAPPED(uint8_t, 16) u8;
@@ -52,90 +94,52 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto v6 = hn::Load(s16, sp + 48);
   auto v7 = hn::Load(s16, sp + 56);
 
-  //  auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
-  //  row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
-  //  auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
-  //  auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
-  //  auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
-  //  auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
-  //  auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
-  //  auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
-  //  auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
-  //  auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
-  //  auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
-  //  auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
-  //  auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
-  //  row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
-  //
-  //  auto m5                     = FirstN(s16, 5);
-  //  auto m3                     = FirstN(s16, 3);
-  //  HWY_ALIGN uint8_t mask34[8] = {0b00111100};
-  //  auto m34                    = LoadMaskBits(s16, mask34);
-  //
-  //  row1   = IfThenZeroElse(m5, row1);
-  //  row1_1 = IfThenElseZero(m5, row1_1);
-  //  row1   = Or(row1, row1_1);
-  //  row1   = InsertLane(row1, 2, ExtractLane(v4, 0));
-  //  row2   = IfThenZeroElse(m3, row2);
-  //  row2   = InsertLane(row2, 0, ExtractLane(v1, 4));
-  //  row2   = InsertLane(row2, 1, ExtractLane(v2, 3));
-  //  row2   = InsertLane(row2, 2, ExtractLane(v3, 2));
-  //  row2   = InsertLane(row2, 5, ExtractLane(v6, 0));
-  //  row3   = IfThenZeroElse(m34, row3);
-  //  row3_1 = IfThenElseZero(m34, row3_1);
-  //  row3   = Or(row3, row3_1);
-  //  row4   = IfThenZeroElse(m34, row4);
-  //  row4_1 = IfThenElseZero(m34, row4_1);
-  //  row4   = Or(row4, row4_1);
-  //  row5   = IfThenZeroElse(Not(m5), row5);
-  //  row5   = InsertLane(row5, 2, ExtractLane(v1, 7));
-  //  row5   = InsertLane(row5, 5, ExtractLane(v4, 5));
-  //  row5   = InsertLane(row5, 6, ExtractLane(v5, 4));
-  //  row5   = InsertLane(row5, 7, ExtractLane(v6, 3));
-  //  row6   = IfThenZeroElse(m3, row6);
-  //  row6_1 = IfThenElseZero(m3, row6_1);
-  //  row6   = Or(row6, row6_1);
-  //  row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
+  #if 0
+  auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
+  row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
+  auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
+  auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
+  auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
+  auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
+  auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+  auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
+  auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
+  auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
+  auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
+  auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
+  auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
+  row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
 
-  // clang-format off
-              HWY_ALIGN int8_t idx[] = {
-                      0, 1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, -1, -1,
-                      -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5,
-                      -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, 10, 11,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1, -1, -1,
-                      2, 3, -1, -1, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1,
-                      -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5,
-                      -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1,
-                      -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1,
-                      6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9,
-                      -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1,
-                      -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1,
-                      10, 11, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7,
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1,
-                      -1, -1, -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13,
-                      -1, -1, -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      4, 5, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                      -1, -1, -1, -1, -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1,
-                      10, 11, -1, -1, -1, -1, 12, 13, -1, -1, 14, 15, -1, -1, -1, -1,
-                      -1, -1, 8, 9, 10, 11, -1, -1, -1, -1, -1, -1, 12, 13, 14, 15
-              };
-  // clang-format on
+  auto m5                     = FirstN(s16, 5);
+  auto m3                     = FirstN(s16, 3);
+  HWY_ALIGN uint8_t mask34[8] = {0b00111100};
+  auto m34                    = LoadMaskBits(s16, mask34);
+
+  row1   = IfThenZeroElse(m5, row1);
+  row1_1 = IfThenElseZero(m5, row1_1);
+  row1   = Or(row1, row1_1);
+  row1   = InsertLane(row1, 2, ExtractLane(v4, 0));
+  row2   = IfThenZeroElse(m3, row2);
+  row2   = InsertLane(row2, 0, ExtractLane(v1, 4));
+  row2   = InsertLane(row2, 1, ExtractLane(v2, 3));
+  row2   = InsertLane(row2, 2, ExtractLane(v3, 2));
+  row2   = InsertLane(row2, 5, ExtractLane(v6, 0));
+  row3   = IfThenZeroElse(m34, row3);
+  row3_1 = IfThenElseZero(m34, row3_1);
+  row3   = Or(row3, row3_1);
+  row4   = IfThenZeroElse(m34, row4);
+  row4_1 = IfThenElseZero(m34, row4_1);
+  row4   = Or(row4, row4_1);
+  row5   = IfThenZeroElse(Not(m5), row5);
+  row5   = InsertLane(row5, 2, ExtractLane(v1, 7));
+  row5   = InsertLane(row5, 5, ExtractLane(v4, 5));
+  row5   = InsertLane(row5, 6, ExtractLane(v5, 4));
+  row5   = InsertLane(row5, 7, ExtractLane(v6, 3));
+  row6   = IfThenZeroElse(m3, row6);
+  row6_1 = IfThenElseZero(m3, row6_1);
+  row6   = Or(row6, row6_1);
+  row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
+  #else
 
   auto t0   = TableLookupBytesOr0(v0, Load(s8, idx + 16 * 0));
   auto t1   = TableLookupBytesOr0(v1, Load(s8, idx + 16 * 1));
@@ -216,6 +220,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   t2        = TableLookupBytesOr0(v7, Load(s8, idx + 16 * 34));
   t         = Or(t, t2);
   auto row7 = BitCast(s16, t);
+  #endif
   /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
   /* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
