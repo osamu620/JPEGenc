@@ -254,7 +254,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto bitmap_rows_3210     = Padd(u8, bitmap_rows_32, bitmap_rows_10);
   auto bitmap_rows_7654     = Padd(u8, bitmap_rows_76, bitmap_rows_54);
   auto bitmap_rows_76543210 = Padd(u8, bitmap_rows_7654, bitmap_rows_3210);
-  auto bitmap_all = Padd(u8_64, LowerHalf(bitmap_rows_76543210), UpperHalf(u8, bitmap_rows_76543210));
+  auto bitmap_all = Padd(u8_64, LowerHalf(bitmap_rows_76543210), UpperHalf(u8_64, bitmap_rows_76543210));
   /* Move bitmap to 64-bit scalar register. */
   uint64_t bitmap = GetLane(BitCast(u64_64, bitmap_all));
   HWY_ALIGN uint8_t bits[64];
