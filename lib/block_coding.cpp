@@ -33,25 +33,25 @@ namespace hn = hwy::HWY_NAMESPACE;
 #else
 // clang-format off
         HWY_ALIGN constexpr int8_t idx[] = {
-                0, 1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, -1, -1,
-                -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5,
-                -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, 10, 11,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1, -1, -1,
-                2, 3, -1, -1, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1,
-                -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5,
-                -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1,
-                -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1,
-                6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9,
-                -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1,
+                0, 1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, -1, -1,         //0
+                -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5,       //1
+                -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1,   //2
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9, 10, 11,   //3
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1, -1, -1,   //4
+                2, 3, -1, -1, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1,     //5
+                -1, -1, 0, 1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1,     //6
+                -1, -1, -1, -1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   //7
+                8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   //8
+                -1, -1, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   //9
+                -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   //10
+                -1, -1, -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, -1, -1, 4, 5,     //11
+                -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, 2, 3, -1, -1,     //12
+                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, -1, -1, -1, -1,   //13
+                -1, -1, -1, -1, -1, -1, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, //14
+                -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, 12, 13, -1, -1, -1, -1, //15
+                -1, -1, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, -1, -1,   //16
+                6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 8, 9,     //17
+                -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 6, 7, -1, -1,     //18
                 -1, -1, -1, -1, 2, 3, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1,
                 -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, -1, -1, -1, -1, -1, -1,
                 -1, -1, -1, -1, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -227,18 +227,18 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
    * means that the corresponding coefficient != 0.
    */
   auto zero       = Zero(s16);
-  auto row0_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row0), zero));
-  auto row1_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row1), zero));
-  auto row2_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row2), zero));
-  auto row3_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row3), zero));
-  auto row4_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row4), zero));
-  auto row5_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row5), zero));
-  auto row6_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row6), zero));
-  auto row7_ne_0  = VecFromMask(s16, Lt(HighestSetBitIndex(row7), zero));
-  auto row10_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row0_ne_0), ResizeBitCast(u8, row1_ne_0));
-  auto row32_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row2_ne_0), ResizeBitCast(u8, row3_ne_0));
-  auto row54_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row4_ne_0), ResizeBitCast(u8, row5_ne_0));
-  auto row76_ne_0 = ConcatEven(u8, ResizeBitCast(u8, row6_ne_0), ResizeBitCast(u8, row7_ne_0));
+  auto row0_ne_0  = VecFromMask(s16, Eq(row0, zero));
+  auto row1_ne_0  = VecFromMask(s16, Eq(row1, zero));
+  auto row2_ne_0  = VecFromMask(s16, Eq(row2, zero));
+  auto row3_ne_0  = VecFromMask(s16, Eq(row3, zero));
+  auto row4_ne_0  = VecFromMask(s16, Eq(row4, zero));
+  auto row5_ne_0  = VecFromMask(s16, Eq(row5, zero));
+  auto row6_ne_0  = VecFromMask(s16, Eq(row6, zero));
+  auto row7_ne_0  = VecFromMask(s16, Eq(row7, zero));
+  auto row10_ne_0 = ConcatEven(u8, BitCast(u8, row0_ne_0), BitCast(u8, row1_ne_0));
+  auto row32_ne_0 = ConcatEven(u8, BitCast(u8, row2_ne_0), BitCast(u8, row3_ne_0));
+  auto row54_ne_0 = ConcatEven(u8, BitCast(u8, row4_ne_0), BitCast(u8, row5_ne_0));
+  auto row76_ne_0 = ConcatEven(u8, BitCast(u8, row6_ne_0), BitCast(u8, row7_ne_0));
 
   /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
   HWY_ALIGN constexpr uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
@@ -278,10 +278,10 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto row7_lz = LeadingZeroCount(abs_row7);
 
   /* Narrow leading zero count to 8 bits. */
-  auto row01_lz = ConcatEven(u8, ResizeBitCast(u8, row1_lz), ResizeBitCast(u8, row0_lz));
-  auto row23_lz = ConcatEven(u8, ResizeBitCast(u8, row3_lz), ResizeBitCast(u8, row2_lz));
-  auto row45_lz = ConcatEven(u8, ResizeBitCast(u8, row5_lz), ResizeBitCast(u8, row4_lz));
-  auto row67_lz = ConcatEven(u8, ResizeBitCast(u8, row7_lz), ResizeBitCast(u8, row6_lz));
+  auto row01_lz = ConcatEven(u8, BitCast(u8, row1_lz), BitCast(u8, row0_lz));
+  auto row23_lz = ConcatEven(u8, BitCast(u8, row3_lz), BitCast(u8, row2_lz));
+  auto row45_lz = ConcatEven(u8, BitCast(u8, row5_lz), BitCast(u8, row4_lz));
+  auto row67_lz = ConcatEven(u8, BitCast(u8, row7_lz), BitCast(u8, row6_lz));
   /* Compute nbits needed to specify magnitude of each coefficient. */
   auto row01_nbits = Sub(Set(u8, 16), row01_lz);
   auto row23_nbits = Sub(Set(u8, 16), row23_lz);
@@ -328,9 +328,8 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   bitmap <<= 1;
 
   int count = 1;
-  int run;
   while (bitmap != 0) {
-    run = JPEGENC_CLZ64(bitmap);
+    int run = JPEGENC_CLZ64(bitmap);
     count += run;
     bitmap <<= run;
     while (run > 15) {
@@ -339,7 +338,8 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
       run -= 16;
     }
     // EncodeAC
-    enc.put_bits(tab.AC_cwd[(run << 4) + bits[count]], tab.AC_len[(run << 4) + bits[count]]);
+    size_t RS = (run << 4) + bits[count];
+    enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
     enc.put_bits(dp[count], bits[count]);
     count++;
     bitmap <<= 1;

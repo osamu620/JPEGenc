@@ -2,7 +2,6 @@
 #include <hwy/aligned_allocator.h>
 #include <jpegenc.hpp>
 
-// #include "aligned_unique_ptr.hpp"
 #include "block_coding.hpp"
 #include "color.hpp"
 #include "dct.hpp"
@@ -29,7 +28,6 @@ class jpeg_encoder_impl {
   int QF;
   int YCCtype;
   std::vector<std::unique_ptr<int16_t[], hwy::AlignedFreer>> line_buffer;
-  //  std::vector<unique_ptr_aligned<int16_t>> line_buffer;
   std::vector<int16_t *> yuv;
   HWY_ALIGN int qtable_L[64];
   HWY_ALIGN int qtable_C[64];
@@ -64,21 +62,11 @@ class jpeg_encoder_impl {
     for (size_t c = 1; c < line_buffer.size(); ++c) {
       line_buffer[c] = hwy::AllocateAligned<int16_t>(bufsize_C);
     }
-    //    hn::ScalableTag<uint8_t> u8;
-    //    const size_t Nalign = hn::Lanes(u8);
-    //    line_buffer[0]      = aligned_uptr<int16_t>(Nalign, bufsize_L);
-    //    for (size_t c = 1; c < line_buffer.size(); ++c) {
-    //      line_buffer[c] = aligned_uptr<int16_t>(Nalign, bufsize_C);
-    //    }
 
     yuv[0] = line_buffer[0].get();
     for (int c = 1; c < nc; ++c) {
       yuv[c] = line_buffer[c].get();
     }
-
-    create_qtable(0, QF, qtable_L);
-    create_qtable(1, QF, qtable_C);
-    create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
   }
 
   void invoke(std::vector<uint8_t> &codestream) {
@@ -87,6 +75,13 @@ class jpeg_encoder_impl {
     jpegenc_hwy::huff_info tab_C((const uint16_t *)DC_cwd[1], (const uint16_t *)AC_cwd[1],
                                  (const uint8_t *)DC_len[1], (const uint8_t *)AC_len[1]);
     std::vector<int> prev_dc(3, 0);
+
+    // Prepare main-header
+    create_qtable(0, QF, qtable_L);
+    create_qtable(1, QF, qtable_C);
+    create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
+
+    // Encoding
     for (int n = 0; n < height; n += LINES) {
       uint8_t *src = image.get_lines_from(n);
       if (ncomp == 3) {
@@ -101,6 +96,7 @@ class jpeg_encoder_impl {
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
       }
     }
+
     // Finalize codestream
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
   }
