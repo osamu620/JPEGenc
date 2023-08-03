@@ -20,22 +20,20 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   const hn::ScalableTag<uint16_t> d16;
   const hn::ScalableTag<int16_t> s16;
 
-  HWY_ALIGN constexpr int16_t constants[] = {
-      19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
-      19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
-      19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
-      19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328
-      };
-  const auto coeffs                        = Load(s16, constants);
-  auto v0                                  = Undefined(d8);
-  auto v1                                  = Undefined(d8);
-  auto v2                                  = Undefined(d8);
-  auto scaled_128                          = Set(d16, 128 << 1);
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
+                                             19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
+                                             19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328,
+                                             19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328};
+  const auto coeffs                       = Load(s16, constants);
+  auto v0                                 = Undefined(d8);
+  auto v1                                 = Undefined(d8);
+  auto v2                                 = Undefined(d8);
+  auto scaled_128                         = Set(d16, 128 << 1);
   for (size_t i = width * LINES; i > 0; i -= Lanes(d8)) {
     LoadInterleaved3(d8, in, v0, v1, v2);
-    auto r_l = PromoteTo(d16, LowerHalf(v0));
-    auto g_l = PromoteTo(d16, LowerHalf(v1));
-    auto b_l = PromoteTo(d16, LowerHalf(v2));
+    auto r_l = PromoteLowerTo(d16, v0);
+    auto g_l = PromoteLowerTo(d16, v1);
+    auto b_l = PromoteLowerTo(d16, v2);
     auto r_h = PromoteUpperTo(d16, v0);
     auto g_h = PromoteUpperTo(d16, v1);
     auto b_h = PromoteUpperTo(d16, v2);
@@ -111,39 +109,23 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto v6 = Load(u8, sp + 6 * width * nc);
           auto v7 = Load(u8, sp + 7 * width * nc);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteLowerTo(s16, v0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 7);
           pos += 64;
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteUpperTo(s16, v1), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteUpperTo(s16, v2), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteUpperTo(s16, v3), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteUpperTo(s16, v4), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteUpperTo(s16, v5), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteUpperTo(s16, v6), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteUpperTo(s16, v7), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 7);
           pos += 64;
         }
       }
@@ -172,104 +154,56 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
           LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 15);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[1] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_1)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[1] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_1), PromoteLowerTo(s16, c128)), s16, out[1] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_1), PromoteUpperTo(s16, c128)), s16, out[1] + pos + 8 * 15);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[2] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_2)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[2] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_2), PromoteLowerTo(s16, c128)), s16, out[2] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_2), PromoteUpperTo(s16, c128)), s16, out[2] + pos + 8 * 15);
           pos += 128;
         }
       }
@@ -299,55 +233,39 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
           LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 15);
 
-          auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb20 = Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb30 = Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb40 = Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb50 = Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb60 = Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb70 = Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
+          auto cb00 = Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb01 = Sub(PromoteUpperTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb10 = Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb11 = Sub(PromoteUpperTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb20 = Sub(PromoteLowerTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb21 = Sub(PromoteUpperTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb30 = Sub(PromoteLowerTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb31 = Sub(PromoteUpperTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb40 = Sub(PromoteLowerTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb41 = Sub(PromoteUpperTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb50 = Sub(PromoteLowerTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb51 = Sub(PromoteUpperTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb60 = Sub(PromoteLowerTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb61 = Sub(PromoteUpperTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb70 = Sub(PromoteLowerTo(s16, v7_1), PromoteLowerTo(s16, c128));
+          auto cb71 = Sub(PromoteUpperTo(s16, v7_1), PromoteLowerTo(s16, c128));
 
           // clang-format off
           Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01)), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
@@ -360,22 +278,22 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           Store(hn::ShiftRight<1>(Add(Padd(s16, BitCast(s16, cb70), BitCast(s16, cb71)), vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
           // clang-format on
 
-          cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb20 = Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb30 = Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb40 = Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb50 = Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb60 = Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb00 = Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb01 = Sub(PromoteUpperTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb10 = Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb11 = Sub(PromoteUpperTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb20 = Sub(PromoteLowerTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb21 = Sub(PromoteUpperTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb30 = Sub(PromoteLowerTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb31 = Sub(PromoteUpperTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb40 = Sub(PromoteLowerTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb41 = Sub(PromoteUpperTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb50 = Sub(PromoteLowerTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb51 = Sub(PromoteUpperTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb60 = Sub(PromoteLowerTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb61 = Sub(PromoteUpperTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb70 = Sub(PromoteLowerTo(s16, v7_2), PromoteLowerTo(s16, c128));
+          cb71 = Sub(PromoteUpperTo(s16, v7_2), PromoteLowerTo(s16, c128));
 
           // clang-format off
           Store(hn::ShiftRight<1>(Add(Padd(s16, cb00, cb01), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
@@ -417,55 +335,39 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
           LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 15);
 
-          auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb20 = Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb30 = Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb40 = Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb50 = Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb60 = Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb70 = Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
+          auto cb00 = Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb01 = Sub(PromoteUpperTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb10 = Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb11 = Sub(PromoteUpperTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb20 = Sub(PromoteLowerTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb21 = Sub(PromoteUpperTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb30 = Sub(PromoteLowerTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb31 = Sub(PromoteUpperTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb40 = Sub(PromoteLowerTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb41 = Sub(PromoteUpperTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb50 = Sub(PromoteLowerTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb51 = Sub(PromoteUpperTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb60 = Sub(PromoteLowerTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb61 = Sub(PromoteUpperTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb70 = Sub(PromoteLowerTo(s16, v7_1), PromoteLowerTo(s16, c128));
+          auto cb71 = Sub(PromoteUpperTo(s16, v7_1), PromoteLowerTo(s16, c128));
 
           Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 0);
           Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 1);
@@ -476,22 +378,22 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 10);
           Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 11);
 
-          cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb20 = Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb30 = Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb40 = Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb50 = Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb60 = Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb00 = Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb01 = Sub(PromoteUpperTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb10 = Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb11 = Sub(PromoteUpperTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb20 = Sub(PromoteLowerTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb21 = Sub(PromoteUpperTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb30 = Sub(PromoteLowerTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb31 = Sub(PromoteUpperTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb40 = Sub(PromoteLowerTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb41 = Sub(PromoteUpperTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb50 = Sub(PromoteLowerTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb51 = Sub(PromoteUpperTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb60 = Sub(PromoteLowerTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb61 = Sub(PromoteUpperTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb70 = Sub(PromoteLowerTo(s16, v7_2), PromoteLowerTo(s16, c128));
+          cb71 = Sub(PromoteUpperTo(s16, v7_2), PromoteLowerTo(s16, c128));
 
           Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 0);
           Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 1);
@@ -531,56 +433,40 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
           LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
-          Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 0);
-          Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 1);
-          Store(Sub(PromoteTo(s16, LowerHalf(v2_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 2);
-          Store(Sub(PromoteTo(s16, LowerHalf(v3_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 3);
-          Store(Sub(PromoteTo(s16, LowerHalf(v4_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 4);
-          Store(Sub(PromoteTo(s16, LowerHalf(v5_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 5);
-          Store(Sub(PromoteTo(s16, LowerHalf(v6_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 6);
-          Store(Sub(PromoteTo(s16, LowerHalf(v7_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                out[0] + pos + 8 * 7);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 8);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 9);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v2_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 10);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v3_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 11);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v4_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 12);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v5_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 13);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v6_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 14);
-          Store(Sub(PromoteTo(s16, UpperHalf(h8, v7_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
-                out[0] + pos + 8 * 15);
+          Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 0);
+          Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 1);
+          Store(Sub(PromoteLowerTo(s16, v2_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 2);
+          Store(Sub(PromoteLowerTo(s16, v3_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 3);
+          Store(Sub(PromoteLowerTo(s16, v4_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 4);
+          Store(Sub(PromoteLowerTo(s16, v5_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 5);
+          Store(Sub(PromoteLowerTo(s16, v6_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 6);
+          Store(Sub(PromoteLowerTo(s16, v7_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + 8 * 7);
+          Store(Sub(PromoteUpperTo(s16, v0_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 8);
+          Store(Sub(PromoteUpperTo(s16, v1_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 9);
+          Store(Sub(PromoteUpperTo(s16, v2_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 10);
+          Store(Sub(PromoteUpperTo(s16, v3_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 11);
+          Store(Sub(PromoteUpperTo(s16, v4_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 12);
+          Store(Sub(PromoteUpperTo(s16, v5_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 13);
+          Store(Sub(PromoteUpperTo(s16, v6_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 14);
+          Store(Sub(PromoteUpperTo(s16, v7_0), PromoteUpperTo(s16, c128)), s16, out[0] + pos + 8 * 15);
           // clang-format on
 
-          auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb20 = Sub(PromoteTo(s16, LowerHalf(v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb30 = Sub(PromoteTo(s16, LowerHalf(v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb40 = Sub(PromoteTo(s16, LowerHalf(v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb50 = Sub(PromoteTo(s16, LowerHalf(v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb60 = Sub(PromoteTo(s16, LowerHalf(v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb70 = Sub(PromoteTo(s16, LowerHalf(v7_1)), PromoteTo(s16, LowerHalf(c128)));
-          auto cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_1)), PromoteTo(s16, LowerHalf(c128)));
+          auto cb00 = Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb01 = Sub(PromoteUpperTo(s16, v0_1), PromoteLowerTo(s16, c128));
+          auto cb10 = Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb11 = Sub(PromoteUpperTo(s16, v1_1), PromoteLowerTo(s16, c128));
+          auto cb20 = Sub(PromoteLowerTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb21 = Sub(PromoteUpperTo(s16, v2_1), PromoteLowerTo(s16, c128));
+          auto cb30 = Sub(PromoteLowerTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb31 = Sub(PromoteUpperTo(s16, v3_1), PromoteLowerTo(s16, c128));
+          auto cb40 = Sub(PromoteLowerTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb41 = Sub(PromoteUpperTo(s16, v4_1), PromoteLowerTo(s16, c128));
+          auto cb50 = Sub(PromoteLowerTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb51 = Sub(PromoteUpperTo(s16, v5_1), PromoteLowerTo(s16, c128));
+          auto cb60 = Sub(PromoteLowerTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb61 = Sub(PromoteUpperTo(s16, v6_1), PromoteLowerTo(s16, c128));
+          auto cb70 = Sub(PromoteLowerTo(s16, v7_1), PromoteLowerTo(s16, c128));
+          auto cb71 = Sub(PromoteUpperTo(s16, v7_1), PromoteLowerTo(s16, c128));
 
           // clang-format off
           Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb00, cb10)), BitCast(s16, Add(cb01, cb11))), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
@@ -589,22 +475,22 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb60, cb70)), BitCast(s16, Add(cb61, cb71))), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
           // clang-format on
 
-          cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb20 = Sub(PromoteTo(s16, LowerHalf(v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb21 = Sub(PromoteTo(s16, UpperHalf(h8, v2_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb30 = Sub(PromoteTo(s16, LowerHalf(v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb31 = Sub(PromoteTo(s16, UpperHalf(h8, v3_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb40 = Sub(PromoteTo(s16, LowerHalf(v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb41 = Sub(PromoteTo(s16, UpperHalf(h8, v4_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb50 = Sub(PromoteTo(s16, LowerHalf(v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb51 = Sub(PromoteTo(s16, UpperHalf(h8, v5_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb60 = Sub(PromoteTo(s16, LowerHalf(v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb61 = Sub(PromoteTo(s16, UpperHalf(h8, v6_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb70 = Sub(PromoteTo(s16, LowerHalf(v7_2)), PromoteTo(s16, LowerHalf(c128)));
-          cb71 = Sub(PromoteTo(s16, UpperHalf(h8, v7_2)), PromoteTo(s16, LowerHalf(c128)));
+          cb00 = Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb01 = Sub(PromoteUpperTo(s16, v0_2), PromoteLowerTo(s16, c128));
+          cb10 = Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb11 = Sub(PromoteUpperTo(s16, v1_2), PromoteLowerTo(s16, c128));
+          cb20 = Sub(PromoteLowerTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb21 = Sub(PromoteUpperTo(s16, v2_2), PromoteLowerTo(s16, c128));
+          cb30 = Sub(PromoteLowerTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb31 = Sub(PromoteUpperTo(s16, v3_2), PromoteLowerTo(s16, c128));
+          cb40 = Sub(PromoteLowerTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb41 = Sub(PromoteUpperTo(s16, v4_2), PromoteLowerTo(s16, c128));
+          cb50 = Sub(PromoteLowerTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb51 = Sub(PromoteUpperTo(s16, v5_2), PromoteLowerTo(s16, c128));
+          cb60 = Sub(PromoteLowerTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb61 = Sub(PromoteUpperTo(s16, v6_2), PromoteLowerTo(s16, c128));
+          cb70 = Sub(PromoteLowerTo(s16, v7_2), PromoteLowerTo(s16, c128));
+          cb71 = Sub(PromoteUpperTo(s16, v7_2), PromoteLowerTo(s16, c128));
 
           // clang-format off
           Store(hn::ShiftRight<2>(Add(Padd(s16, BitCast(s16, Add(cb00, cb10)), BitCast(s16, Add(cb01, cb11))), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
@@ -636,20 +522,16 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
 
             // Y
-            Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p);
-            Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 64);
-            Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 128);
-            Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 192);
+            Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p);
+            Store(Sub(PromoteUpperTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 64);
+            Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 128);
+            Store(Sub(PromoteUpperTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 192);
 
             // Cb
-            auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
+            auto cb00 = Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128));
+            auto cb01 = Sub(PromoteUpperTo(s16, v0_1), PromoteLowerTo(s16, c128));
+            auto cb10 = Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128));
+            auto cb11 = Sub(PromoteUpperTo(s16, v1_1), PromoteLowerTo(s16, c128));
 
             auto t0   = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
             auto t1   = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
@@ -657,10 +539,10 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             Store(hn::ShiftRight<2>(Add(Padd(s16, t0, t1), vhalf)), s16, out[1] + pos_Chroma + p);
 
             // Cr
-            cb00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-            cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-            cb10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-            cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
+            cb00 = Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128));
+            cb01 = Sub(PromoteUpperTo(s16, v0_2), PromoteLowerTo(s16, c128));
+            cb10 = Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128));
+            cb11 = Sub(PromoteUpperTo(s16, v1_2), PromoteLowerTo(s16, c128));
 
             t0   = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
             t1   = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
@@ -691,28 +573,24 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
 
             // Y
-            Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p);
-            Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 64);
-            Store(Sub(PromoteTo(s16, LowerHalf(v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 128);
-            Store(Sub(PromoteTo(s16, UpperHalf(h8, v1_0)), PromoteTo(s16, LowerHalf(c128))), s16,
-                  out[0] + pos + p + 192);
+            Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p);
+            Store(Sub(PromoteUpperTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 64);
+            Store(Sub(PromoteLowerTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 128);
+            Store(Sub(PromoteUpperTo(s16, v1_0), PromoteLowerTo(s16, c128)), s16, out[0] + pos + p + 192);
             // Cb
-            auto cb00 = Sub(PromoteTo(s16, LowerHalf(v0_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb10 = Sub(PromoteTo(s16, LowerHalf(v1_1)), PromoteTo(s16, LowerHalf(c128)));
-            auto cb11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_1)), PromoteTo(s16, LowerHalf(c128)));
+            auto cb00 = Sub(PromoteLowerTo(s16, v0_1), PromoteLowerTo(s16, c128));
+            auto cb01 = Sub(PromoteUpperTo(s16, v0_1), PromoteLowerTo(s16, c128));
+            auto cb10 = Sub(PromoteLowerTo(s16, v1_1), PromoteLowerTo(s16, c128));
+            auto cb11 = Sub(PromoteUpperTo(s16, v1_1), PromoteLowerTo(s16, c128));
 
             auto tb0 = Padd(s16, BitCast(s16, cb00), BitCast(s16, cb01));
             auto tb1 = Padd(s16, BitCast(s16, cb10), BitCast(s16, cb11));
 
             // Cr
-            auto cr00 = Sub(PromoteTo(s16, LowerHalf(v0_2)), PromoteTo(s16, LowerHalf(c128)));
-            auto cr01 = Sub(PromoteTo(s16, UpperHalf(h8, v0_2)), PromoteTo(s16, LowerHalf(c128)));
-            auto cr10 = Sub(PromoteTo(s16, LowerHalf(v1_2)), PromoteTo(s16, LowerHalf(c128)));
-            auto cr11 = Sub(PromoteTo(s16, UpperHalf(h8, v1_2)), PromoteTo(s16, LowerHalf(c128)));
+            auto cr00 = Sub(PromoteLowerTo(s16, v0_2), PromoteLowerTo(s16, c128));
+            auto cr01 = Sub(PromoteUpperTo(s16, v0_2), PromoteLowerTo(s16, c128));
+            auto cr10 = Sub(PromoteLowerTo(s16, v1_2), PromoteLowerTo(s16, c128));
+            auto cr11 = Sub(PromoteUpperTo(s16, v1_2), PromoteLowerTo(s16, c128));
 
             auto tr0 = Padd(s16, BitCast(s16, cr00), BitCast(s16, cr01));
             auto tr1 = Padd(s16, BitCast(s16, cr10), BitCast(s16, cr11));
@@ -743,9 +621,9 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
             // clang-format on
 
             LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            Store(Sub(PromoteTo(s16, LowerHalf(v0_0)), PromoteTo(s16, LowerHalf(c128))), s16,
+            Store(Sub(PromoteLowerTo(s16, v0_0), PromoteLowerTo(s16, c128)), s16,
                   out[0] + pos + y * DCTSIZE);
-            Store(Sub(PromoteTo(s16, UpperHalf(h8, v0_0)), PromoteTo(s16, UpperHalf(h8, c128))), s16,
+            Store(Sub(PromoteUpperTo(s16, v0_0), PromoteUpperTo(s16, c128)), s16,
                   out[0] + pos + 64 + y * DCTSIZE);
           }
           pos += 128;
