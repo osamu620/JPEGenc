@@ -25,7 +25,7 @@ HWY_ATTR void quantize_fwd(int16_t *HWY_RESTRICT in, const int *HWY_RESTRICT qta
     auto qh = Load(d32, qtable + Lanes(d32));
     auto v  = Load(d16, in);
     auto vl = PromoteTo(d32, LowerHalf(v));
-    auto vh = PromoteTo(d32, UpperHalf(d16, v));
+    auto vh = PromoteUpperTo(d32, v);
 
     vl = MulAdd(vl, ql, half);
     vh = MulAdd(vh, qh, half);
