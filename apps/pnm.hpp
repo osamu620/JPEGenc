@@ -41,6 +41,7 @@ unsigned char *read_pnm(const std::string &name, int &width, int &height, int &n
     printf("This image is not in PGM/PPM format.\n");
     exit(EXIT_FAILURE);
   }
+  ncomp = 1;
   if (c == '6' || c == '3') {
     ncomp = 3;
   }
