@@ -93,40 +93,41 @@ HWY_ATTR void fast_dct2(int16_t *HWY_RESTRICT data) {
   col1 = Add(z11, z4);
   col7 = Sub(z11, z4);
 
-  // vtrnq
-  auto cols_01_0 = InterleaveLower(ConcatEven(s16, col0, col0), ConcatEven(s16, col1, col1));
-  auto cols_01_1 = InterleaveLower(ConcatOdd(s16, col0, col0), ConcatOdd(s16, col1, col1));
-  auto cols_23_0 = InterleaveLower(ConcatEven(s16, col2, col2), ConcatEven(s16, col3, col3));
-  auto cols_23_1 = InterleaveLower(ConcatOdd(s16, col2, col2), ConcatOdd(s16, col3, col3));
-  auto cols_45_0 = InterleaveLower(ConcatEven(s16, col4, col4), ConcatEven(s16, col5, col5));
-  auto cols_45_1 = InterleaveLower(ConcatOdd(s16, col4, col4), ConcatOdd(s16, col5, col5));
-  auto cols_67_0 = InterleaveLower(ConcatEven(s16, col6, col6), ConcatEven(s16, col7, col7));
-  auto cols_67_1 = InterleaveLower(ConcatOdd(s16, col6, col6), ConcatOdd(s16, col7, col7));
+  //  vtrnq
+  auto cols_01_0 = ZipLower(s32, ConcatEven(s16, col0, col0), ConcatEven(s16, col1, col1));
+  auto cols_01_1 = ZipLower(s32, ConcatOdd(s16, col0, col0), ConcatOdd(s16, col1, col1));
+  auto cols_23_0 = ZipLower(s32, ConcatEven(s16, col2, col2), ConcatEven(s16, col3, col3));
+  auto cols_23_1 = ZipLower(s32, ConcatOdd(s16, col2, col2), ConcatOdd(s16, col3, col3));
+  auto cols_45_0 = ZipLower(s32, ConcatEven(s16, col4, col4), ConcatEven(s16, col5, col5));
+  auto cols_45_1 = ZipLower(s32, ConcatOdd(s16, col4, col4), ConcatOdd(s16, col5, col5));
+  auto cols_67_0 = ZipLower(s32, ConcatEven(s16, col6, col6), ConcatEven(s16, col7, col7));
+  auto cols_67_1 = ZipLower(s32, ConcatOdd(s16, col6, col6), ConcatOdd(s16, col7, col7));
 
-  auto cols_0145_l_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_01_0), BitCast(s32, cols_01_0)),
-                                       ConcatEven(s32, BitCast(s32, cols_45_0), BitCast(s32, cols_45_0)));
-  auto cols_0145_l_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_01_0), BitCast(s32, cols_01_0)),
-                                       ConcatOdd(s32, BitCast(s32, cols_45_0), BitCast(s32, cols_45_0)));
-  auto cols_0145_h_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_01_1), BitCast(s32, cols_01_1)),
-                                       ConcatEven(s32, BitCast(s32, cols_45_1), BitCast(s32, cols_45_1)));
-  auto cols_0145_h_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_01_1), BitCast(s32, cols_01_1)),
-                                       ConcatOdd(s32, BitCast(s32, cols_45_1), BitCast(s32, cols_45_1)));
-  auto cols_2367_l_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_23_0), BitCast(s32, cols_23_0)),
-                                       ConcatEven(s32, BitCast(s32, cols_67_0), BitCast(s32, cols_67_0)));
-  auto cols_2367_l_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_23_0), BitCast(s32, cols_23_0)),
-                                       ConcatOdd(s32, BitCast(s32, cols_67_0), BitCast(s32, cols_67_0)));
-  auto cols_2367_h_0 = InterleaveLower(ConcatEven(s32, BitCast(s32, cols_23_1), BitCast(s32, cols_23_1)),
-                                       ConcatEven(s32, BitCast(s32, cols_67_1), BitCast(s32, cols_67_1)));
-  auto cols_2367_h_1 = InterleaveLower(ConcatOdd(s32, BitCast(s32, cols_23_1), BitCast(s32, cols_23_1)),
-                                       ConcatOdd(s32, BitCast(s32, cols_67_1), BitCast(s32, cols_67_1)));
-  auto rows_04_0     = InterleaveLower(cols_0145_l_0, cols_2367_l_0);
-  auto rows_04_1     = InterleaveUpper(s32, cols_0145_l_0, cols_2367_l_0);
-  auto rows_15_0     = InterleaveLower(cols_0145_h_0, cols_2367_h_0);
-  auto rows_15_1     = InterleaveUpper(s32, cols_0145_h_0, cols_2367_h_0);
-  auto rows_26_0     = InterleaveLower(cols_0145_l_1, cols_2367_l_1);
-  auto rows_26_1     = InterleaveUpper(s32, cols_0145_l_1, cols_2367_l_1);
-  auto rows_37_0     = InterleaveLower(cols_0145_h_1, cols_2367_h_1);
-  auto rows_37_1     = InterleaveUpper(s32, cols_0145_h_1, cols_2367_h_1);
+  auto cols_0145_l_0 =
+      InterleaveLower(ConcatEven(s32, cols_01_0, cols_01_0), ConcatEven(s32, cols_45_0, cols_45_0));
+  auto cols_0145_l_1 =
+      InterleaveLower(ConcatOdd(s32, cols_01_0, cols_01_0), ConcatOdd(s32, cols_45_0, cols_45_0));
+  auto cols_0145_h_0 =
+      InterleaveLower(ConcatEven(s32, cols_01_1, cols_01_1), ConcatEven(s32, cols_45_1, cols_45_1));
+  auto cols_0145_h_1 =
+      InterleaveLower(ConcatOdd(s32, cols_01_1, cols_01_1), ConcatOdd(s32, cols_45_1, cols_45_1));
+  auto cols_2367_l_0 =
+      InterleaveLower(ConcatEven(s32, cols_23_0, cols_23_0), ConcatEven(s32, cols_67_0, cols_67_0));
+  auto cols_2367_l_1 =
+      InterleaveLower(ConcatOdd(s32, cols_23_0, cols_23_0), ConcatOdd(s32, cols_67_0, cols_67_0));
+  auto cols_2367_h_0 =
+      InterleaveLower(ConcatEven(s32, cols_23_1, cols_23_1), ConcatEven(s32, cols_67_1, cols_67_1));
+  auto cols_2367_h_1 =
+      InterleaveLower(ConcatOdd(s32, cols_23_1, cols_23_1), ConcatOdd(s32, cols_67_1, cols_67_1));
+
+  auto rows_04_0 = InterleaveLower(cols_0145_l_0, cols_2367_l_0);
+  auto rows_04_1 = InterleaveUpper(s32, cols_0145_l_0, cols_2367_l_0);
+  auto rows_15_0 = InterleaveLower(cols_0145_h_0, cols_2367_h_0);
+  auto rows_15_1 = InterleaveUpper(s32, cols_0145_h_0, cols_2367_h_0);
+  auto rows_26_0 = InterleaveLower(cols_0145_l_1, cols_2367_l_1);
+  auto rows_26_1 = InterleaveUpper(s32, cols_0145_l_1, cols_2367_l_1);
+  auto rows_37_0 = InterleaveLower(cols_0145_h_1, cols_2367_h_1);
+  auto rows_37_1 = InterleaveUpper(s32, cols_0145_h_1, cols_2367_h_1);
 
   auto row0 = BitCast(s16, rows_04_0);
   auto row1 = BitCast(s16, rows_15_0);
