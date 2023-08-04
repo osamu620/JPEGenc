@@ -302,7 +302,7 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #endif
 }
 
-void fast_dct2(std::vector<int16_t *> in, int width, int YCCtype) {
+HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
   int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
