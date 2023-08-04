@@ -4,6 +4,12 @@
 #include <memory>
 #include <vector>
 
+#if defined(_MSC_VER)
+  #define JPEGENC_EXPORT __declspec(dllexport)
+#else
+  #define JPEGENC_EXPORT
+#endif
+
 namespace jpegenc {
 
 struct im_info {
@@ -20,9 +26,9 @@ class jpeg_encoder {
   std::vector<uint8_t> codestream;
 
  public:
-  jpeg_encoder(im_info &inimg, int &QF, int &YCCtype);
-  void invoke();
-  std::vector<uint8_t> get_codestream();
-  ~jpeg_encoder();
+  JPEGENC_EXPORT jpeg_encoder(im_info &inimg, int &QF, int &YCCtype);
+  JPEGENC_EXPORT void invoke();
+  JPEGENC_EXPORT std::vector<uint8_t> get_codestream();
+  JPEGENC_EXPORT ~jpeg_encoder();
 };
 }  // namespace jpegenc

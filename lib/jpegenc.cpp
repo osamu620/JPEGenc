@@ -11,11 +11,6 @@
 #include "quantization.hpp"
 #include "ycctype.hpp"
 
-#if defined(_MSC_VER)
-  #define JPEGENC_EXPORT __declspec(dllexport)
-#else
-  #define JPEGENC_EXPORT
-#endif
 namespace jpegenc {
 namespace hn = hwy::HWY_NAMESPACE;
 
@@ -107,13 +102,13 @@ class jpeg_encoder_impl {
 /**********************************************************************************************************************/
 // Public interface
 /**********************************************************************************************************************/
-JPEGENC_EXPORT jpeg_encoder::jpeg_encoder(im_info &inimg, int &QF, int &YCCtype) {
+jpeg_encoder::jpeg_encoder(im_info &inimg, int &QF, int &YCCtype) {
   this->impl = std::make_unique<jpeg_encoder_impl>(inimg, QF, YCCtype);
 }
 
-JPEGENC_EXPORT void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
+void jpeg_encoder::invoke() { this->impl->invoke(this->codestream); }
 
-JPEGENC_EXPORT std::vector<uint8_t> jpeg_encoder::get_codestream() { return std::move(this->codestream); }
+std::vector<uint8_t> jpeg_encoder::get_codestream() { return std::move(this->codestream); }
 
-JPEGENC_EXPORT jpeg_encoder::~jpeg_encoder() = default;
+jpeg_encoder::~jpeg_encoder() = default;
 }  // namespace jpegenc
