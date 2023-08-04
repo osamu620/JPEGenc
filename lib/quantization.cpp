@@ -84,15 +84,6 @@ namespace jpegenc_hwy {
 HWY_EXPORT(quantize_fwd);
 void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
   HWY_DYNAMIC_DISPATCH(quantize_fwd)(std::move(in), qtableL, qtableC, width, YCCtype);
-
-  //  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-  //    HWY_DYNAMIC_DISPATCH(quantize_fwd)(in[0] + i, qtableL);
-  //  }
-  //  for (int c = 1; c < nc; ++c) {
-  //    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-  //      HWY_DYNAMIC_DISPATCH(quantize_fwd)(in[c] + i, qtableC);
-  //    }
-  //  }
 }
 }  // namespace jpegenc_hwy
 
@@ -108,9 +99,8 @@ void create_qtable(int c, int QF, int *qtable) {
     if (stepsize > 255.0F) {
       stepsize = 255.0F;
     }
-    // val = static_cast<int>(lround((qscale[i] / stepsize) * (1 << 16)));
-    val = static_cast<int>((qscale[i] / stepsize) * (1 << 16) + 0.5);
-    //     val       = (val > 0x7FFFU) ? 0x7FFF : val;
+    val = static_cast<int>(lround((qscale[i] / stepsize) * (1 << 16)));
+    //    val = static_cast<int>((qscale[i] / stepsize) * (1 << 16) + 0.5);
     qtable[i] = val;
   }
 }
