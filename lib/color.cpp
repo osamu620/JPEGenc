@@ -91,7 +91,6 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   //  HWY_CAPPED(uint8_t, 16) u8;
   //  HWY_CAPPED(int16_t, 8) s16;
   hn::FixedTag<uint8_t, 16> u8;
-  hn::FixedTag<uint8_t, 8> h8;
   hn::FixedTag<int16_t, 8> s16;
   const auto c128  = Set(s16, 128);
   const auto vhalf = Set(s16, half);
