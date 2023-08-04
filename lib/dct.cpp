@@ -16,7 +16,7 @@ namespace hn = hwy::HWY_NAMESPACE;
 //  0.382683433, 0.541196100, 0.707106781, 1.306562965 - 1.0
 HWY_ALIGN static const int16_t coeff[] = {12540, 17734, 23170, 10045};
 
-auto dct2_core = [](int16_t *HWY_RESTRICT data) {
+HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #if HWY_TARGET != HWY_SCALAR
   HWY_CAPPED(int16_t, 8) s16;
   HWY_CAPPED(int32_t, 4) s32;
@@ -300,7 +300,7 @@ auto dct2_core = [](int16_t *HWY_RESTRICT data) {
     dataptr++; /* advance pointer to next column */
   }
 #endif
-};
+}
 
 void fast_dct2(std::vector<int16_t *> in, int width, int YCCtype) {
   int scale_x = YCC_HV[YCCtype][0] >> 4;

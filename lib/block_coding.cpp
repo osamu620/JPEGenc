@@ -74,7 +74,7 @@ namespace hn = hwy::HWY_NAMESPACE;
 // clang-format on
 #endif
 
-auto EncodeSingleBlock = [](int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
+HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
 #if HWY_TARGET != HWY_SCALAR
   HWY_CAPPED(uint8_t, 16) u8;
   HWY_CAPPED(int8_t, 16) s8;
@@ -401,7 +401,7 @@ auto EncodeSingleBlock = [](int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_
     enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
   }
 #endif
-};
+}
 
 HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
                               huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
