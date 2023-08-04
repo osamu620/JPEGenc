@@ -35,8 +35,5 @@ class imchunk {
     return buf.get();
   }
 
-  ~imchunk() {
-    //    std::free(g_buf);
-    //    delete[] buf;
-  }
+  ~imchunk() = default;
 };
