@@ -21,7 +21,7 @@ class imchunk {
  public:
   explicit imchunk(uint8_t *imdata, const int w, const int h, const int nc)
       : width(w), height(h), ncomp(nc), g_buf(imdata), cur_line(0) {
-    buf = hwy::AllocateAligned<uint8_t>(width * ncomp * LINES);
+    buf = hwy::AllocateAligned<uint8_t>(static_cast<size_t>(width) * ncomp * LINES);
   }
 
   uint8_t *get_lines_from(int n) {
@@ -35,8 +35,5 @@ class imchunk {
     return buf.get();
   }
 
-  ~imchunk() {
-    //    std::free(g_buf);
-    //    delete[] buf;
-  }
+  ~imchunk() = default;
 };

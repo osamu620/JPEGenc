@@ -4,6 +4,8 @@
 #include <hwy/foreach_target.h>                // must come before highway.h
 #include <hwy/highway.h>
 
+#include <utility>
+
 #include "block_coding.hpp"
 #include "constants.hpp"
 #include "huffman_tables.hpp"
@@ -71,8 +73,9 @@ namespace hn = hwy::HWY_NAMESPACE;
         };
 // clang-format on
 #endif
+
+auto EncodeSingleBlock = [](int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
 #if HWY_TARGET != HWY_SCALAR
-HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   HWY_CAPPED(uint8_t, 16) u8;
   HWY_CAPPED(int8_t, 16) s8;
   HWY_CAPPED(uint8_t, 8) u8_64;
@@ -95,7 +98,7 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
   auto v7 = hn::Load(s16, sp + 56);
 
   #if 0
-  auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
+    auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
   row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
   auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
   auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
@@ -348,11 +351,8 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
     // EOB
     enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
   }
-}
 #else
   #include "zigzag_order.hpp"
-
-HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   alignas(16) int16_t dp[64];
   int dc          = sp[0];
   sp[0]           = static_cast<int16_t>(sp[0] - prev_dc);
@@ -400,17 +400,11 @@ HWY_ATTR void make_zigzag_blk(int16_t *HWY_RESTRICT sp, huff_info &tab, int &pre
     // EOB
     enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
   }
-}
 #endif
+};
 
-}  // namespace HWY_NAMESPACE
-}  // namespace jpegenc_hwy
-
-#if HWY_ONCE
-namespace jpegenc_hwy {
-HWY_EXPORT(make_zigzag_blk);
-void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
-                 huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
+                              huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -427,14 +421,14 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
         for (int y = 0; y < Vl; ++y) {
           for (int x = 0; x < Hl; ++x) {
             sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
-            HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, tab_Y, prev_dc[0], enc);
+            EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
           }
         }
         // Chroma, Cb
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp1, tab_C, prev_dc[1], enc);
+        EncodeSingleBlock(sp1, tab_C, prev_dc[1], enc);
         sp1 += DCTSIZE2;
         // Chroma, Cr
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp2, tab_C, prev_dc[2], enc);
+        EncodeSingleBlock(sp2, tab_C, prev_dc[2], enc);
         sp2 += DCTSIZE2;
       }
     }
@@ -443,11 +437,22 @@ void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<
     for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
-        HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(sp0, tab_Y, prev_dc[0], enc);
+        EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
         sp0 += DCTSIZE2;
       }
     }
   }
+}
+
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegenc_hwy
+
+#if HWY_ONCE
+namespace jpegenc_hwy {
+HWY_EXPORT(make_zigzag_blk);
+void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
+                 huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+  HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(std::move(in), width, YCCtype, prev_dc, tab_Y, tab_C, enc);
 }
 }  // namespace jpegenc_hwy
 #endif
