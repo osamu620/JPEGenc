@@ -17,7 +17,12 @@ struct im_info {
   const int32_t width;
   const int32_t height;
   const int32_t nc;
-  im_info(uint8_t *buf, int32_t w, int32_t h, int32_t c) : data(buf), width(w), height(h), nc(c) {}
+  im_info(uint8_t *buf, int32_t w, int32_t h, int32_t c) : data(buf), width(w), height(h), nc(c) {
+    if ((width % 16) || (height % 16)) {
+      std::free(data);
+      throw std::runtime_error("ERROR: image size error\n");
+    }
+  }
 };
 
 class jpeg_encoder {
