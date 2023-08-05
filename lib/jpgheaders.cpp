@@ -58,7 +58,7 @@ void create_DQT(int c, int *qtable, bitstream &enc) {
     Tq = 1;
   }
   enc.put_byte((Pq << 4) + Tq);
-  for (size_t i : scan) {
+  for (size_t i : indices) {
     enc.put_byte(qtable[i]);
   }
 }

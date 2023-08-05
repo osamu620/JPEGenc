@@ -20,8 +20,8 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
   sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
   prev_dc = dc;
   uint64_t bitmap;
-#if HWY_TARGET != HWY_SCALAR
   HWY_ALIGN int16_t dp[64];
+#if HWY_TARGET != HWY_SCALAR
   HWY_ALIGN uint8_t bits[64];
   #if HWY_MAX_BYTES == 64
     #include "block_coding_512.cpp"

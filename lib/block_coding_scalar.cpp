@@ -3,8 +3,9 @@
 //
 
 #include "zigzag_order.hpp"
+bitmap = 0;
 for (int i = 0; i < DCTSIZE2; ++i) {
-  dp[i] = sp[scan[i]];
+  dp[i] = sp[indices[i]];
   bitmap |= (dp[i] != 0);
   bitmap <<= 1;
 }
