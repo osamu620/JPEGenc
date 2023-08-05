@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <stdexcept>
 
 #if defined(_MSC_VER)
   #define JPEGENC_EXPORT __declspec(dllexport)
