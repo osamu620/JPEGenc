@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[64] = {
     0,  1,  8,  16, 9,  2,  3,  10,
