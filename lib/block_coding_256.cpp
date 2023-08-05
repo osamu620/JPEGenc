@@ -1,0 +1,143 @@
+//
+// Created by OSAMU WATANABE on 2023/08/05.
+//
+
+// clang-format off
+HWY_ALIGN constexpr int16_t indices[] = {
+        0,  1,  8, 16,  9,  2,  3, 10,
+        17, 24,  0, 25, 18, 11,  4,  5,
+        12, 19, 26,  0,  0,  0,  0,  0,
+        27, 20, 13,  6,  7, 14, 21, 28,
+        3, 10, 17, 24, 25, 18, 11,  4,
+        0,  0,  0,  0,  0,  5, 12, 19,
+        26, 27, 20, 13,  6,  0,  7, 14,
+        21, 28, 29, 22, 15, 23, 30, 31,
+        0,  0,  0,  1,  8, 16,  9,  2,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        29, 22, 15, 23, 30,  0,  0,  0
+};
+// clang-format on
+
+const hn::FixedTag<int16_t, 16> s16;
+const hn::FixedTag<uint16_t, 16> u16;
+const hn::FixedTag<uint8_t, 32> u8;
+const hn::FixedTag<uint64_t, 2> u64_128;
+const hn::FixedTag<uint64_t, 4> u64;
+auto v0 = hn::Load(s16, sp);
+auto v1 = hn::Load(s16, sp + 16);
+auto v2 = hn::Load(s16, sp + 32);
+auto v3 = hn::Load(s16, sp + 48);
+
+auto row01   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 16]));
+auto row23   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 16]));
+auto row45   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 16]));
+auto row67   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[3 * 16]));
+auto row23_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 16]));
+auto row45_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 16]));
+
+HWY_ALIGN int16_t m[32] = {
+    -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1,
+};
+auto maskv1 = hn::Load(s16, m);
+auto maskv2 = hn::Load(s16, m + 16);
+row23       = IfThenElseZero(MaskFromVec(maskv1), row23);
+row45       = IfThenElseZero(MaskFromVec(maskv2), row45);
+row23_1     = IfThenZeroElse(MaskFromVec(maskv1), row23_1);
+row45_1     = IfThenZeroElse(MaskFromVec(maskv2), row45_1);
+row23       = Or(row23, row23_1);
+row45       = Or(row45, row45_1);
+row01       = InsertLane(row01, 10, ExtractLane(v2, 0));
+row67       = InsertLane(row67, 5, ExtractLane(v1, 15));
+
+/* DCT block is now in zig-zag order; start Huffman encoding process. */
+
+/* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
+ * means that the corresponding coefficient != 0.
+ */
+auto zero         = Zero(s16);
+auto row01_ne_0   = VecFromMask(s16, Eq(row01, zero));
+auto row23_ne_0   = VecFromMask(s16, Eq(row23, zero));
+auto row45_ne_0   = VecFromMask(s16, Eq(row45, zero));
+auto row67_ne_0   = VecFromMask(s16, Eq(row67, zero));
+auto row3210_ne_0 = ConcatEven(u8, BitCast(u8, row23_ne_0), BitCast(u8, row01_ne_0));
+auto row7654_ne_0 = ConcatEven(u8, BitCast(u8, row67_ne_0), BitCast(u8, row45_ne_0));
+
+HWY_ALIGN constexpr uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01, 0x80, 0x40, 0x20,
+                                    0x10, 0x08, 0x04, 0x02, 0x01, 0x80, 0x40, 0x20, 0x10, 0x08, 0x04,
+                                    0x02, 0x01, 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+auto bitmap_mask                 = Load(u8, bm);
+auto bitmap_rows_3210            = AndNot(row3210_ne_0, bitmap_mask);
+auto bitmap_rows_7654            = AndNot(row7654_ne_0, bitmap_mask);
+auto a0                          = SumsOf8(bitmap_rows_3210);
+auto a1                          = SumsOf8(bitmap_rows_7654);
+/* Move bitmap to 64-bit scalar register. */
+HWY_ALIGN uint64_t shift[4] = {1 << 24, 1 << 16, 1 << 8, 1};
+auto vs                     = hn::Load(u64, shift);
+a0                          = Mul(a0, vs);
+a1                          = Mul(a1, vs);
+bitmap                      = (GetLane(SumOfLanes(u64, a0)) << 32) + GetLane(SumOfLanes(u64, a1));
+
+auto abs_row01 = Abs(row01);
+auto abs_row23 = Abs(row23);
+auto abs_row45 = Abs(row45);
+auto abs_row67 = Abs(row67);
+
+auto row01_lz = LeadingZeroCount(abs_row01);
+auto row23_lz = LeadingZeroCount(abs_row23);
+auto row45_lz = LeadingZeroCount(abs_row45);
+auto row67_lz = LeadingZeroCount(abs_row67);
+/* Narrow leading zero count to 8 bits. */
+auto row0123_lz = ConcatEven(u8, BitCast(u8, row23_lz), BitCast(u8, row01_lz));
+auto row4567_lz = ConcatEven(u8, BitCast(u8, row67_lz), BitCast(u8, row45_lz));
+/* Compute nbits needed to specify magnitude of each coefficient. */
+auto row0123_nbits = Sub(Set(u8, 16), row0123_lz);
+auto row4567_nbits = Sub(Set(u8, 16), row4567_lz);
+/* Store nbits. */
+Store(row0123_nbits, u8, bits + 0 * DCTSIZE);
+Store(row4567_nbits, u8, bits + 4 * DCTSIZE);
+
+auto row01_mask = Shr(BitCast(u16, VecFromMask(s16, Lt(row01, zero))), BitCast(u16, row01_lz));
+auto row23_mask = Shr(BitCast(u16, VecFromMask(s16, Lt(row23, zero))), BitCast(u16, row23_lz));
+auto row45_mask = Shr(BitCast(u16, VecFromMask(s16, Lt(row45, zero))), BitCast(u16, row45_lz));
+auto row67_mask = Shr(BitCast(u16, VecFromMask(s16, Lt(row67, zero))), BitCast(u16, row67_lz));
+
+auto row01_diff = Xor(BitCast(u16, abs_row01), row01_mask);
+auto row23_diff = Xor(BitCast(u16, abs_row23), row23_mask);
+auto row45_diff = Xor(BitCast(u16, abs_row45), row45_mask);
+auto row67_diff = Xor(BitCast(u16, abs_row67), row67_mask);
+
+Store(BitCast(s16, row01_diff), s16, dp + 0 * DCTSIZE);
+Store(BitCast(s16, row23_diff), s16, dp + 2 * DCTSIZE);
+Store(BitCast(s16, row45_diff), s16, dp + 4 * DCTSIZE);
+Store(BitCast(s16, row67_diff), s16, dp + 6 * DCTSIZE);
+
+// EncodeDC
+enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);
+if (bitmap & 0x8000000000000000) {
+  enc.put_bits(dp[0], bits[0]);
+}
+bitmap <<= 1;
+
+int count = 1;
+while (bitmap != 0) {
+  int run = JPEGENC_CLZ64(bitmap);
+  count += run;
+  bitmap <<= run;
+  while (run > 15) {
+    // ZRL
+    enc.put_bits(tab.AC_cwd[0xF0], tab.AC_len[0xF0]);
+    run -= 16;
+  }
+  // EncodeAC
+  size_t RS = (run << 4) + bits[count];
+  enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
+  enc.put_bits(dp[count], bits[count]);
+  count++;
+  bitmap <<= 1;
+}
+if (count != 64) {
+  // EOB
+  enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
+}
