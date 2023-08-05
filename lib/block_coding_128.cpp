@@ -19,11 +19,12 @@ HWY_ALIGN constexpr int16_t indices[] = {
 };
 // clang-format on
 
-HWY_CAPPED(uint8_t, 16) u8;
-HWY_CAPPED(uint8_t, 8) u8_64;
-HWY_CAPPED(uint64_t, 1) u64_64;
-HWY_CAPPED(uint16_t, 8) u16;
-HWY_CAPPED(int16_t, 8) s16;
+const hn::ScalableTag<int16_t> s16;
+const hn::ScalableTag<uint16_t> u16;
+const hn::ScalableTag<uint8_t> u8;
+const hn::ScalableTag<uint64_t> u64;
+HWY_CAPPED(uint8_t, Lanes(u8) / 2) u8_64;
+HWY_CAPPED(uint64_t, Lanes(u64) / 2) u64_64;
 
 auto v0 = hn::Load(s16, sp);
 auto v1 = hn::Load(s16, sp + 8);

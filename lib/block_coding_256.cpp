@@ -19,11 +19,11 @@ HWY_ALIGN constexpr int16_t indices[] = {
 };
 // clang-format on
 
-const hn::FixedTag<int16_t, 16> s16;
-const hn::FixedTag<uint16_t, 16> u16;
-const hn::FixedTag<uint8_t, 32> u8;
-const hn::FixedTag<uint64_t, 2> u64_128;
-const hn::FixedTag<uint64_t, 4> u64;
+const hn::ScalableTag<int16_t> s16;
+const hn::ScalableTag<uint16_t> u16;
+const hn::ScalableTag<uint8_t> u8;
+const hn::ScalableTag<uint64_t> u64;
+
 auto v0 = hn::Load(s16, sp);
 auto v1 = hn::Load(s16, sp + 16);
 auto v2 = hn::Load(s16, sp + 32);
