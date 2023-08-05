@@ -12,6 +12,10 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   uint8_t *imdata = read_pnm(infile, width, height, nc);
+  if ((width % 16) || (height % 16)) {
+    printf("ERROR: image size error\n");
+    return EXIT_FAILURE;
+  }
   jpegenc::im_info inimg(imdata, width, height, nc);
 
   size_t duration = 0;

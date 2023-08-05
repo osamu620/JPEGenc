@@ -6,6 +6,17 @@
 
 enum YCC { YUV444, YUV422, YUV411, YUV440, YUV420, YUV410, GRAY, GRAY2 };
 
+void print_help() {
+  std::cout << "Usage: ./jpenc -i input.ppm -o output.jpg [-q quality] [-c color-subsampling-type]"
+            << std::endl;
+  std::cout << "  -i input .ppm file" << std::endl;
+  std::cout << "  -o output .jpg file" << std::endl;
+  std::cout << "  -q quality 0-100, default = 75" << std::endl;
+  std::cout << "  -c color subsampling type, default = 420" << std::endl;
+  std::cout << "   (444, 422, 420, 440, 411, 410, GRAY)" << std::endl;
+  std::cout << "  -h print this help" << std::endl;
+}
+
 int parse_args(int argc, char *argv[], std::string &inname, std::string &outname, int &QF, int &YCCtype) {
   YCCtype = YCC::YUV420;
   QF      = 75;
@@ -16,7 +27,7 @@ int parse_args(int argc, char *argv[], std::string &inname, std::string &outname
   }
 
   if (args.size() == 1) {
-    std::cout << "print help" << std::endl;
+    print_help();
     return EXIT_FAILURE;
   }
   bool ifile_exist = false, ofile_exist = false;
@@ -69,6 +80,9 @@ int parse_args(int argc, char *argv[], std::string &inname, std::string &outname
             return EXIT_FAILURE;
           }
           ++i;
+        } else if (args[i].substr(1) == "h") {
+          print_help();
+          return EXIT_FAILURE;
         } else {
           std::cerr << "Unknown option " << args[i].substr(1) << std::endl;
           return EXIT_FAILURE;
