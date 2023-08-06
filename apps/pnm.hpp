@@ -1,6 +1,6 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include <string>
 
@@ -12,8 +12,8 @@
  * @brief read pgm file, both ASCII and binary formats are supported
  * @param (name) file name of input .pgm
  * @param (width) address of a variable to store the width of the input
- * @param (height) address of a variable to store theheight of the input
- * @param (maxval) address of a variable to store themax pixel value of the
+ * @param (height) address of a variable to store the height of the input
+ * @param (maxval) address of a variable to store the max pixel value of the
  * input
  * @return returns an address of buffer allocated inside this function. free()
  * shall be called in the user code.
