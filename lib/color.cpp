@@ -35,15 +35,15 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     auto r_l  = PromoteLowerTo(u16, v0); auto g_l  = PromoteLowerTo(u16, v1); auto b_l  = PromoteLowerTo(u16, v2);
     auto r_h  = PromoteUpperTo(u16, v0); auto g_h  = PromoteUpperTo(u16, v1); auto b_h  = PromoteUpperTo(u16, v2);
 
-    auto yl  = BitCast(u16, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<0>(coeffs)));
+    auto yl  = Add(g_l, BitCast(u16, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<0>(coeffs))));
     yl       = Add(yl, BitCast(u16, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<1>(coeffs))));
     yl       = Add(yl, BitCast(u16, MulFixedPoint15(BitCast(s16, b_l), hn::Broadcast<2>(coeffs))));
-    yl       = hn::ShiftRight<1>(Add(yl, g_l));
+    yl       = hn::ShiftRight<1>(yl);
 
-    auto yh = BitCast(u16, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<0>(coeffs)));
+    auto yh = Add(g_h, BitCast(u16, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<0>(coeffs))));
     yh      = Add(yh, BitCast(u16, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<1>(coeffs))));
     yh      = Add(yh, BitCast(u16, MulFixedPoint15(BitCast(s16, b_h), hn::Broadcast<2>(coeffs))));
-    yh      = hn::ShiftRight<1>(Add(yh, g_h));
+    yh      = hn::ShiftRight<1>(yh);
 
     auto cbl = Sub(scaled_128_1, BitCast(u16, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<3>(coeffs))));
     cbl      = Sub(cbl, BitCast(u16, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<4>(coeffs))));
@@ -366,14 +366,14 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           auto cb70 = Sub(PromoteLowerTo(s16, v7_1), c128);
           auto cb71 = Sub(PromoteUpperTo(s16, v7_1), c128);
 
-          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 8);
-          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 9);
-          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 10);
-          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[1] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), vhalf)), s16, out[1] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), vhalf)), s16, out[1] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), vhalf)), s16, out[1] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), vhalf)), s16, out[1] + pos_Chroma + 8 * 11);
 
           cb00 = Sub(PromoteLowerTo(s16, v0_2), c128);
           cb01 = Sub(PromoteUpperTo(s16, v0_2), c128);
@@ -392,14 +392,14 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
           cb70 = Sub(PromoteLowerTo(s16, v7_2), c128);
           cb71 = Sub(PromoteUpperTo(s16, v7_2), c128);
 
-          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 8);
-          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 9);
-          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 10);
-          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), Set(s16, 1))), s16, out[2] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), vhalf)), s16, out[2] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), vhalf)), s16, out[2] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), vhalf)), s16, out[2] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), vhalf)), s16, out[2] + pos_Chroma + 8 * 11);
 
           pos += 128;
         }
