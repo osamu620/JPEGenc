@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_PREFIX_PATH "./include") # for include
-add_definitions("-DBUILD_TESTING=OFF")
+
+#add_definitions("-DHWY_COMPILE_ONLY_EMU128") # uncomment to build non-intrinsic code
 #add_definitions("-DHWY_COMPILE_ONLY_SCALAR") # uncomment to build non-simd code
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
@@ -34,7 +35,7 @@ set_target_properties(
 #target_link_libraries(hwytest PRIVATE hwy)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-	set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ${COMPILER_HOST_FLAGS}")
+	set(CMAKE_CXX_FLAGS "-Wall -Wextra -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -fsanitize=address")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 	set(CMAKE_CXX_FLAGS_RelWithDebInfo "${CMAKE_CXX_FLAGS} -O2 -g")
@@ -48,22 +49,30 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC") # MSVC
 endif()
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64$") # aarch64
-	if(APPLE)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m1")
-	else()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a72 -march=armv8-a")
-	endif()
-	if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flax-vector-conversions")
-	endif()
-else()
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+		if(APPLE)
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m1")
+		else()
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a72 -march=armv8-a")
+		endif()
+		if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flax-vector-conversions")
+		endif()
+	endif ()
 	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
-	else()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native") # x86_64
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:armv8.2")
 	endif()
 endif()
 
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[xX]86_64$|^[aA][mM][dD]64$") # x86_64
+	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+	else()
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native")
+	endif()
+endif()
+
+add_definitions("-DBUILD_TESTING=OFF")
 
 
 
