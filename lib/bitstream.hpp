@@ -1,5 +1,8 @@
 #pragma once
-#include <cassert>
+#ifndef NDEBUG
+  #include <cassert>
+#endif
+
 #include <cstdint>
 #include <vector>
 
@@ -14,12 +17,12 @@ class bitstream {
   std::vector<uint8_t> stream;
 
   inline void emit_qword(uint64_t d) {
-    uint8_t val;
-    if (d & 0x8080808080808080 & ~(d + 0x0101010101010101)) {
+    uint64_t val;
+    if (d & 0x8080808080808080UL & ~(d + 0x0101010101010101UL)) {
       for (int i = 56; i >= 0; i -= 8) {
         val = d >> i;
         put_byte(val);
-        if (val == 0xFF) {
+        if ((val & 0xFF) == 0xFF) {
           put_byte(0x00);
         }
       }
@@ -32,12 +35,12 @@ class bitstream {
   }
 
   [[maybe_unused]] inline void emit_dword(uint32_t d) {
-    uint8_t val;
+    uint32_t val;
     if (d & 0x80808080 & ~(d + 0x01010101)) {
       for (int i = 24; i >= 0; i -= 8) {
         val = d >> i;
         put_byte(val);
-        if (val == 0xFF) {
+        if ((val & 0xFF) == 0xFF) {
           put_byte(0x00);
         }
       }
@@ -94,7 +97,9 @@ class bitstream {
   }
 
   inline void put_bits(uint32_t cwd, int32_t len) {
+#ifndef NDEBUG
     assert(len > 0);
+#endif
 #if not defined(NAIVE)
     const int32_t exlen = bits + len;
     if (exlen < 64) {
