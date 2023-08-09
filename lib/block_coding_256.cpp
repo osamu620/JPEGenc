@@ -1,6 +1,9 @@
-//
-// Created by OSAMU WATANABE on 2023/08/05.
-//
+#include <cstdint>
+#include <hwy/highway.h>
+
+uint64_t bitmap;
+HWY_ALIGN int16_t dp[64];
+HWY_ALIGN uint8_t bits[64];
 
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[] = {
@@ -19,15 +22,17 @@ HWY_ALIGN constexpr int16_t indices[] = {
 };
 // clang-format on
 
-const hn::ScalableTag<int16_t> s16;
-const hn::ScalableTag<uint16_t> u16;
-const hn::ScalableTag<uint8_t> u8;
-const hn::ScalableTag<uint64_t> u64;
+using namespace hn;
 
-auto v0 = hn::Load(s16, sp);
-auto v1 = hn::Load(s16, sp + 16);
-auto v2 = hn::Load(s16, sp + 32);
-auto v3 = hn::Load(s16, sp + 48);
+const ScalableTag<int16_t> s16;
+const ScalableTag<uint16_t> u16;
+const ScalableTag<uint8_t> u8;
+const ScalableTag<uint64_t> u64;
+
+auto v0 = Load(s16, sp);
+auto v1 = Load(s16, sp + 16);
+auto v2 = Load(s16, sp + 32);
+auto v3 = Load(s16, sp + 48);
 
 auto row01   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 16]));
 auto row23   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 16]));
@@ -40,8 +45,8 @@ HWY_ALIGN int16_t m[32] = {
     -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1,
 };
-auto maskv1 = hn::Load(s16, m);
-auto maskv2 = hn::Load(s16, m + 16);
+auto maskv1 = Load(s16, m);
+auto maskv2 = Load(s16, m + 16);
 row23       = IfThenElseZero(MaskFromVec(maskv1), row23);
 row45       = IfThenElseZero(MaskFromVec(maskv2), row45);
 row23_1     = IfThenZeroElse(MaskFromVec(maskv1), row23_1);
@@ -74,7 +79,7 @@ auto a0                          = SumsOf8(bitmap_rows_3210);
 auto a1                          = SumsOf8(bitmap_rows_7654);
 /* Move bitmap to 64-bit scalar register. */
 HWY_ALIGN uint64_t shift[4] = {1 << 24, 1 << 16, 1 << 8, 1};
-auto vs                     = hn::Load(u64, shift);
+auto vs                     = Load(u64, shift);
 a0                          = Mul(a0, vs);
 a1                          = Mul(a1, vs);
 bitmap                      = (GetLane(SumOfLanes(u64, a0)) << 32) + GetLane(SumOfLanes(u64, a1));

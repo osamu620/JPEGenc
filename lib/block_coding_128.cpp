@@ -1,6 +1,9 @@
-//
-// Created by OSAMU WATANABE on 2023/08/05.
-//
+#include <cstdint>
+#include <hwy/highway.h>
+
+uint64_t bitmap;
+HWY_ALIGN int16_t dp[64];
+HWY_ALIGN uint8_t bits[64];
 
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[] = {
@@ -19,21 +22,23 @@ HWY_ALIGN constexpr int16_t indices[] = {
 };
 // clang-format on
 
-const hn::ScalableTag<int16_t> s16;
-const hn::ScalableTag<uint16_t> u16;
-const hn::ScalableTag<uint8_t> u8;
-const hn::ScalableTag<uint64_t> u64;
+using namespace hn;
+
+const ScalableTag<int16_t> s16;
+const ScalableTag<uint16_t> u16;
+const ScalableTag<uint8_t> u8;
+const ScalableTag<uint64_t> u64;
 HWY_CAPPED(uint8_t, Lanes(u8) / 2) u8_64;
 HWY_CAPPED(uint64_t, Lanes(u64) / 2) u64_64;
 
-auto v0 = hn::Load(s16, sp);
-auto v1 = hn::Load(s16, sp + 8);
-auto v2 = hn::Load(s16, sp + 16);
-auto v3 = hn::Load(s16, sp + 24);
-auto v4 = hn::Load(s16, sp + 32);
-auto v5 = hn::Load(s16, sp + 40);
-auto v6 = hn::Load(s16, sp + 48);
-auto v7 = hn::Load(s16, sp + 56);
+auto v0 = Load(s16, sp);
+auto v1 = Load(s16, sp + 8);
+auto v2 = Load(s16, sp + 16);
+auto v3 = Load(s16, sp + 24);
+auto v4 = Load(s16, sp + 32);
+auto v5 = Load(s16, sp + 40);
+auto v6 = Load(s16, sp + 48);
+auto v7 = Load(s16, sp + 56);
 
 auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
 row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
