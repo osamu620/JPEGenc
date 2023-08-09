@@ -1,8 +1,10 @@
-//
-// Created by OSAMU WATANABE on 2023/08/05.
-//
-
+#include <cstdint>
+#include <hwy/highway.h>
 #include "zigzag_order.hpp"
+
+uint64_t bitmap;
+HWY_ALIGN int16_t dp[64];
+
 bitmap = 0;
 for (int i = 0; i < DCTSIZE2; ++i) {
   dp[i] = sp[indices[i]];
