@@ -1,6 +1,9 @@
-//
-// Created by OSAMU WATANABE on 2023/08/05.
-//
+#include <cstdint>
+#include <hwy/highway.h>
+
+uint64_t bitmap;
+HWY_ALIGN int16_t dp[64];
+HWY_ALIGN uint8_t bits[64];
 
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[64] = {
@@ -15,13 +18,15 @@ HWY_ALIGN constexpr int16_t indices[64] = {
 };
 // clang-format on
 
-const hn::ScalableTag<int16_t> s16;
-const hn::ScalableTag<uint16_t> u16;
-const hn::ScalableTag<uint8_t> u8;
-const hn::ScalableTag<uint64_t> u64;
+using namespace hn;
 
-auto v0 = hn::Load(s16, sp);
-auto v1 = hn::Load(s16, sp + 32);
+const ScalableTag<int16_t> s16;
+const ScalableTag<uint16_t> u16;
+const ScalableTag<uint8_t> u8;
+const ScalableTag<uint64_t> u64;
+
+auto v0 = Load(s16, sp);
+auto v1 = Load(s16, sp + 32);
 
 auto row0123 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 32]));
 auto row4567 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 32]));
@@ -55,7 +60,7 @@ auto a0                   = SumsOf8(bitmap_rows_76543210);
 /* Move bitmap to 64-bit scalar register. */
 HWY_ALIGN uint64_t shift[8] = {1UL << 56, 1UL << 48, 1UL << 40, 1UL << 32,
                                1UL << 24, 1UL << 16, 1UL << 8,  1UL};
-auto vs                     = hn::Load(u64, shift);
+auto vs                     = Load(u64, shift);
 a0                          = Mul(a0, vs);
 bitmap                      = GetLane(SumOfLanes(u64, a0));
 
