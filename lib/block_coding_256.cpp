@@ -45,8 +45,8 @@ HWY_ALIGN int16_t m[32] = {
     -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, 0,  0,  0,  0,  0,  -1, -1, -1,
 };
-auto maskv1 = hn::Load(s16, m);
-auto maskv2 = hn::Load(s16, m + 16);
+auto maskv1 = Load(s16, m);
+auto maskv2 = Load(s16, m + 16);
 row23       = IfThenElseZero(MaskFromVec(maskv1), row23);
 row45       = IfThenElseZero(MaskFromVec(maskv2), row45);
 row23_1     = IfThenZeroElse(MaskFromVec(maskv1), row23_1);
