@@ -78,10 +78,10 @@ auto bitmap_rows_7654            = AndNot(row7654_ne_0, bitmap_mask);
 auto a0                          = SumsOf8(bitmap_rows_3210);
 auto a1                          = SumsOf8(bitmap_rows_7654);
 /* Move bitmap to 64-bit scalar register. */
-HWY_ALIGN uint64_t shift[4] = {1 << 24, 1 << 16, 1 << 8, 1};
-auto vs                     = Load(u64, shift);
-a0                          = Mul(a0, vs);
-a1                          = Mul(a1, vs);
+HWY_ALIGN uint64_t shift[4] = {24, 16, 8, 0};
+const auto vs               = Load(u64, shift);
+a0                          = Shl(a0, vs);
+a1                          = Shl(a1, vs);
 bitmap                      = (GetLane(SumOfLanes(u64, a0)) << 32) + GetLane(SumOfLanes(u64, a1));
 
 auto abs_row01 = Abs(row01);
