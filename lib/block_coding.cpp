@@ -33,19 +33,23 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
 #endif
 }
 
-HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
-                              huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mcu_height, const int YCCtype,
+                              std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C,
+                              bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
   int stride;
   int16_t *sp0, *sp1, *sp2;
 
-  stride = width * DCTSIZE;
+  stride = round_up(width, DCTSIZE * Hl) * DCTSIZE;
+  if (width % DCTSIZE) {
+    width = round_up(width, DCTSIZE);
+  }
   if (nc == 3) {
-    sp1 = in[1];
-    sp2 = in[2];
-    for (int Ly = 0, Cy = 0; Ly < LINES / DCTSIZE; Ly += Vl, ++Cy) {
+    for (int Ly = 0, Cy = 0; Ly < mcu_height / DCTSIZE; Ly += Vl, ++Cy) {
+      sp1 = in[1] + Ly * stride / Hl;
+      sp2 = in[2] + Ly * stride / Hl;
       for (int Lx = 0, Cx = 0; Lx < width / DCTSIZE; Lx += Hl, ++Cx) {
         // Luma, Y
         for (int y = 0; y < Vl; ++y) {
@@ -63,8 +67,9 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, int YCCtype,
       }
     }
   } else {
-    sp0 = in[0];
-    for (int Ly = 0; Ly < LINES / DCTSIZE; Ly += Vl) {
+    //    sp0 = in[0];
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      sp0 = in[0] + Ly * stride;
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
         EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
@@ -80,9 +85,10 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, int YCCtype,
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(make_zigzag_blk);
-void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
-                 huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
-  HWY_DYNAMIC_DISPATCH(make_zigzag_blk)(std::move(in), width, YCCtype, prev_dc, tab_Y, tab_C, enc);
+void Encode_MCUs(std::vector<int16_t *> in, int width, const int mcu_height, const int YCCtype,
+                 std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+  HWY_DYNAMIC_DISPATCH(make_zigzag_blk)
+  (std::move(in), width, mcu_height, YCCtype, prev_dc, tab_Y, tab_C, enc);
 }
 }  // namespace jpegenc_hwy
 #endif

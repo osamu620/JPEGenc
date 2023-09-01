@@ -12,6 +12,6 @@ struct huff_info {
       : DC_cwd(dc), AC_cwd(ac), DC_len(dl), AC_len(al) {}
 };
 
-void Encode_MCUs(std::vector<int16_t *> in, int width, int YCCtype, std::vector<int> &prev_dc,
-                 huff_info &table_Y, huff_info &table_C, bitstream &enc);
+void Encode_MCUs(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype,
+                 std::vector<int> &prev_dc, huff_info &table_Y, huff_info &table_C, bitstream &enc);
 }  // namespace jpegenc_hwy
