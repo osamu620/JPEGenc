@@ -630,7 +630,7 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
   }
 }
 #else
-HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
+HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) {
   uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
@@ -657,7 +657,8 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   }
 }
 
-HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
+HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, const int width,
+                             const int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
@@ -718,8 +719,8 @@ namespace jpegenc_hwy {
 HWY_EXPORT(rgb2ycbcr);
 HWY_EXPORT(subsample_core);
 
-void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) { HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, width); }
-void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
+void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) { HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, width); }
+void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, const int width, const int YCCtype) {
   HWY_DYNAMIC_DISPATCH(subsample_core)(in, std::move(out), width, YCCtype);
 }
 }  // namespace jpegenc_hwy
