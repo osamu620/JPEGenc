@@ -17,7 +17,8 @@ void print_help() {
   std::cout << "  -h print this help" << std::endl;
 }
 
-int parse_args(int argc, char *argv[], std::string &inname, std::string &outname, int &QF, int &YCCtype) {
+int parse_args(int argc, char *argv[], std::string &inname, std::string &outname, int &QF, int &YCCtype,
+               bool &benchmark) {
   YCCtype = YCC::YUV420;
   QF      = 75;
   std::vector<std::string> args;
@@ -80,6 +81,8 @@ int parse_args(int argc, char *argv[], std::string &inname, std::string &outname
             return EXIT_FAILURE;
           }
           ++i;
+        } else if (args[i].substr(1) == "b") {
+          benchmark = true;
         } else if (args[i].substr(1) == "h") {
           print_help();
           return EXIT_FAILURE;
