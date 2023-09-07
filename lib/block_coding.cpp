@@ -21,6 +21,16 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
   prev_dc = dc;
 
 #if HWY_TARGET != HWY_SCALAR
+  uint64_t bitmap;
+  HWY_ALIGN int16_t dp[64];
+  HWY_ALIGN uint8_t bits[64];
+
+  using namespace hn;
+  const ScalableTag<int16_t> s16;
+  const ScalableTag<uint16_t> u16;
+  const ScalableTag<uint8_t> u8;
+  const ScalableTag<uint64_t> u64;
+
   #if HWY_MAX_BYTES == 64
     #include "block_coding_512.cpp"
   #elif HWY_MAX_BYTES == 32
@@ -28,6 +38,36 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
   #else
     #include "block_coding_128.cpp"
   #endif
+
+  // EncodeDC
+  enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);
+  if (bitmap & 0x8000000000000000) {
+    enc.put_bits(dp[0], bits[0]);
+  }
+  bitmap <<= 1;
+
+  int count = 1;
+  while (bitmap != 0) {
+    int run = JPEGENC_CLZ64(bitmap);
+    count += run;
+    bitmap <<= run;
+    while (run > 15) {
+      // ZRL
+      enc.put_bits(tab.AC_cwd[0xF0], tab.AC_len[0xF0]);
+      run -= 16;
+    }
+    // EncodeAC
+    size_t RS = (run << 4) + bits[count];
+    enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
+    enc.put_bits(dp[count], bits[count]);
+    count++;
+    bitmap <<= 1;
+  }
+  if (count != 64) {
+    // EOB
+    enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
+  }
+
 #else
   #include "block_coding_scalar.cpp"
 #endif

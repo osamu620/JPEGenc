@@ -13,7 +13,7 @@
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
-//  0.382683433, 0.541196100, 0.707106781, 1.306562965 - 1.0
+//  0.382683432, 0.541196100, 0.707106718, 1.306562963 - 1.0
 HWY_ALIGN static const int16_t coeff[] = {12540, 17734, 23170, 10045};
 
 HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
