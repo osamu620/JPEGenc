@@ -26,18 +26,19 @@ int main(int argc, char *argv[]) {
     printf("Elapsed time for encoding: %7.3lf [ms]\n", static_cast<double>(duration) / 1000.0);
     printf("Throughput: %7.3lf [MP/s]\n", (width * height) / static_cast<double>(duration));
   } else {
-    int iter = 0;
+    constexpr double benchtime = 1000.0;  // duration of benchmark in milliseconds
+    int iter                   = 0;
     while (1) {
       encoder.invoke();
       iter++;
       auto stop = std::chrono::high_resolution_clock::now() - start;
       duration  = std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
-      if ((static_cast<double>(duration) / 1000.0) >= 1000) break;
+      if ((static_cast<double>(duration) / 1000.0) >= benchtime) break;
     }
 
-    double et = 1000.0 / (static_cast<double>(duration) / 1000.0);
-    printf("Frames rate: %d [fps]\n", iter);
-    printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / 1000000.0);
+    double et = benchtime / (static_cast<double>(duration) / 1000.0);
+    printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
+    printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
   }
   std::free(imdata);
 

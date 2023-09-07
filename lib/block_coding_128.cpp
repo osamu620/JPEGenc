@@ -1,10 +1,6 @@
 #include <cstdint>
 #include <hwy/highway.h>
 
-uint64_t bitmap;
-HWY_ALIGN int16_t dp[64];
-HWY_ALIGN uint8_t bits[64];
-
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[] = {
         0, 1, 8, 0, 9, 2, 3, 10,
@@ -22,12 +18,6 @@ HWY_ALIGN constexpr int16_t indices[] = {
 };
 // clang-format on
 
-using namespace hn;
-
-const ScalableTag<int16_t> s16;
-const ScalableTag<uint16_t> u16;
-const ScalableTag<uint8_t> u8;
-const ScalableTag<uint64_t> u64;
 HWY_CAPPED(uint8_t, Lanes(u8) / 2) u8_64;
 HWY_CAPPED(uint64_t, Lanes(u64) / 2) u64_64;
 
@@ -105,10 +95,8 @@ auto row54_ne_0 = ConcatEven(u8, BitCast(u8, row4_ne_0), BitCast(u8, row5_ne_0))
 auto row76_ne_0 = ConcatEven(u8, BitCast(u8, row6_ne_0), BitCast(u8, row7_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
-HWY_ALIGN constexpr uint8_t bm[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
-                                    0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
-
-auto bitmap_mask = Load(u8, bm);
+HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080};
+auto bitmap_mask                  = BitCast(u8, Load(u64, bm));
 
 auto bitmap_rows_10 = AndNot(row10_ne_0, bitmap_mask);
 auto bitmap_rows_32 = AndNot(row32_ne_0, bitmap_mask);
@@ -182,32 +170,3 @@ Store(BitCast(s16, row4_diff), s16, dp + 4 * DCTSIZE);
 Store(BitCast(s16, row5_diff), s16, dp + 5 * DCTSIZE);
 Store(BitCast(s16, row6_diff), s16, dp + 6 * DCTSIZE);
 Store(BitCast(s16, row7_diff), s16, dp + 7 * DCTSIZE);
-
-// EncodeDC
-enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);
-if (bitmap & 0x8000000000000000) {
-  enc.put_bits(dp[0], bits[0]);
-}
-bitmap <<= 1;
-
-int count = 1;
-while (bitmap != 0) {
-  int run = JPEGENC_CLZ64(bitmap);
-  count += run;
-  bitmap <<= run;
-  while (run > 15) {
-    // ZRL
-    enc.put_bits(tab.AC_cwd[0xF0], tab.AC_len[0xF0]);
-    run -= 16;
-  }
-  // EncodeAC
-  size_t RS = (run << 4) + bits[count];
-  enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
-  enc.put_bits(dp[count], bits[count]);
-  count++;
-  bitmap <<= 1;
-}
-if (count != 64) {
-  // EOB
-  enc.put_bits(tab.AC_cwd[0x00], tab.AC_len[0x00]);
-}
