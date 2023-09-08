@@ -79,24 +79,21 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mc
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
-  int stride;
   int16_t *sp0, *sp1, *sp2;
 
-  stride = round_up(width, DCTSIZE * Hl) * DCTSIZE;
   if (width % DCTSIZE) {
     width = round_up(width, DCTSIZE);
   }
-  if (nc == 3) {
-    for (int Ly = 0, Cy = 0; Ly < mcu_height / DCTSIZE; Ly += Vl, ++Cy) {
-      sp1 = in[1] + Ly * stride / Hl;
-      sp2 = in[2] + Ly * stride / Hl;
-      for (int Lx = 0, Cx = 0; Lx < width / DCTSIZE; Lx += Hl, ++Cx) {
+  sp0 = in[0];
+  if (nc == 3) {  // color
+    sp1 = in[1];
+    sp2 = in[2];
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
-        for (int y = 0; y < Vl; ++y) {
-          for (int x = 0; x < Hl; ++x) {
-            sp0 = in[0] + (Ly + y) * stride + (Lx + x) * DCTSIZE2;  // top-left of an MCU
-            EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
-          }
+        for (int i = Hl * Vl; i > 0; --i) {
+          EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
+          sp0 += DCTSIZE2;
         }
         // Chroma, Cb
         EncodeSingleBlock(sp1, tab_C, prev_dc[1], enc);
@@ -106,10 +103,8 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mc
         sp2 += DCTSIZE2;
       }
     }
-  } else {
-    //    sp0 = in[0];
+  } else {  // monochrome
     for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
-      sp0 = in[0] + Ly * stride;
       for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
         // Luma, Y
         EncodeSingleBlock(sp0, tab_Y, prev_dc[0], enc);
