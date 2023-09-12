@@ -24,7 +24,7 @@ class jpeg_encoder_impl {
   int QF;
   int YCCtype;
   const int rounded_width;
-  const int roundded_height;
+  const int rounded_height;
   std::vector<std::unique_ptr<int16_t[], hwy::AlignedFreer>> line_buffer;
   std::vector<int16_t *> yuv;
   HWY_ALIGN int qtable_L[64];
@@ -41,7 +41,7 @@ class jpeg_encoder_impl {
         QF(qf),
         YCCtype(ycc),
         rounded_width(round_up(inimg.width, DCTSIZE * (YCC_HV[YCCtype][0] >> 4))),
-        roundded_height(round_up(inimg.height, DCTSIZE * (YCC_HV[YCCtype][0] & 0xF))),
+        rounded_height(round_up(inimg.height, DCTSIZE * (YCC_HV[YCCtype][0] & 0xF))),
         line_buffer(ncomp),
         yuv(ncomp),
         qtable_L{0},
@@ -85,7 +85,7 @@ class jpeg_encoder_impl {
     int n;
     uint8_t *src;
     // Loop of 16 pixels height
-    for (n = 0; n < roundded_height - LINES; n += LINES) {
+    for (n = 0; n < rounded_height - LINES; n += LINES) {
       src = image.get_lines_from(n);
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, rounded_width);
@@ -101,7 +101,7 @@ class jpeg_encoder_impl {
     }
     // Last chunk or leftover (< 16 pixels)
     int last_mcu_height = LINES;
-    if (roundded_height % LINES) {
+    if (rounded_height % LINES) {
       last_mcu_height = DCTSIZE;
     }
     src = image.get_lines_from(n);
