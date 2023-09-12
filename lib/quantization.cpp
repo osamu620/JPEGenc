@@ -2,7 +2,6 @@
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "quantization.cpp"  // this file
 #include <hwy/foreach_target.h>                // must come before highway.h
-
 #include <hwy/highway.h>
 
 #include <cmath>
@@ -15,64 +14,68 @@ namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
-HWY_ATTR void quantize_fwd(std::vector<int16_t *> in, const int *HWY_RESTRICT qtableL,
-                           const int *HWY_RESTRICT qtableC, const int width, const int YCCtype) {
-  int scale_x = YCC_HV[YCCtype][0] >> 4;
-  int scale_y = YCC_HV[YCCtype][0] & 0xF;
-  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT qtable) {
 #if HWY_TARGET != HWY_SCALAR
   const hn::ScalableTag<int16_t> d16;
   const hn::ScalableTag<int32_t> d32;
   auto half = hn::Set(d32, 1 << 15);
+  for (int i = 0; i < DCTSIZE2; i += Lanes(d16)) {
+    auto ql = Load(d32, qtable + i);
+    auto qh = Load(d32, qtable + i + Lanes(d32));
+    auto v  = Load(d16, data + i);
+    auto vl = PromoteLowerTo(d32, v);
+    auto vh = PromoteUpperTo(d32, v);
 
-  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    for (int j = 0; j < DCTSIZE2; j += Lanes(d16)) {
-      auto ql = Load(d32, qtableL + j);
-      auto qh = Load(d32, qtableL + j + Lanes(d32));
-      auto v  = Load(d16, in[0] + i + j);
-      auto vl = PromoteLowerTo(d32, v);
-      auto vh = PromoteUpperTo(d32, v);
-
-      vl = MulAdd(vl, ql, half);
-      vh = MulAdd(vh, qh, half);
-      vl = hn::ShiftRight<16>(vl);
-      vh = hn::ShiftRight<16>(vh);
-      Store(OrderedDemote2To(d16, vl, vh), d16, in[0] + i + j);
-    }
-  }
-  for (int c = 1; c < nc; ++c) {
-    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      for (int j = 0; j < DCTSIZE2; j += Lanes(d16)) {
-        auto ql = Load(d32, qtableC + j);
-        auto qh = Load(d32, qtableC + j + Lanes(d32));
-        auto v  = Load(d16, in[c] + i + j);
-        auto vl = PromoteLowerTo(d32, v);
-        auto vh = PromoteUpperTo(d32, v);
-
-        vl = MulAdd(vl, ql, half);
-        vh = MulAdd(vh, qh, half);
-        vl = hn::ShiftRight<16>(vl);
-        vh = hn::ShiftRight<16>(vh);
-        Store(OrderedDemote2To(d16, vl, vh), d16, in[c] + i + j);
-      }
-    }
+    vl = MulAdd(vl, ql, half);
+    vh = MulAdd(vh, qh, half);
+    vl = hn::ShiftRight<16>(vl);
+    vh = hn::ShiftRight<16>(vh);
+    Store(OrderedDemote2To(d16, vl, vh), d16, data + i);
   }
 #else
   int shift = 16;
   int half  = 1 << (shift - 1);
-  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    for (int j = 0; j < DCTSIZE2; ++j) {
-      in[0][i + j] = static_cast<int16_t>((in[0][i + j] * qtableL[j] + half) >> shift);
-    }
+  for (int i = 0; i < DCTSIZE2; ++i) {
+    data[i] = static_cast<int16_t>((data[i] * qtable[i] + half) >> shift);
   }
-  for (int c = 1; c < nc; ++c) {
-    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      for (int j = 0; j < DCTSIZE2; ++j) {
-        in[c][i + j] = static_cast<int16_t>((in[c][i + j] * qtableC[j] + half) >> shift);
+#endif
+}
+
+void quantize_fwd(std::vector<int16_t *> in, const int width, const int mcu_height, const int YCCtype,
+                  const int *HWY_RESTRICT qtableL, const int *HWY_RESTRICT qtableC) {
+  int Hl = YCC_HV[YCCtype][0] >> 4;
+  int Vl = YCC_HV[YCCtype][0] & 0xF;
+  int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+  int16_t *sp0, *sp1, *sp2;
+
+  sp0 = in[0];
+  if (nc == 3) {  // color
+    sp1 = in[1];
+    sp2 = in[2];
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
+        // Luma, Y
+        for (int i = Hl * Vl; i > 0; --i) {
+          quantize_core(sp0, qtableL);
+          sp0 += DCTSIZE2;
+        }
+        // Chroma, Cb
+        quantize_core(sp1, qtableC);
+        sp1 += DCTSIZE2;
+        // Chroma, Cr
+        quantize_core(sp2, qtableC);
+        sp2 += DCTSIZE2;
+      }
+    }
+  } else {  // monochrome
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
+        // Luma, Y
+        quantize_core(sp0, qtableL);
+        sp0 += DCTSIZE2;
       }
     }
   }
-#endif
 }
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
@@ -80,10 +83,10 @@ HWY_ATTR void quantize_fwd(std::vector<int16_t *> in, const int *HWY_RESTRICT qt
 #if HWY_ONCE
 
 namespace jpegenc_hwy {
-
 HWY_EXPORT(quantize_fwd);
-void quantize(std::vector<int16_t *> in, int *qtableL, int *qtableC, int width, int YCCtype) {
-  HWY_DYNAMIC_DISPATCH(quantize_fwd)(std::move(in), qtableL, qtableC, width, YCCtype);
+void quantize(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype, int *qtableL,
+              int *qtableC) {
+  HWY_DYNAMIC_DISPATCH(quantize_fwd)(std::move(in), width, mcu_height, YCCtype, qtableL, qtableC);
 }
 }  // namespace jpegenc_hwy
 

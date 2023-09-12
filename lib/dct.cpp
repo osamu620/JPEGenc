@@ -13,7 +13,13 @@
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
-//  0.382683432, 0.541196100, 0.707106718, 1.306562963 - 1.0
+/* The following DCT algorithm is derived from
+ * Yukihiro Arai, Takeshi Agui, and Masayuki Nakajima, "A Fast DCT-SQ Scheme for Images, "
+ * IEICE Transactions on Fundamentals of Electronics, Communications and Computer Sciences 71 (1988),
+   1095--1097.
+ */
+
+//  coeff  = {0.382683432, 0.541196100, 0.707106718, 1.306562963 - 1.0} * 2^15
 HWY_ALIGN static const int16_t coeff[] = {12540, 17734, 23170, 10045};
 
 HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
@@ -302,17 +308,38 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #endif
 }
 
-HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int YCCtype) {
-  int scale_x = YCC_HV[YCCtype][0] >> 4;
-  int scale_y = YCC_HV[YCCtype][0] & 0xF;
-  int nc      = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype) {
+  int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+  int Hl = YCC_HV[YCCtype][0] >> 4;
+  int Vl = YCC_HV[YCCtype][0] & 0xF;
+  int16_t *sp0, *sp1, *sp2;
 
-  for (int i = 0; i < width * LINES; i += DCTSIZE2) {
-    dct2_core(in[0] + i);
-  }
-  for (int c = 1; c < nc; ++c) {
-    for (int i = 0; i < width / scale_x * LINES / scale_y; i += DCTSIZE2) {
-      dct2_core(in[c] + i);
+  sp0 = in[0];
+  if (nc == 3) {  // color
+    sp1 = in[1];
+    sp2 = in[2];
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
+        // Luma, Y
+        for (int i = Hl * Vl; i > 0; --i) {
+          dct2_core(sp0);
+          sp0 += DCTSIZE2;
+        }
+        // Chroma, Cb
+        dct2_core(sp1);
+        sp1 += DCTSIZE2;
+        // Chroma, Cr
+        dct2_core(sp2);
+        sp2 += DCTSIZE2;
+      }
+    }
+  } else {  // monochrome
+    for (int Ly = 0; Ly < mcu_height / DCTSIZE; Ly += Vl) {
+      for (int Lx = 0; Lx < width / DCTSIZE; Lx += Hl) {
+        // Luma, Y
+        dct2_core(sp0);
+        sp0 += DCTSIZE2;
+      }
     }
   }
 }
@@ -322,8 +349,8 @@ HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int YCCtype) {
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(fast_dct2);
-void dct2(std::vector<int16_t *> in, int width, int YCCtype) {
-  HWY_DYNAMIC_DISPATCH(fast_dct2)(std::move(in), width, YCCtype);
+void dct2(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype) {
+  HWY_DYNAMIC_DISPATCH(fast_dct2)(std::move(in), width, mcu_height, YCCtype);
 }
 
 }  // namespace jpegenc_hwy

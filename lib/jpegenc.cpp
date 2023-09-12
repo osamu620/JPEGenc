@@ -91,9 +91,9 @@ class jpeg_encoder_impl {
         jpegenc_hwy::rgb2ycbcr(src, rounded_width);
       }
       jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
-      jpegenc_hwy::dct2(yuv, rounded_width, YCCtype);
-      jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, rounded_width, YCCtype);
-      jpegenc_hwy::Encode_MCUs(yuv, width, LINES, YCCtype, prev_dc, tab_Y, tab_C, enc);
+      jpegenc_hwy::dct2(yuv, rounded_width, LINES, YCCtype);
+      jpegenc_hwy::quantize(yuv, rounded_width, LINES, YCCtype, qtable_L, qtable_C);
+      jpegenc_hwy::Encode_MCUs(yuv, rounded_width, LINES, YCCtype, prev_dc, tab_Y, tab_C, enc);
       if (use_RESET) {
         enc.put_RST(n % 8);
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
@@ -109,9 +109,9 @@ class jpeg_encoder_impl {
       jpegenc_hwy::rgb2ycbcr(src, rounded_width);
     }
     jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
-    jpegenc_hwy::dct2(yuv, rounded_width, YCCtype);
-    jpegenc_hwy::quantize(yuv, qtable_L, qtable_C, rounded_width, YCCtype);
-    jpegenc_hwy::Encode_MCUs(yuv, width, last_mcu_height, YCCtype, prev_dc, tab_Y, tab_C, enc);
+    jpegenc_hwy::dct2(yuv, rounded_width, last_mcu_height, YCCtype);
+    jpegenc_hwy::quantize(yuv, rounded_width, last_mcu_height, YCCtype, qtable_L, qtable_C);
+    jpegenc_hwy::Encode_MCUs(yuv, rounded_width, last_mcu_height, YCCtype, prev_dc, tab_Y, tab_C, enc);
 
     // Finalize codestream
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());

@@ -81,9 +81,6 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mc
   int Vl = YCC_HV[YCCtype][0] & 0xF;
   int16_t *sp0, *sp1, *sp2;
 
-  if (width % DCTSIZE) {
-    width = round_up(width, DCTSIZE);
-  }
   sp0 = in[0];
   if (nc == 3) {  // color
     sp1 = in[1];
