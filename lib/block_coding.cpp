@@ -73,9 +73,9 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
 #endif
 }
 
-HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mcu_height, const int YCCtype,
-                              std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C,
-                              bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int width, const int mcu_height,
+                              const int YCCtype, std::vector<int> &prev_dc, huff_info &tab_Y,
+                              huff_info &tab_C, bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -117,10 +117,10 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> in, int width, const int mc
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(make_zigzag_blk);
-void Encode_MCUs(std::vector<int16_t *> in, int width, const int mcu_height, const int YCCtype,
+void Encode_MCUs(std::vector<int16_t *> &in, int width, const int mcu_height, const int YCCtype,
                  std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
   HWY_DYNAMIC_DISPATCH(make_zigzag_blk)
-  (std::move(in), width, mcu_height, YCCtype, prev_dc, tab_Y, tab_C, enc);
+  (in, width, mcu_height, YCCtype, prev_dc, tab_Y, tab_C, enc);
 }
 }  // namespace jpegenc_hwy
 #endif
