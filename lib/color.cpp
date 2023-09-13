@@ -73,7 +73,8 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
  Subsampling operation arranges component sample values in MCU order.
  (In other words, component samples in an MCU are 1-d contiguous array.)
  */
-HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, int width, int YCCtype) {
+HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width,
+                             int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
@@ -751,8 +752,8 @@ HWY_EXPORT(rgb2ycbcr);
 HWY_EXPORT(subsample_core);
 
 void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) { HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, width); }
-void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, const int width, const int YCCtype) {
-  HWY_DYNAMIC_DISPATCH(subsample_core)(in, std::move(out), width, YCCtype);
+void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, const int width, const int YCCtype) {
+  HWY_DYNAMIC_DISPATCH(subsample_core)(in, out, width, YCCtype);
 }
 }  // namespace jpegenc_hwy
 #endif
