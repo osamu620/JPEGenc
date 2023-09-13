@@ -34,7 +34,7 @@ class jpeg_encoder_impl {
 
  public:
   jpeg_encoder_impl(im_info &inimg, int &qf, int &ycc)
-      : image(inimg.data, inimg.width, inimg.height, inimg.nc, ycc),
+      : image(inimg.data, inimg.pos, inimg.width, inimg.height, inimg.nc, ycc),
         width(inimg.width),
         height(inimg.height),
         ncomp(inimg.nc),

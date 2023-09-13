@@ -12,8 +12,9 @@ int main(int argc, char *argv[]) {
   if (parse_args(argc, argv, infile, outfile, QF, YCCtype, benchmark)) {
     return EXIT_FAILURE;
   }
-  uint8_t *imdata = read_pnm(infile, width, height, nc);
-  jpegenc::im_info inimg(imdata, width, height, nc);
+  FILE *fp;
+  int fpos = read_pnm(fp, infile, width, height, nc);
+  jpegenc::im_info inimg(fp, fpos, width, height, nc);
 
   size_t duration = 0;
   auto start      = std::chrono::high_resolution_clock::now();
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
     printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
     printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
   }
-  std::free(imdata);
+  fclose(fp);
 
   const std::vector<uint8_t> codestream = encoder.get_codestream();
   std::cout << "Codestream bytes = " << codestream.size() << std::endl;

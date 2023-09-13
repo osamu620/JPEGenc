@@ -19,8 +19,8 @@
  * shall be called in the user code.
  * @author Osamu Watanabe
  */
-unsigned char *read_pnm(const std::string &name, int &width, int &height, int &ncomp) {
-  FILE *fp = fopen(name.c_str(), "rb");
+int read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int &ncomp) {
+  fp = fopen(name.c_str(), "rb");
   if (fp == nullptr) {
     printf("File %s is not found.\n", name.c_str());
     exit(EXIT_FAILURE);
@@ -91,29 +91,29 @@ unsigned char *read_pnm(const std::string &name, int &width, int &height, int &n
     printf("Maximum value greater than 255 is not supported\n");
     exit(EXIT_FAILURE);
   }
-
-  int numpixels = width * height * ncomp;
-  auto *buf     = (unsigned char *)malloc(numpixels * sizeof(unsigned char));
-  if (buf == nullptr) {
-    printf("malloc() error\n");
-    exit(EXIT_FAILURE);
-  }
-
-  // read pixel values into buffer
-  if (!isASCII) {
-    fread(buf, sizeof(unsigned char), numpixels, fp);
-  } else {
-    for (int i = 0; i < numpixels; ++i) {
-      val = 0;
-      c   = fgetc(fp);
-      while (c != ' ' && c != '\n' && c != EOF) {
-        val *= 10;
-        val += c - '0';
-        c = fgetc(fp);
-      }
-      buf[i] = val;
-    }
-  }
-  fclose(fp);
-  return buf;
+  return ftell(fp);
+  //  int numpixels = width * height * ncomp;
+  //  auto *buf_extended     = (unsigned char *)malloc(numpixels * sizeof(unsigned char));
+  //  if (buf_extended == nullptr) {
+  //    printf("malloc() error\n");
+  //    exit(EXIT_FAILURE);
+  //  }
+  //
+  //  // read pixel values into buffer
+  //  if (!isASCII) {
+  //    fread(buf_extended, sizeof(unsigned char), numpixels, fp);
+  //  } else {
+  //    for (int i = 0; i < numpixels; ++i) {
+  //      val = 0;
+  //      c   = fgetc(fp);
+  //      while (c != ' ' && c != '\n' && c != EOF) {
+  //        val *= 10;
+  //        val += c - '0';
+  //        c = fgetc(fp);
+  //      }
+  //      buf_extended[i] = val;
+  //    }
+  //  }
+  //  fclose(fp);
+  //  return buf_extended;
 }
