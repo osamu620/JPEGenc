@@ -308,7 +308,7 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #endif
 }
 
-HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype) {
+HWY_ATTR void fast_dct2(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -349,8 +349,8 @@ HWY_ATTR void fast_dct2(std::vector<int16_t *> in, int width, int mcu_height, in
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(fast_dct2);
-void dct2(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype) {
-  HWY_DYNAMIC_DISPATCH(fast_dct2)(std::move(in), width, mcu_height, YCCtype);
+void dct2(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype) {
+  HWY_DYNAMIC_DISPATCH(fast_dct2)(in, width, mcu_height, YCCtype);
 }
 
 }  // namespace jpegenc_hwy
