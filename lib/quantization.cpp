@@ -41,7 +41,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT 
 #endif
 }
 
-void quantize_fwd(std::vector<int16_t *> in, const int width, const int mcu_height, const int YCCtype,
+void quantize_fwd(std::vector<int16_t *> &in, const int width, const int mcu_height, const int YCCtype,
                   const int *HWY_RESTRICT qtableL, const int *HWY_RESTRICT qtableC) {
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -84,9 +84,9 @@ void quantize_fwd(std::vector<int16_t *> in, const int width, const int mcu_heig
 
 namespace jpegenc_hwy {
 HWY_EXPORT(quantize_fwd);
-void quantize(std::vector<int16_t *> in, int width, int mcu_height, int YCCtype, int *qtableL,
+void quantize(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype, int *qtableL,
               int *qtableC) {
-  HWY_DYNAMIC_DISPATCH(quantize_fwd)(std::move(in), width, mcu_height, YCCtype, qtableL, qtableC);
+  HWY_DYNAMIC_DISPATCH(quantize_fwd)(in, width, mcu_height, YCCtype, qtableL, qtableC);
 }
 }  // namespace jpegenc_hwy
 
