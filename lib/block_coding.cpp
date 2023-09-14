@@ -4,7 +4,7 @@
 #include <hwy/foreach_target.h>                // must come before highway.h
 #include <hwy/highway.h>
 
-#include <utility>
+#include <cstring>
 
 #include "block_coding.hpp"
 #include "constants.hpp"
@@ -394,9 +394,10 @@ HWY_ATTR void EncodeSingleBlock(int16_t *HWY_RESTRICT sp, huff_info &tab, int &p
 #endif
 }
 
-HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *mcu, int width, const int mcu_height,
-                              const int YCCtype, int *qtableL, int *qtableC, std::vector<int> &prev_dc,
-                              huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width,
+                              const int mcu_height, const int YCCtype, int *HWY_RESTRICT qtable,
+                              std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C,
+                              bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
   int Vl = YCC_HV[YCCtype][0] & 0xF;
@@ -422,20 +423,28 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *mcu, int widt
       // Luma, Y
       for (int i = mcu_skip; i > 0; --i) {
         dct2_core(sp);
-        quantize_core(sp, qtableL);
-        EncodeSingleBlock(sp, tab_Y, prev_dc[0], enc);
+        quantize_core(sp, qtable);
         sp += DCTSIZE2;
       }
       // Chroma, Cb
       dct2_core(sp);
-      quantize_core(sp, qtableC);
-      EncodeSingleBlock(sp, tab_C, prev_dc[1], enc);
+      quantize_core(sp, qtable + DCTSIZE2);
       sp += DCTSIZE2;
       // Chroma, Cr
       dct2_core(sp);
-      quantize_core(sp, qtableC);
+      quantize_core(sp, qtable + DCTSIZE2);
+
+      sp -= DCTSIZE2 * mcu_skip + DCTSIZE2;
+      // Luma, Y
+      for (int i = mcu_skip; i > 0; --i) {
+        EncodeSingleBlock(sp, tab_Y, prev_dc[0], enc);
+        sp += DCTSIZE2;
+      }
+      // Chroma, Cb
+      EncodeSingleBlock(sp, tab_C, prev_dc[1], enc);
+      sp += DCTSIZE2;
+      // Chroma, Cr
       EncodeSingleBlock(sp, tab_C, prev_dc[2], enc);
-      //      sp2 += DCTSIZE2;
     }
   } else {  // monochrome
     sp = mcu;
@@ -444,7 +453,7 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *mcu, int widt
       ssp0 += DCTSIZE2;
       // Luma, Y
       dct2_core(sp);
-      quantize_core(sp, qtableL);
+      quantize_core(sp, qtable);
       EncodeSingleBlock(sp, tab_Y, prev_dc[0], enc);
       //      sp0 += DCTSIZE2;
     }
@@ -457,11 +466,11 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *mcu, int widt
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(make_zigzag_blk);
-void Encode_MCUs(std::vector<int16_t *> &in, int16_t *mcu, int width, const int mcu_height,
-                 const int YCCtype, int *qtableL, int *qtableC, std::vector<int> &prev_dc, huff_info &tab_Y,
+void Encode_MCUs(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width, const int mcu_height,
+                 const int YCCtype, int *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
                  huff_info &tab_C, bitstream &enc) {
   HWY_DYNAMIC_DISPATCH(make_zigzag_blk)
-  (in, mcu, width, mcu_height, YCCtype, qtableL, qtableC, prev_dc, tab_Y, tab_C, enc);
+  (in, mcu, width, mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
 }
 }  // namespace jpegenc_hwy
 #endif

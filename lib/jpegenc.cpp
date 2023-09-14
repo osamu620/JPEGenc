@@ -29,8 +29,7 @@ class jpeg_encoder_impl {
   std::unique_ptr<int16_t[], hwy::AlignedFreer> mcu_buffer;
   std::vector<int16_t *> yuv;
   int16_t *mcu;
-  HWY_ALIGN int qtable_L[64];
-  HWY_ALIGN int qtable_C[64];
+  HWY_ALIGN int qtable[DCTSIZE2 * 2];
   bitstream enc;
   bool use_RESET;
 
@@ -46,8 +45,8 @@ class jpeg_encoder_impl {
         rounded_height(round_up(inimg.height, DCTSIZE * (YCC_HV[YCCtype][0] & 0xF))),
         line_buffer(ncomp),
         yuv(ncomp),
-        qtable_L{0},
-        qtable_C{0},
+        qtable{0},
+        enc(300000),
         use_RESET(false) {
     int nc = inimg.nc;
     if (nc == 1) {
@@ -82,8 +81,8 @@ class jpeg_encoder_impl {
     std::vector<int> prev_dc(3, 0);
 
     // Prepare main-header
-    create_qtable(0, QF, qtable_L);
-    create_qtable(1, QF, qtable_C);
+    create_qtable(0, QF, qtable);
+    create_qtable(1, QF, qtable + DCTSIZE2);
     create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
 
     //// Encoding
@@ -98,8 +97,7 @@ class jpeg_encoder_impl {
       jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
       //      jpegenc_hwy::dct2(yuv, rounded_width, LINES, YCCtype);
       //      jpegenc_hwy::quantize(yuv, rounded_width, LINES, YCCtype, qtable_L, qtable_C);
-      jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, LINES, YCCtype, qtable_L, qtable_C, prev_dc, tab_Y,
-                               tab_C, enc);
+      jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
       // TODO: implement RST marker insertion
       //      if (use_RESET) {
       //        enc.put_RST(n % 8);
@@ -116,8 +114,8 @@ class jpeg_encoder_impl {
     jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
     //    jpegenc_hwy::dct2(yuv, rounded_width, last_mcu_height, YCCtype);
     //    jpegenc_hwy::quantize(yuv, rounded_width, last_mcu_height, YCCtype, qtable_L, qtable_C);
-    jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, last_mcu_height, YCCtype, qtable_L, qtable_C, prev_dc,
-                             tab_Y, tab_C, enc);
+    jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
+                             tab_C, enc);
     // TODO: implement RST marker insertion
     //    if (use_RESET) {
     //      enc.put_RST(n % 8);
