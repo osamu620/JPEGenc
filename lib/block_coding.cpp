@@ -409,52 +409,49 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT 
   int16_t *ssp1 = in[1];
   int16_t *ssp2 = in[2];
 
-  int16_t *sp;
+  int16_t *dp, *wp;
 
   if (nc == 3) {  // color
     for (int k = 0; k < num_mcus; k += mcu_skip) {
-      sp = mcu;
-      memcpy(sp, ssp0, sizeof(int16_t) * DCTSIZE2 * mcu_skip);
-      memcpy(sp + DCTSIZE2 * mcu_skip, ssp1, sizeof(int16_t) * DCTSIZE2);
-      memcpy(sp + DCTSIZE2 * mcu_skip + DCTSIZE2, ssp2, sizeof(int16_t) * DCTSIZE2);
+      dp = wp = mcu;
+      memcpy(dp, ssp0, sizeof(int16_t) * DCTSIZE2 * mcu_skip);
+      memcpy(dp + DCTSIZE2 * mcu_skip, ssp1, sizeof(int16_t) * DCTSIZE2);
+      memcpy(dp + DCTSIZE2 * mcu_skip + DCTSIZE2, ssp2, sizeof(int16_t) * DCTSIZE2);
       ssp0 += DCTSIZE2 * mcu_skip;
       ssp1 += DCTSIZE2;
       ssp2 += DCTSIZE2;
-      // Luma, Y
-      for (int i = mcu_skip; i > 0; --i) {
-        dct2_core(sp);
-        quantize_core(sp, qtable);
-        sp += DCTSIZE2;
+      // DCT
+      for (int i = 0; i < mcu_skip; ++i) {
+        dct2_core(wp + i * DCTSIZE2);
       }
-      // Chroma, Cb
-      dct2_core(sp);
-      quantize_core(sp, qtable + DCTSIZE2);
-      sp += DCTSIZE2;
-      // Chroma, Cr
-      dct2_core(sp);
-      quantize_core(sp, qtable + DCTSIZE2);
+      dct2_core(wp + mcu_skip * DCTSIZE2);
+      dct2_core(wp + mcu_skip * DCTSIZE2 + DCTSIZE2);
 
-      sp -= DCTSIZE2 * mcu_skip + DCTSIZE2;
-      // Luma, Y
-      for (int i = mcu_skip; i > 0; --i) {
-        EncodeSingleBlock(sp, tab_Y, prev_dc[0], enc);
-        sp += DCTSIZE2;
+      // Quantization
+      for (int i = 0; i < mcu_skip; ++i) {
+        quantize_core(wp + i * DCTSIZE2, qtable);
       }
-      // Chroma, Cb
-      EncodeSingleBlock(sp, tab_C, prev_dc[1], enc);
-      sp += DCTSIZE2;
-      // Chroma, Cr
-      EncodeSingleBlock(sp, tab_C, prev_dc[2], enc);
+      quantize_core(wp + mcu_skip * DCTSIZE2, qtable + DCTSIZE2);
+      quantize_core(wp + mcu_skip * DCTSIZE2 + DCTSIZE2, qtable + DCTSIZE2);
+
+      // Huffman-coding
+      for (int i = mcu_skip; i > 0; --i) {
+        EncodeSingleBlock(wp, tab_Y, prev_dc[0], enc);
+        wp += DCTSIZE2;
+      }
+      EncodeSingleBlock(wp, tab_C, prev_dc[1], enc);
+      wp += DCTSIZE2;
+      EncodeSingleBlock(wp, tab_C, prev_dc[2], enc);
     }
   } else {  // monochrome
-    sp = mcu;
+    dp = mcu;
     for (int k = 0; k < num_mcus; k += mcu_skip) {
-      memcpy(sp, in[0], DCTSIZE2);
+      memcpy(dp, in[0], DCTSIZE2);
       ssp0 += DCTSIZE2;
       // Luma, Y
-      dct2_core(sp);
-      quantize_core(sp, qtable);
-      EncodeSingleBlock(sp, tab_Y, prev_dc[0], enc);
+      dct2_core(dp);
+      quantize_core(dp, qtable);
+      EncodeSingleBlock(dp, tab_Y, prev_dc[0], enc);
       //      sp0 += DCTSIZE2;
     }
   }
