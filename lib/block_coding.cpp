@@ -28,14 +28,15 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #if HWY_TARGET != HWY_SCALAR
   HWY_CAPPED(int16_t, 8) s16;
   HWY_CAPPED(int32_t, 4) s32;
-  auto data1_0 = hn::Undefined(s16);
-  auto data1_1 = hn::Undefined(s16);
-  auto data1_2 = hn::Undefined(s16);
-  auto data1_3 = hn::Undefined(s16);
-  auto data2_0 = hn::Undefined(s16);
-  auto data2_1 = hn::Undefined(s16);
-  auto data2_2 = hn::Undefined(s16);
-  auto data2_3 = hn::Undefined(s16);
+  const auto vcoeffs = hn::LoadDup128(s16, coeff);
+  auto data1_0       = hn::Undefined(s16);
+  auto data1_1       = hn::Undefined(s16);
+  auto data1_2       = hn::Undefined(s16);
+  auto data1_3       = hn::Undefined(s16);
+  auto data2_0       = hn::Undefined(s16);
+  auto data2_1       = hn::Undefined(s16);
+  auto data2_2       = hn::Undefined(s16);
+  auto data2_3       = hn::Undefined(s16);
   LoadInterleaved4(s16, data, data1_0, data1_1, data1_2, data1_3);
   LoadInterleaved4(s16, data + 4 * DCTSIZE, data2_0, data2_1, data2_2, data2_3);
   auto cols_04_0 = ConcatEven(s16, data2_0, data1_0);
@@ -74,13 +75,14 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
   col0 = Add(tmp10, tmp11);  // phase 3
   col4 = Sub(tmp10, tmp11);
 
-  auto vcoeff0 = Set(s16, coeff[0]);
-  auto vcoeff1 = Set(s16, coeff[1]);
-  auto vcoeff2 = Set(s16, coeff[2]);
-  auto vcoeff3 = Set(s16, coeff[3]);
-  auto z1      = MulFixedPoint15(Add(tmp12, tmp13), vcoeff2);
-  col2         = Add(tmp13, z1);  // phase 5
-  col6         = Sub(tmp13, z1);
+  const auto vcoeff0 = hn::Broadcast<0>(vcoeffs);  // Set(s16, coeff[0]);
+  const auto vcoeff1 = hn::Broadcast<1>(vcoeffs);  // Set(s16, coeff[1]);
+  const auto vcoeff2 = hn::Broadcast<2>(vcoeffs);  // Set(s16, coeff[2]);
+  const auto vcoeff3 = hn::Broadcast<3>(vcoeffs);  // Set(s16, coeff[3]);
+
+  auto z1 = MulFixedPoint15(Add(tmp12, tmp13), vcoeff2);
+  col2    = Add(tmp13, z1);  // phase 5
+  col6    = Sub(tmp13, z1);
 
   // Odd Part
   tmp10 = Add(tmp4, tmp5);
@@ -314,7 +316,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT 
 #if HWY_TARGET != HWY_SCALAR
   const hn::ScalableTag<int16_t> d16;
   const hn::ScalableTag<int32_t> d32;
-  auto half = hn::Set(d32, 1 << 15);
+  const auto half = hn::Set(d32, 1 << 15);
   for (int i = 0; i < DCTSIZE2; i += Lanes(d16)) {
     auto ql = Load(d32, qtable + i);
     auto qh = Load(d32, qtable + i + Lanes(d32));
@@ -411,6 +413,10 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT 
 
   int16_t *dp, *wp;
 
+  int pdc[3];
+  pdc[0] = prev_dc[0];
+  pdc[1] = prev_dc[1];
+  pdc[2] = prev_dc[2];
   if (nc == 3) {  // color
     for (int k = 0; k < num_mcus; k += mcu_skip) {
       dp = wp = mcu;
@@ -436,12 +442,12 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT 
 
       // Huffman-coding
       for (int i = mcu_skip; i > 0; --i) {
-        EncodeSingleBlock(wp, tab_Y, prev_dc[0], enc);
+        EncodeSingleBlock(wp, tab_Y, pdc[0], enc);
         wp += DCTSIZE2;
       }
-      EncodeSingleBlock(wp, tab_C, prev_dc[1], enc);
+      EncodeSingleBlock(wp, tab_C, pdc[1], enc);
       wp += DCTSIZE2;
-      EncodeSingleBlock(wp, tab_C, prev_dc[2], enc);
+      EncodeSingleBlock(wp, tab_C, pdc[2], enc);
     }
   } else {  // monochrome
     dp = mcu;
@@ -451,10 +457,13 @@ HWY_ATTR void make_zigzag_blk(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT 
       // Luma, Y
       dct2_core(dp);
       quantize_core(dp, qtable);
-      EncodeSingleBlock(dp, tab_Y, prev_dc[0], enc);
+      EncodeSingleBlock(dp, tab_Y, pdc[0], enc);
       //      sp0 += DCTSIZE2;
     }
   }
+  prev_dc[0] = pdc[0];
+  prev_dc[1] = pdc[1];
+  prev_dc[2] = pdc[2];
 }
 
 }  // namespace HWY_NAMESPACE

@@ -46,7 +46,7 @@ class jpeg_encoder_impl {
         line_buffer(ncomp),
         yuv(ncomp),
         qtable{0},
-        enc(300000),
+        enc(3000000),
         use_RESET(false) {
     int nc = inimg.nc;
     if (nc == 1) {
