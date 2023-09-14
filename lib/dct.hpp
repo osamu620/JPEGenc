@@ -4,5 +4,7 @@
 #include <vector>
 
 namespace jpegenc_hwy {
-void dct2(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype);
+namespace HWY_NAMESPACE {
+HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data);
+}  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy

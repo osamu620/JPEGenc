@@ -95,14 +95,9 @@ class jpeg_encoder_impl {
         jpegenc_hwy::rgb2ycbcr(src, rounded_width);
       }
       jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
-      //      jpegenc_hwy::dct2(yuv, rounded_width, LINES, YCCtype);
-      //      jpegenc_hwy::quantize(yuv, rounded_width, LINES, YCCtype, qtable_L, qtable_C);
-      jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
+      jpegenc_hwy::encode_lines(yuv, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
+                                enc);
       // TODO: implement RST marker insertion
-      //      if (use_RESET) {
-      //        enc.put_RST(n % 8);
-      //        prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
-      //      }
       src = image.get_lines_from(n);
     }
     // Last chunk or leftover (< 16 pixels)
@@ -112,15 +107,9 @@ class jpeg_encoder_impl {
       jpegenc_hwy::rgb2ycbcr(src, rounded_width);
     }
     jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
-    //    jpegenc_hwy::dct2(yuv, rounded_width, last_mcu_height, YCCtype);
-    //    jpegenc_hwy::quantize(yuv, rounded_width, last_mcu_height, YCCtype, qtable_L, qtable_C);
-    jpegenc_hwy::Encode_MCUs(yuv, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
-                             tab_C, enc);
+    jpegenc_hwy::encode_lines(yuv, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
+                              tab_C, enc);
     // TODO: implement RST marker insertion
-    //    if (use_RESET) {
-    //      enc.put_RST(n % 8);
-    //      prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
-    //    }
 
     // Finalize codestream
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
