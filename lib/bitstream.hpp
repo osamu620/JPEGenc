@@ -97,7 +97,7 @@ class bitstream {
     put_byte(d & 0xFF);
   }
 
-  inline void put_bits(uint32_t cwd, int32_t len) {
+  inline void put_bits(uint32_t cwd, const int32_t len) {
 #ifndef NDEBUG
     assert(len > 0);
 #endif
