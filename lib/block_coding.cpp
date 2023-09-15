@@ -487,6 +487,7 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
     }
   } else {  // monochrome
     for (int k = 0; k < num_mcus; k += mcu_skip * 2) {
+      // Process two blocks within a single iteration for the speed
       dp = wp = mcu;
       memcpy(dp, ssp0, sizeof(int16_t) * DCTSIZE2 * 2);
       ssp0 += DCTSIZE2 * 2;
