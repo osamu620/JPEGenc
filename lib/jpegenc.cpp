@@ -69,8 +69,9 @@ class jpeg_encoder_impl {
     }
 
     // Prepare mcu-buffers
-    mcu_buffer = hwy::AllocateAligned<int16_t>(DCTSIZE2 * scale_x * scale_y + DCTSIZE2 * 2);
-    mcu        = mcu_buffer.get();
+    const int c = (nc == 1) ? 1 : 0;
+    mcu_buffer  = hwy::AllocateAligned<int16_t>(DCTSIZE2 * scale_x * scale_y + ((DCTSIZE2 * 2) >> c));
+    mcu         = mcu_buffer.get();
   }
 
   void invoke(std::vector<uint8_t> &codestream) {

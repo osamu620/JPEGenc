@@ -485,15 +485,16 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
       encode_sigle_block(wp, tab_C, pdc[2], enc);
     }
   } else {  // monochrome
-    dp = mcu;
-    for (int k = 0; k < num_mcus; k += mcu_skip) {
-      memcpy(dp, in[0], DCTSIZE2);
-      ssp0 += DCTSIZE2;
-      // Luma, Y
-      dct2_core(dp);
-      quantize_core(dp, qtable);
-      encode_sigle_block(dp, tab_Y, pdc[0], enc);
-      //      sp0 += DCTSIZE2;
+    for (int k = 0; k < num_mcus; k += mcu_skip * 2) {
+      dp = wp = mcu;
+      memcpy(dp, ssp0, sizeof(int16_t) * DCTSIZE2 * 2);
+      ssp0 += DCTSIZE2 * 2;
+      dct2_core(wp);
+      dct2_core(wp + DCTSIZE2);
+      quantize_core(wp, qtable);
+      quantize_core(wp + DCTSIZE2, qtable);
+      encode_sigle_block(wp, tab_Y, pdc[0], enc);
+      encode_sigle_block(wp + DCTSIZE2, tab_Y, pdc[0], enc);
     }
   }
   prev_dc[0] = pdc[0];
