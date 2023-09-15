@@ -386,9 +386,9 @@ HWY_ATTR void encode_sigle_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &
   const ScalableTag<uint8_t> u8;
   const ScalableTag<uint64_t> u64;
 
-  #if HWY_MAX_BYTES == 64
+  #if HWY_CAP_GE512
     #include "block_coding_512.cpp"
-  #elif HWY_MAX_BYTES == 32
+  #elif HWY_CAP_GE256
     #include "block_coding_256.cpp"
   #else
     #include "block_coding_128.cpp"
