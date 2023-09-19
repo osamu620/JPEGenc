@@ -36,7 +36,7 @@ constexpr float qmatrix[2][64] = {
      99, 99, 99, 99, 99, 99, 99, 99}};
 // clang-format on
 
-void create_qtable(int, int, int *);
+void create_scaled_qtable(int c, int QF, int *qtable);
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT qtable);
