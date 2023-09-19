@@ -109,6 +109,7 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
   col1 = Add(z11, z4);
   col7 = Sub(z11, z4);
 
+  // Transpose
   const auto q0 = InterleaveLower(s16, col0, col2);
   const auto q1 = InterleaveLower(s16, col1, col3);
   const auto q2 = InterleaveUpper(s16, col0, col2);
@@ -136,6 +137,7 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
   auto row5 = ConcatUpperUpper(s16, r6, r2);
   auto row7 = ConcatUpperUpper(s16, r7, r3);
 
+  // Transpose (Old)
   //  //  vtrnq
   //  auto cols_01_0 = ZipLower(s32, ConcatEven(s16, col0, col0), ConcatEven(s16, col1, col1));
   //  auto cols_01_1 = ZipLower(s32, ConcatOdd(s16, col0, col0), ConcatOdd(s16, col1, col1));
