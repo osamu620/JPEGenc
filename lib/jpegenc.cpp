@@ -82,8 +82,8 @@ class jpeg_encoder_impl {
     std::vector<int> prev_dc(3, 0);
 
     // Prepare main-header
-    create_qtable(0, QF, qtable);
-    create_qtable(1, QF, qtable + DCTSIZE2);
+    create_scaled_qtable(0, QF, qtable);
+    create_scaled_qtable(1, QF, qtable + DCTSIZE2);
     create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
 
     //// Encoding
