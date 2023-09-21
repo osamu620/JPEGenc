@@ -29,6 +29,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   auto v1 = Undefined(u8);
   auto v2 = Undefined(u8);
 
+  constexpr size_t N = Lanes(u8);
   for (size_t i = width * LINES; i > 0; i -= Lanes(u8)) {
     LoadInterleaved3(u8, in, v0, v1, v2);
     // clang-format off
@@ -36,36 +37,43 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     auto r_h = PromoteUpperTo(s16, v0); auto g_h = PromoteUpperTo(s16, v1); auto b_h = PromoteUpperTo(s16, v2);
     // clang-format on
 
-    auto yl = Add(g_l, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<0>(coeffs)));
-    yl      = Add(yl, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<1>(coeffs)));
-    yl      = Add(yl, MulFixedPoint15(BitCast(s16, b_l), hn::Broadcast<2>(coeffs)));
-    yl      = hn::ShiftRight<1>(yl);
+    const auto c0 = hn::Broadcast<0>(coeffs);
+    const auto c1 = hn::Broadcast<1>(coeffs);
+    const auto c2 = hn::Broadcast<2>(coeffs);
+    auto yl       = Add(g_l, MulFixedPoint15(r_l, c0));
+    yl            = Add(yl, MulFixedPoint15(g_l, c1));
+    yl            = Add(yl, MulFixedPoint15(b_l, c2));
+    yl            = hn::ShiftRight<1>(yl);
 
-    auto yh = Add(g_h, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<0>(coeffs)));
-    yh      = Add(yh, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<1>(coeffs)));
-    yh      = Add(yh, MulFixedPoint15(BitCast(s16, b_h), hn::Broadcast<2>(coeffs)));
+    auto yh = Add(g_h, MulFixedPoint15(r_h, c0));
+    yh      = Add(yh, MulFixedPoint15(g_h, c1));
+    yh      = Add(yh, MulFixedPoint15(b_h, c2));
     yh      = hn::ShiftRight<1>(yh);
+    v0      = OrderedTruncate2To(u8, BitCast(u16, yl), BitCast(u16, yh));
 
-    auto cbl = Add(scaled_128_1, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<3>(coeffs)));
-    cbl      = Add(cbl, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<4>(coeffs)));
-    cbl      = hn::ShiftRight<1>(Add(b_l, cbl));
-    auto cbh = Add(scaled_128_1, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<3>(coeffs)));
-    cbh      = Add(cbh, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<4>(coeffs)));
-    cbh      = hn::ShiftRight<1>(Add(b_h, cbh));
+    const auto c3 = hn::Broadcast<3>(coeffs);
+    const auto c4 = hn::Broadcast<4>(coeffs);
+    auto cbl      = Add(scaled_128_1, MulFixedPoint15(r_l, c3));
+    cbl           = Add(cbl, MulFixedPoint15(g_l, c4));
+    cbl           = hn::ShiftRight<1>(Add(b_l, cbl));
+    auto cbh      = Add(scaled_128_1, MulFixedPoint15(r_h, c3));
+    cbh           = Add(cbh, MulFixedPoint15(g_h, c4));
+    cbh           = hn::ShiftRight<1>(Add(b_h, cbh));
+    v1            = OrderedTruncate2To(u8, BitCast(u16, cbl), BitCast(u16, cbh));
 
-    auto crl = Add(scaled_128_1, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<6>(coeffs)));
-    crl      = Add(crl, MulFixedPoint15(BitCast(s16, b_l), hn::Broadcast<7>(coeffs)));
-    crl      = hn::ShiftRight<1>(Add(r_l, crl));
-    auto crh = Add(scaled_128_1, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<6>(coeffs)));
-    crh      = Add(crh, MulFixedPoint15(BitCast(s16, b_h), hn::Broadcast<7>(coeffs)));
-    crh      = hn::ShiftRight<1>(Add(r_h, crh));
+    const auto c6 = hn::Broadcast<6>(coeffs);
+    const auto c7 = hn::Broadcast<7>(coeffs);
+    auto crl      = Add(scaled_128_1, MulFixedPoint15(g_l, c6));
+    crl           = Add(crl, MulFixedPoint15(b_l, c7));
+    crl           = hn::ShiftRight<1>(Add(r_l, crl));
+    auto crh      = Add(scaled_128_1, MulFixedPoint15(g_h, c6));
+    crh           = Add(crh, MulFixedPoint15(b_h, c7));
+    crh           = hn::ShiftRight<1>(Add(r_h, crh));
+    v2            = OrderedTruncate2To(u8, BitCast(u16, crl), BitCast(u16, crh));
 
-    v0 = OrderedTruncate2To(u8, BitCast(u16, yl), BitCast(u16, yh));
-    v1 = OrderedTruncate2To(u8, BitCast(u16, cbl), BitCast(u16, cbh));
-    v2 = OrderedTruncate2To(u8, BitCast(u16, crl), BitCast(u16, crh));
     StoreInterleaved3(v0, v1, v2, u8, in);
 
-    in += 3 * Lanes(u8);
+    in += 3 * N;
   }
 }
 

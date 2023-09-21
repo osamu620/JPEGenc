@@ -17,7 +17,7 @@ void print_help() {
   std::cout << "  -h print this help" << std::endl;
 }
 
-int parse_args(int argc, char *argv[], std::string &inname, std::string &outname, int &QF, int &YCCtype,
+int parse_args(int argc, char **&argv, std::string &inname, std::string &outname, int &QF, int &YCCtype,
                bool &benchmark) {
   YCCtype = YCC::YUV420;
   QF      = 75;

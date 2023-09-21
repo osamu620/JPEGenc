@@ -55,7 +55,8 @@ class imchunk {
       dp += rounded_width * ncomp;
     }
     sp = buf_extended.get() + rounded_width * (num_rows - 1) * ncomp;
-    dp = buf_extended.get() + rounded_width * (num_rows)*ncomp;
+    dp = sp + rounded_width * ncomp;
+    //    buf_extended.get() + rounded_width *(num_rows)*ncomp;
     for (int i = 0; i < num_extra_rows; ++i) {
       memcpy(dp, sp, static_cast<size_t>(rounded_width) * ncomp);
       dp += rounded_width * ncomp;
