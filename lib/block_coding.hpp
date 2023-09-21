@@ -1,7 +1,7 @@
 #pragma once
 
 #include "bitstream.hpp"
-
+#include <cstring>
 #include <hwy/aligned_allocator.h>
 
 namespace jpegenc_hwy {
