@@ -27,14 +27,24 @@ int main(int argc, char *argv[]) {
     printf("Elapsed time for encoding: %7.3lf [ms]\n", static_cast<double>(duration) / 1000.0);
     printf("Throughput: %7.3lf [MP/s]\n", (width * height) / static_cast<double>(duration));
   } else {
-    constexpr double benchtime = 1000.0;  // duration of benchmark in milliseconds
-    int iter                   = 0;
+    bool warmup                 = true;
+    constexpr double warmuptime = 2000.0;  // duration of warmup in milliseconds
+    constexpr double benchtime  = 1000.0;  // duration of benchmark in milliseconds
+    int iter                    = 0;
     while (1) {
       encoder.invoke();
       iter++;
       auto stop = std::chrono::high_resolution_clock::now() - start;
       duration  = std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
-      if ((static_cast<double>(duration) / 1000.0) >= benchtime) break;
+      if (warmup) {
+        if ((static_cast<double>(duration) / 1000.0) >= warmuptime) {
+          start  = std::chrono::high_resolution_clock::now();
+          iter   = 0;
+          warmup = false;
+        }
+      } else {
+        if ((static_cast<double>(duration) / 1000.0) >= benchtime) break;
+      }
     }
 
     double et = benchtime / (static_cast<double>(duration) / 1000.0);
