@@ -164,10 +164,12 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     create_DHT(1, enc);
   }
   if (use_RESET) {
+    const int Hl = YCC_HV[YCCtype][0] >> 4;
+    const int Vl = YCC_HV[YCCtype][0] & 0xF;
     enc.put_word(DRI);
     enc.put_word(4);
-    size_t mcu_x = width / (DCTSIZE * (YCC_HV[YCCtype][0] >> 4));
-    size_t mcu_y = LINES / (DCTSIZE * (YCC_HV[YCCtype][0] & 0xF));
+    size_t mcu_x = round_up(width, DCTSIZE * Hl) / (DCTSIZE * Hl);
+    size_t mcu_y = LINES / (DCTSIZE * Vl);
     enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);

@@ -21,7 +21,7 @@ class jpeg_encoder_impl {
   const int width;
   const int height;
   const int ncomp;
-  int QF;
+  const int QF;
   int YCCtype;
   const int rounded_width;
   const int rounded_height;
@@ -31,7 +31,7 @@ class jpeg_encoder_impl {
   int16_t *mcu;
   HWY_ALIGN int qtable[DCTSIZE2 * 2];
   bitstream enc;
-  bool use_RESET;
+  const bool use_RESET;
 
  public:
   jpeg_encoder_impl(im_info &inimg, int &qf, int &ycc)
@@ -91,15 +91,19 @@ class jpeg_encoder_impl {
     uint8_t *src = image.get_lines_from(0);
 
     // Loop of 16 pixels height
-    for (int n = LINES; n < rounded_height; n += LINES) {
+    for (int n = 0; n < rounded_height - LINES; n += LINES) {
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, rounded_width);
       }
       jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
       jpegenc_hwy::encode_lines(yuv, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
                                 enc);
-      // TODO: implement RST marker insertion
-      src = image.get_lines_from(n);
+      // RST marker insertion, if any
+      if (use_RESET) {
+        enc.put_RST((n / LINES) % 8);
+        prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
+      }
+      src = image.get_lines_from(n + LINES);
     }
     // Last chunk or leftover (< 16 pixels)
     const int last_mcu_height = (rounded_height % LINES) ? DCTSIZE : LINES;
@@ -110,7 +114,6 @@ class jpeg_encoder_impl {
     jpegenc_hwy::subsample(src, yuv, rounded_width, YCCtype);
     jpegenc_hwy::encode_lines(yuv, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
                               tab_C, enc);
-    // TODO: implement RST marker insertion
 
     // Finalize codestream
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
