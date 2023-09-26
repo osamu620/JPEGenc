@@ -3,9 +3,9 @@
 #define HWY_TARGET_INCLUDE "block_coding.cpp"  // this file
 #include <hwy/foreach_target.h>                // must come before highway.h
 #include <hwy/highway.h>
-#include <hwy/aligned_allocator.h>
 
 #include <cstring>
+#include <cmath>
 
 #include "block_coding.hpp"
 #include "constants.hpp"
@@ -25,8 +25,17 @@ namespace hn = hwy::HWY_NAMESPACE;
  */
 
 // coeffs in floating point  = {0.382683432, 0.541196100, 0.707106718, 1.306562963 - 1.0} * 2^15
-//   - four extra zeo elements are for 128 bit load op.
-HWY_ALIGN static const int16_t coeff[] = {12540, 17734, 23170, 10045, 0, 0, 0, 0};
+//   - four extra zero elements are for 128 bit load op.
+static const double c6 = cos((3.0 * M_PI) / 8.0);
+static const double c2 = cos((1.0 * M_PI) / 8.0);
+static const double c4 = cos((2.0 * M_PI) / 8.0);
+
+static const int16_t a0 = static_cast<int16_t>(round(c6 * (1 << 15)));
+static const int16_t a1 = static_cast<int16_t>(round((c2 - c6) * (1 << 15)));
+static const int16_t a2 = static_cast<int16_t>(round(c4 * (1 << 15)));
+static const int16_t a3 = static_cast<int16_t>(round((c2 + c6 - 1.0) * (1 << 15)));
+
+HWY_ALIGN static const int16_t coeff[] = {a0, a1, a2, a3, 0, 0, 0, 0};
 
 HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #if HWY_TARGET != HWY_SCALAR
@@ -372,7 +381,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT 
 #endif
 }
 
-HWY_ATTR void encode_sigle_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
+HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   int dc  = sp[0];
   sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
   prev_dc = dc;
@@ -449,7 +458,7 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
   int16_t *ssp1 = in[1];
   int16_t *ssp2 = in[2];
 
-  int16_t *dp, *wp;
+  int16_t *wp;
 
   int pdc[3];
   pdc[0] = prev_dc[0];
@@ -457,10 +466,10 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
   pdc[2] = prev_dc[2];
   if (nc == 3) {  // color
     for (int k = 0; k < num_mcus; k += mcu_skip) {
-      dp = wp = mcu;
-      memcpy(dp, ssp0, sizeof(int16_t) * DCTSIZE2 * mcu_skip);
-      memcpy(dp + DCTSIZE2 * mcu_skip, ssp1, sizeof(int16_t) * DCTSIZE2);
-      memcpy(dp + DCTSIZE2 * mcu_skip + DCTSIZE2, ssp2, sizeof(int16_t) * DCTSIZE2);
+      wp = mcu;
+      memcpy(wp, ssp0, sizeof(int16_t) * DCTSIZE2 * mcu_skip);
+      memcpy(wp + DCTSIZE2 * mcu_skip, ssp1, sizeof(int16_t) * DCTSIZE2);
+      memcpy(wp + DCTSIZE2 * mcu_skip + DCTSIZE2, ssp2, sizeof(int16_t) * DCTSIZE2);
       ssp0 += DCTSIZE2 * mcu_skip;
       ssp1 += DCTSIZE2;
       ssp2 += DCTSIZE2;
@@ -480,25 +489,25 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
 
       // Huffman-coding
       for (int i = mcu_skip; i > 0; --i) {
-        encode_sigle_block(wp, tab_Y, pdc[0], enc);
+        encode_single_block(wp, tab_Y, pdc[0], enc);
         wp += DCTSIZE2;
       }
-      encode_sigle_block(wp, tab_C, pdc[1], enc);
+      encode_single_block(wp, tab_C, pdc[1], enc);
       wp += DCTSIZE2;
-      encode_sigle_block(wp, tab_C, pdc[2], enc);
+      encode_single_block(wp, tab_C, pdc[2], enc);
     }
   } else {  // monochrome
     for (int k = 0; k < num_mcus; k += mcu_skip * 2) {
       // Process two blocks within a single iteration for the speed
-      dp = wp = mcu;
-      memcpy(dp, ssp0, sizeof(int16_t) * DCTSIZE2 * 2);
+      wp = mcu;
+      memcpy(wp, ssp0, sizeof(int16_t) * DCTSIZE2 * 2);
       ssp0 += DCTSIZE2 * 2;
       dct2_core(wp);
       dct2_core(wp + DCTSIZE2);
       quantize_core(wp, qtable);
       quantize_core(wp + DCTSIZE2, qtable);
-      encode_sigle_block(wp, tab_Y, pdc[0], enc);
-      encode_sigle_block(wp + DCTSIZE2, tab_Y, pdc[0], enc);
+      encode_single_block(wp, tab_Y, pdc[0], enc);
+      encode_single_block(wp + DCTSIZE2, tab_Y, pdc[0], enc);
     }
   }
   prev_dc[0] = pdc[0];
