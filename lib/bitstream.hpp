@@ -5,16 +5,76 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
+#include <cstring>
 
 #include "jpgmarkers.hpp"
 
-// #define NAIVE
+#define USE_VECTOR 0
+
+class stream_buf {
+ private:
+  std::unique_ptr<uint8_t[]> buf;
+  size_t len;
+
+ public:
+  size_t pos;
+  uint8_t *cur_byte;
+
+  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr){};
+  explicit stream_buf(size_t size) : buf(std::make_unique<uint8_t[]>(size)), len(size) {
+    pos      = 0;
+    cur_byte = buf.get();
+  }
+
+  inline void expand() {
+    uint8_t *p                         = buf.release();
+    std::unique_ptr<uint8_t[]> new_buf = std::make_unique<uint8_t[]>(len + len);
+    memcpy(new_buf.get(), p, len);
+    buf = std::move(new_buf);
+    len += len;
+    delete[] p;
+    __builtin_prefetch(buf.get(), 0, 1);
+    cur_byte = buf.get() + pos;
+  }
+
+  inline void put_byte(uint8_t val) {
+    if (pos == len) {
+      expand();
+    }
+    *cur_byte++ = val;
+    pos++;
+  }
+
+  inline void put_qword(uint64_t val) {
+    if (pos + 8 > len) {
+      expand();
+    }
+#if HWY_TARGET == HWY_NEON
+    *(uint64_t *)cur_byte = __builtin_bswap64(val);
+#elif HWY_TARGET <= HWY_SSE2
+    *(uint64_t *)cur_byte = __bswap_64(val);
+#endif
+    cur_byte += 8;
+    pos += 8;
+  }
+
+  uint8_t *get_buf() {
+    pos      = 0;
+    cur_byte = buf.get();
+    return buf.get();
+  }
+};
 
 class bitstream {
  private:
   int32_t bits;
   uint64_t tmp;
+#if USE_VECTOR != 0
   std::vector<uint8_t> stream;
+#else
+  stream_buf stream;
+#endif
 
   inline void emit_qword(uint64_t d) {
     uint64_t val;
@@ -27,10 +87,14 @@ class bitstream {
         }
       }
     } else {
+#if USE_VECTOR != 0
       for (int i = 56; i >= 0; i -= 8) {
         val = d >> i;
         put_byte(val);
       }
+#else
+      stream.put_qword(d);
+#endif
     }
   }
 
@@ -53,7 +117,6 @@ class bitstream {
   }
 
   void flush() {
-#if not defined(NAIVE)
     int n = (bits + 8 - 1) / 8;
     tmp <<= 8 * n - bits;
     tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits));
@@ -69,28 +132,18 @@ class bitstream {
     }
     tmp  = 0;
     bits = 0;
-#else
-    if (bits) {
-      // stuff bit = '1'
-      uint8_t stuff = 0xFFU >> bits;
-      tmp <<= (8 - bits);
-      tmp |= stuff;
-      put_byte(tmp);
-      if (tmp == 0xFF) {
-        // byte stuff
-        put_byte(0x00);
-      }
-    }
-    tmp  = 0;
-    bits = 0;
-#endif
   }
 
  public:
-  bitstream() : bits(0), tmp(0) {}
-  explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
+  //  bitstream() : bits(0), tmp(0) {}
 
+#if USE_VECTOR != 0
+  explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
+#else
+  explicit bitstream(size_t length) : bits(0), tmp(0), stream(length) {}
+  inline void put_byte(uint8_t d) { stream.put_byte(d); }
+#endif
 
   inline void put_word(uint16_t d) {
     put_byte(d >> 8);
@@ -149,6 +202,14 @@ class bitstream {
   std::vector<uint8_t> finalize() {
     flush();
     put_word(EOI);
+#if USE_VECTOR != 0
     return std::move(stream);
+#else
+    size_t size = stream.pos;
+    std::vector<uint8_t> out;
+    out.resize(size);
+    memcpy(out.data(), stream.get_buf(), size);
+    return out;
+#endif
   }
 };
