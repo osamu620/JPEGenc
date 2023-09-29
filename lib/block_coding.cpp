@@ -369,7 +369,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTR
     //    vh = hn::ShiftRight<16>(vh);
     //    Stream(OrderedDemote2To(d16, vl, vh), d16, data + i);
     v = MulFixedPoint15(v, q);
-    Stream(v, d16, data + i);
+    Store(v, d16, data + i);
   }
 #else
   int shift = 16;
