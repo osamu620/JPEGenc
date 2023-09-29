@@ -134,10 +134,11 @@ auto row23_lz = ConcatEven(u8, BitCast(u8, row3_lz), BitCast(u8, row2_lz));
 auto row45_lz = ConcatEven(u8, BitCast(u8, row5_lz), BitCast(u8, row4_lz));
 auto row67_lz = ConcatEven(u8, BitCast(u8, row7_lz), BitCast(u8, row6_lz));
 /* Compute nbits needed to specify magnitude of each coefficient. */
-auto row01_nbits = Sub(Set(u8, 16), row01_lz);
-auto row23_nbits = Sub(Set(u8, 16), row23_lz);
-auto row45_nbits = Sub(Set(u8, 16), row45_lz);
-auto row67_nbits = Sub(Set(u8, 16), row67_lz);
+const auto sixteen = Set(u8, 16);
+auto row01_nbits   = Sub(sixteen, row01_lz);
+auto row23_nbits   = Sub(sixteen, row23_lz);
+auto row45_nbits   = Sub(sixteen, row45_lz);
+auto row67_nbits   = Sub(sixteen, row67_lz);
 /* Store nbits. */
 Store(row01_nbits, u8, bits + 0 * DCTSIZE);
 Store(row23_nbits, u8, bits + 2 * DCTSIZE);

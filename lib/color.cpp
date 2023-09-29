@@ -21,51 +21,59 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   const hn::ScalableTag<uint16_t> u16;
   const hn::ScalableTag<int16_t> s16;
 
-  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11056, 21712, 0, 27440, 5328};
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, -11056, -21712, 0, -27440, -5328};
   const auto coeffs                       = LoadDup128(s16, constants);
-  auto scaled_128_1                       = Set(u16, (128 << 1) + 1);
+  auto scaled_128_1                       = Set(s16, (128 << 1) + 1);
 
   auto v0 = Undefined(u8);
   auto v1 = Undefined(u8);
   auto v2 = Undefined(u8);
 
+  constexpr size_t N = Lanes(u8);
   for (size_t i = width * LINES; i > 0; i -= Lanes(u8)) {
     LoadInterleaved3(u8, in, v0, v1, v2);
     // clang-format off
-    auto r_l  = PromoteLowerTo(u16, v0); auto g_l  = PromoteLowerTo(u16, v1); auto b_l  = PromoteLowerTo(u16, v2);
-    auto r_h  = PromoteUpperTo(u16, v0); auto g_h  = PromoteUpperTo(u16, v1); auto b_h  = PromoteUpperTo(u16, v2);
-
-    auto yl  = Add(g_l, BitCast(u16, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<0>(coeffs))));
-    yl       = Add(yl, BitCast(u16, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<1>(coeffs))));
-    yl       = Add(yl, BitCast(u16, MulFixedPoint15(BitCast(s16, b_l), hn::Broadcast<2>(coeffs))));
-    yl       = hn::ShiftRight<1>(yl);
-
-    auto yh = Add(g_h, BitCast(u16, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<0>(coeffs))));
-    yh      = Add(yh, BitCast(u16, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<1>(coeffs))));
-    yh      = Add(yh, BitCast(u16, MulFixedPoint15(BitCast(s16, b_h), hn::Broadcast<2>(coeffs))));
-    yh      = hn::ShiftRight<1>(yh);
-
-    auto cbl = Sub(scaled_128_1, BitCast(u16, MulFixedPoint15(BitCast(s16, r_l), hn::Broadcast<3>(coeffs))));
-    cbl      = Sub(cbl, BitCast(u16, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<4>(coeffs))));
-    cbl      = hn::ShiftRight<1>(Add(b_l, cbl));
-    auto cbh = Sub(scaled_128_1, BitCast(u16, MulFixedPoint15(BitCast(s16, r_h), hn::Broadcast<3>(coeffs))));
-    cbh      = Sub(cbh, BitCast(u16, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<4>(coeffs))));
-    cbh      = hn::ShiftRight<1>(Add(b_h, cbh));
-
-    auto crl = Sub(scaled_128_1, BitCast(u16, MulFixedPoint15(BitCast(s16, g_l), hn::Broadcast<6>(coeffs))));
-    crl      = Sub(crl, BitCast(u16, MulFixedPoint15(BitCast(s16, b_l), hn::Broadcast<7>(coeffs))));
-    crl      = hn::ShiftRight<1>(Add(r_l, crl));
-    auto crh = Sub(scaled_128_1, BitCast(u16, MulFixedPoint15(BitCast(s16, g_h), hn::Broadcast<6>(coeffs))));
-    crh      = Sub(crh, BitCast(u16, MulFixedPoint15(BitCast(s16, b_h), hn::Broadcast<7>(coeffs))));
-    crh      = hn::ShiftRight<1>(Add(r_h, crh));
+    auto r_l = PromoteLowerTo(s16, v0); auto g_l = PromoteLowerTo(s16, v1); auto b_l = PromoteLowerTo(s16, v2);
+    auto r_h = PromoteUpperTo(s16, v0); auto g_h = PromoteUpperTo(s16, v1); auto b_h = PromoteUpperTo(s16, v2);
     // clang-format on
 
-    v0 = OrderedTruncate2To(u8, yl, yh);
-    v1 = OrderedTruncate2To(u8, cbl, cbh);
-    v2 = OrderedTruncate2To(u8, crl, crh);
+    const auto c0 = hn::Broadcast<0>(coeffs);
+    const auto c1 = hn::Broadcast<1>(coeffs);
+    const auto c2 = hn::Broadcast<2>(coeffs);
+    auto yl       = Add(g_l, MulFixedPoint15(r_l, c0));
+    yl            = Add(yl, MulFixedPoint15(g_l, c1));
+    yl            = Add(yl, MulFixedPoint15(b_l, c2));
+    yl            = hn::ShiftRight<1>(yl);
+
+    auto yh = Add(g_h, MulFixedPoint15(r_h, c0));
+    yh      = Add(yh, MulFixedPoint15(g_h, c1));
+    yh      = Add(yh, MulFixedPoint15(b_h, c2));
+    yh      = hn::ShiftRight<1>(yh);
+    v0      = OrderedTruncate2To(u8, BitCast(u16, yl), BitCast(u16, yh));
+
+    const auto c3 = hn::Broadcast<3>(coeffs);
+    const auto c4 = hn::Broadcast<4>(coeffs);
+    auto cbl      = Add(scaled_128_1, MulFixedPoint15(r_l, c3));
+    cbl           = Add(cbl, MulFixedPoint15(g_l, c4));
+    cbl           = hn::ShiftRight<1>(Add(b_l, cbl));
+    auto cbh      = Add(scaled_128_1, MulFixedPoint15(r_h, c3));
+    cbh           = Add(cbh, MulFixedPoint15(g_h, c4));
+    cbh           = hn::ShiftRight<1>(Add(b_h, cbh));
+    v1            = OrderedTruncate2To(u8, BitCast(u16, cbl), BitCast(u16, cbh));
+
+    const auto c6 = hn::Broadcast<6>(coeffs);
+    const auto c7 = hn::Broadcast<7>(coeffs);
+    auto crl      = Add(scaled_128_1, MulFixedPoint15(g_l, c6));
+    crl           = Add(crl, MulFixedPoint15(b_l, c7));
+    crl           = hn::ShiftRight<1>(Add(r_l, crl));
+    auto crh      = Add(scaled_128_1, MulFixedPoint15(g_h, c6));
+    crh           = Add(crh, MulFixedPoint15(b_h, c7));
+    crh           = hn::ShiftRight<1>(Add(r_h, crh));
+    v2            = OrderedTruncate2To(u8, BitCast(u16, crl), BitCast(u16, crh));
+
     StoreInterleaved3(v0, v1, v2, u8, in);
 
-    in += 3 * Lanes(u8);
+    in += 3 * N;
   }
 }
 

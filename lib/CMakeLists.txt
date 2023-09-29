@@ -7,4 +7,5 @@ target_sources(jpegenc
         quantization.cpp
         block_coding.cpp
         jpegenc.cpp
+        bitstream.cpp
         )

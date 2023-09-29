@@ -12,8 +12,9 @@ int main(int argc, char *argv[]) {
   if (parse_args(argc, argv, infile, outfile, QF, YCCtype, benchmark)) {
     return EXIT_FAILURE;
   }
-  uint8_t *imdata = read_pnm(infile, width, height, nc);
-  jpegenc::im_info inimg(imdata, width, height, nc);
+  FILE *fp;
+  int fpos = read_pnm(fp, infile, width, height, nc);
+  jpegenc::im_info inimg(fp, fpos, width, height, nc);
 
   size_t duration = 0;
   auto start      = std::chrono::high_resolution_clock::now();
@@ -26,21 +27,31 @@ int main(int argc, char *argv[]) {
     printf("Elapsed time for encoding: %7.3lf [ms]\n", static_cast<double>(duration) / 1000.0);
     printf("Throughput: %7.3lf [MP/s]\n", (width * height) / static_cast<double>(duration));
   } else {
-    constexpr double benchtime = 1000.0;  // duration of benchmark in milliseconds
-    int iter                   = 0;
+    bool warmup                 = true;
+    constexpr double warmuptime = 2000.0;  // duration of warmup in milliseconds
+    constexpr double benchtime  = 1000.0;  // duration of benchmark in milliseconds
+    int iter                    = 0;
     while (1) {
       encoder.invoke();
       iter++;
       auto stop = std::chrono::high_resolution_clock::now() - start;
       duration  = std::chrono::duration_cast<std::chrono::microseconds>(stop).count();
-      if ((static_cast<double>(duration) / 1000.0) >= benchtime) break;
+      if (warmup) {
+        if ((static_cast<double>(duration) / 1000.0) >= warmuptime) {
+          start  = std::chrono::high_resolution_clock::now();
+          iter   = 0;
+          warmup = false;
+        }
+      } else {
+        if ((static_cast<double>(duration) / 1000.0) >= benchtime) break;
+      }
     }
 
     double et = benchtime / (static_cast<double>(duration) / 1000.0);
     printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
     printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
   }
-  std::free(imdata);
+  fclose(fp);
 
   const std::vector<uint8_t> codestream = encoder.get_codestream();
   std::cout << "Codestream bytes = " << codestream.size() << std::endl;
