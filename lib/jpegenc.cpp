@@ -29,7 +29,7 @@ class jpeg_encoder_impl {
   std::unique_ptr<int16_t[], hwy::AlignedFreer> mcu_buffer;
   std::vector<int16_t *> yuv;
   int16_t *mcu;
-  HWY_ALIGN int qtable[DCTSIZE2 * 2];
+  HWY_ALIGN int16_t qtable[DCTSIZE2 * 2];
   bitstream enc;
   const bool use_RESET;
 

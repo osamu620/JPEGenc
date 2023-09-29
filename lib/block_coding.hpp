@@ -28,6 +28,6 @@ struct huff_info {
 };
 
 void encode_lines(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width, int mcu_height,
-                  int YCCtype, int *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &table_Y,
+                  int YCCtype, int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &table_Y,
                   huff_info &table_C, bitstream &enc);
 }  // namespace jpegenc_hwy

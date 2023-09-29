@@ -48,7 +48,7 @@ void create_SOS(int Ns, bitstream &enc) {
   enc.put_byte((Ah << 4) + Al);
 }
 
-void create_DQT(int c, int *qtable, bitstream &enc) {
+void create_DQT(int c, int16_t *qtable, bitstream &enc) {
   enc.put_word(DQT);
   int Pq = 0;  // baseline
   int Lq = 2 + (65 + 64 * Pq);
@@ -137,8 +137,8 @@ void create_DHT(int c, bitstream &enc) {
 void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc, bool use_RESET) {
   enc.put_word(SOI);
   const int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
-  int qtable[64];
-  auto create_qtable_DQT = [](int c, int QF, int *qtable) {
+  int16_t qtable[64];
+  auto create_qtable_DQT = [](int c, int QF, int16_t *qtable) {
     float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
     for (int i = 0; i < DCTSIZE2; ++i) {
       float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
@@ -149,7 +149,7 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
       if (stepsize > 255) {
         stepsize = 255;
       }
-      qtable[i] = static_cast<int>(stepsize);
+      qtable[i] = static_cast<int16_t>(stepsize);
     }
   };
   create_qtable_DQT(0, QF, qtable);

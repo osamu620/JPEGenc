@@ -354,23 +354,22 @@ HWY_ATTR void dct2_core(int16_t *HWY_RESTRICT data) {
 #endif
 }
 
-HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int *HWY_RESTRICT qtable) {
+HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTRICT qtable) {
 #if HWY_TARGET != HWY_SCALAR
   const hn::ScalableTag<int16_t> d16;
-  const hn::ScalableTag<int32_t> d32;
-  const auto half = hn::Set(d32, 1 << 15);
   for (int i = 0; i < DCTSIZE2; i += Lanes(d16)) {
-    auto ql = Load(d32, qtable + i);
-    auto qh = Load(d32, qtable + i + Lanes(d32));
-    auto v  = Load(d16, data + i);
-    auto vl = PromoteLowerTo(d32, v);
-    auto vh = PromoteUpperTo(d32, v);
-
-    vl = MulAdd(vl, ql, half);
-    vh = MulAdd(vh, qh, half);
-    vl = hn::ShiftRight<16>(vl);
-    vh = hn::ShiftRight<16>(vh);
-    Store(OrderedDemote2To(d16, vl, vh), d16, data + i);
+    auto q = Load(d16, qtable + i);
+    auto v = Load(d16, data + i);
+    //    auto vl = PromoteLowerTo(d32, v);
+    //    auto vh = PromoteUpperTo(d32, v);
+    //
+    //    vl = MulAdd(vl, ql, half);
+    //    vh = MulAdd(vh, qh, half);
+    //    vl = hn::ShiftRight<16>(vl);
+    //    vh = hn::ShiftRight<16>(vh);
+    //    Stream(OrderedDemote2To(d16, vl, vh), d16, data + i);
+    v = MulFixedPoint15(v, q);
+    Stream(v, d16, data + i);
   }
 #else
   int shift = 16;
