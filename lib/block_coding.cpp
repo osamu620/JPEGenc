@@ -444,7 +444,7 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
 }
 
 HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width,
-                          const int mcu_height, const int YCCtype, int *HWY_RESTRICT qtable,
+                          const int mcu_height, const int YCCtype, int16_t *HWY_RESTRICT qtable,
                           std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
   int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
   int Hl = YCC_HV[YCCtype][0] >> 4;
@@ -521,7 +521,7 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu,
 namespace jpegenc_hwy {
 HWY_EXPORT(encode_mcus);
 void encode_lines(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width, int mcu_height,
-                  int YCCtype, int *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
+                  int YCCtype, int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
                   huff_info &tab_C, bitstream &enc) {
   HWY_DYNAMIC_DISPATCH(encode_mcus)
   (in, mcu, width, mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);

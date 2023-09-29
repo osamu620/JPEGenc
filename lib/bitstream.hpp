@@ -12,6 +12,10 @@
 
 #define USE_VECTOR 0
 
+namespace jpegenc_hwy {
+void send_8_bytes(uint8_t *in, uint8_t *out);
+}  // namespace jpegenc_hwy
+
 class stream_buf {
  private:
   std::unique_ptr<uint8_t[]> buf;
@@ -34,7 +38,7 @@ class stream_buf {
     buf = std::move(new_buf);
     len += len;
     delete[] p;
-    __builtin_prefetch(buf.get(), 0, 1);
+    //    __builtin_prefetch(buf.get() + pos, 0, 1);
     cur_byte = buf.get() + pos;
   }
 
@@ -50,11 +54,15 @@ class stream_buf {
     if (pos + 8 > len) {
       expand();
     }
-#if HWY_TARGET == HWY_NEON
-    *(uint64_t *)cur_byte = __builtin_bswap64(val);
-#elif HWY_TARGET <= HWY_SSE2
-    *(uint64_t *)cur_byte = __bswap_64(val);
-#endif
+    //    // #if HWY_TARGET == HWY_NEON
+    // #if (HWY_TARGET | HWY_NEON_WITHOUT_AES) == HWY_NEON_WITHOUT_AES
+    //    *(uint64_t *)cur_byte = __builtin_bswap64(val);
+    // #elif (HWY_TARGET | HWY_NEON) == HWY_NEON
+    //    *(uint64_t *)cur_byte = __builtin_bswap64(val);
+    // #elif HWY_TARGET <= HWY_SSE2
+    //    *(uint64_t *)cur_byte = __bswap_64(val);
+    // #endif
+    jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
     cur_byte += 8;
     pos += 8;
   }
