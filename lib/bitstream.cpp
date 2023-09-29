@@ -11,10 +11,16 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 HWY_ATTR void trial(uint8_t *HWY_RESTRICT in, uint8_t *HWY_RESTRICT out) {
+#if HWY_TARGET != HWY_SCALAR
   HWY_CAPPED(uint8_t, 8) u8;
   auto vin = Load(u8, in);
   vin      = Reverse(u8, vin);
   Store(vin, u8, out);
+#else
+  for (int i = 7; i >= 0; --i) {
+    *out++ = in[i];
+  }
+#endif
 }
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
