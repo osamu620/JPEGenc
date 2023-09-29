@@ -42,7 +42,7 @@ auto a0                   = SumsOf8(bitmap_rows_76543210);
 HWY_ALIGN uint64_t shift[8] = {56, 48, 40, 32, 24, 16, 8, 0};
 const auto vs               = Load(u64, shift);
 a0                          = Shl(a0, vs);
-bitmap                      = GetLane(SumOfLanes(u64, a0));
+bitmap                      = ReduceSum(u64, a0);
 
 auto abs_row0123 = Abs(row0123);
 auto abs_row4567 = Abs(row4567);
