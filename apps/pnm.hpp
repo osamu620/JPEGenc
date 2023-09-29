@@ -19,7 +19,7 @@
  * shall be called in the user code.
  * @author Osamu Watanabe
  */
-int read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int &ncomp) {
+size_t read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int &ncomp) {
   fp = fopen(name.c_str(), "rb");
   if (fp == nullptr) {
     printf("File %s is not found.\n", name.c_str());
@@ -47,6 +47,11 @@ int read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int &n
   }
   if (c == '2' || c == '3') {
     isASCII = true;
+  }
+
+  if (isASCII) {
+    printf("ASCII ppm is not supported.\n");
+    exit(EXIT_FAILURE);
   }
   while (status < DONE) {
     c = fgetc(fp);
