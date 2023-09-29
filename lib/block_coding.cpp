@@ -372,7 +372,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTR
     Store(v, d16, data + i);
   }
 #else
-  int shift = 16;
+  int shift = 15;
   int half  = 1 << (shift - 1);
   for (int i = 0; i < DCTSIZE2; ++i) {
     data[i] = static_cast<int16_t>((data[i] * qtable[i] + half) >> shift);
