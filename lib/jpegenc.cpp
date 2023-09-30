@@ -52,11 +52,11 @@ class jpeg_encoder_impl {
         qtable{0},
         enc(3000000),
         use_RESET(false) {
-    int nc = inimg.nc;
-    if (nc == 1) {
+    int ncomp_out = inimg.nc;
+    if (ncomp_out == 1) {
       YCCtype = YCC::GRAY;
     }
-    nc                     = (YCCtype == YCC::GRAY2) ? 1 : nc;
+    ncomp_out              = (YCCtype == YCC::GRAY2) ? 1 : ncomp_out;
     const int scale_x      = YCC_HV[YCCtype][0] >> 4;
     const int scale_y      = YCC_HV[YCCtype][0] & 0xF;
     const size_t bufsize_L = rounded_width * LINES;
@@ -64,11 +64,11 @@ class jpeg_encoder_impl {
 
     // Prepare line-buffers
     line_buffer0[0] = hwy::AllocateAligned<uint8_t>(bufsize_L);
-    for (size_t c = 1; c < line_buffer0.size(); ++c) {
+    for (size_t c = 1; c < ncomp; ++c) {
       line_buffer0[c] = hwy::AllocateAligned<uint8_t>(bufsize_L);
     }
     yuv0[0] = line_buffer0[0].get();
-    for (int c = 1; c < nc; ++c) {
+    for (int c = 1; c < ncomp; ++c) {
       yuv0[c] = line_buffer0[c].get();
     }
 
@@ -77,12 +77,12 @@ class jpeg_encoder_impl {
       line_buffer1[c] = hwy::AllocateAligned<int16_t>(bufsize_C);
     }
     yuv1[0] = line_buffer1[0].get();
-    for (int c = 1; c < nc; ++c) {
+    for (int c = 1; c < ncomp_out; ++c) {
       yuv1[c] = line_buffer1[c].get();
     }
 
     // Prepare mcu-buffers
-    const int c = (nc == 1) ? 1 : 0;
+    const int c = (ncomp_out == 1) ? 1 : 0;
     mcu_buffer  = hwy::AllocateAligned<int16_t>(DCTSIZE2 * scale_x * scale_y + ((DCTSIZE2 * 2) >> c));
     mcu         = mcu_buffer.get();
   }
@@ -107,6 +107,8 @@ class jpeg_encoder_impl {
     for (int n = 0; n < rounded_height - LINES; n += LINES) {
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
+      } else {
+        yuv0[0] = src;
       }
       jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
       jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
@@ -123,6 +125,8 @@ class jpeg_encoder_impl {
 
     if (ncomp == 3) {
       jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
+    } else {
+      yuv0[0] = src;
     }
     jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
     jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
