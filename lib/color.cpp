@@ -16,7 +16,7 @@ namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
 #if HWY_TARGET != HWY_SCALAR
-HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
+HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, int width) {
   const hn::ScalableTag<uint8_t> u8;
   const hn::ScalableTag<uint16_t> u16;
   const hn::ScalableTag<int16_t> s16;
@@ -29,6 +29,9 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
   auto v1 = Undefined(u8);
   auto v2 = Undefined(u8);
 
+  uint8_t *o0        = out[0];
+  uint8_t *o1        = out[1];
+  uint8_t *o2        = out[2];
   constexpr size_t N = Lanes(u8);
   for (size_t i = width * LINES; i > 0; i -= Lanes(u8)) {
     LoadInterleaved3(u8, in, v0, v1, v2);
@@ -71,9 +74,15 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
     crh           = hn::ShiftRight<1>(Add(r_h, crh));
     v2            = OrderedTruncate2To(u8, BitCast(u16, crl), BitCast(u16, crh));
 
-    StoreInterleaved3(v0, v1, v2, u8, in);
+    Store(v0, u8, o0);
+    Store(v1, u8, o1);
+    Store(v2, u8, o2);
+    //    StoreInterleaved3(v0, v1, v2, u8, in);
 
     in += 3 * N;
+    o0 += N;
+    o1 += N;
+    o2 += N;
   }
 }
 
@@ -81,7 +90,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, int width) {
  Subsampling operation arranges component sample values in MCU order.
  (In other words, component samples in an MCU are 1-d contiguous array.)
  */
-HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width,
+HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &out, int width,
                              int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
@@ -109,15 +118,15 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::GRAY:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
-          auto sp = in + nc * i * width + nc * j;
-          auto v0 = Load(u8, sp + 0 * width * nc);
-          auto v1 = Load(u8, sp + 1 * width * nc);
-          auto v2 = Load(u8, sp + 2 * width * nc);
-          auto v3 = Load(u8, sp + 3 * width * nc);
-          auto v4 = Load(u8, sp + 4 * width * nc);
-          auto v5 = Load(u8, sp + 5 * width * nc);
-          auto v6 = Load(u8, sp + 6 * width * nc);
-          auto v7 = Load(u8, sp + 7 * width * nc);
+          auto sp = in[0] + i * width + j;
+          auto v0 = Load(u8, sp + 0 * width);
+          auto v1 = Load(u8, sp + 1 * width);
+          auto v2 = Load(u8, sp + 2 * width);
+          auto v3 = Load(u8, sp + 3 * width);
+          auto v4 = Load(u8, sp + 4 * width);
+          auto v5 = Load(u8, sp + 5 * width);
+          auto v6 = Load(u8, sp + 6 * width);
+          auto v7 = Load(u8, sp + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1), c128), s16, out[0] + pos + 8 * 1);
@@ -143,26 +152,53 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV444:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
-          auto sp = in + nc * i * width + nc * j;
+          auto sp0 = in[0] + i * width + j;
+          auto sp1 = in[1] + i * width + j;
+          auto sp2 = in[2] + i * width + j;
           // clang-format off
-          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
+//          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+//          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+//          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+//          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+//          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+//          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+//          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+//          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
           // clang-format on
 
-          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          auto v0_0 = Load(u8, sp0 + 0 * width);
+          auto v1_0 = Load(u8, sp0 + 1 * width);
+          auto v2_0 = Load(u8, sp0 + 2 * width);
+          auto v3_0 = Load(u8, sp0 + 3 * width);
+          auto v4_0 = Load(u8, sp0 + 4 * width);
+          auto v5_0 = Load(u8, sp0 + 5 * width);
+          auto v6_0 = Load(u8, sp0 + 6 * width);
+          auto v7_0 = Load(u8, sp0 + 7 * width);
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
+
+          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -221,27 +257,53 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV422:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
-          auto sp = in + nc * i * width + nc * j;
+          auto sp0 = in[0] + i * width + j;
+          auto sp1 = in[1] + i * width + j;
+          auto sp2 = in[2] + i * width + j;
 
-          // clang-format off
-          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          // clang-format on
-
-          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          //          // clang-format off
+          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
+          //          // clang-format on
+          //
+          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          auto v0_0 = Load(u8, sp0 + 0 * width);
+          auto v1_0 = Load(u8, sp0 + 1 * width);
+          auto v2_0 = Load(u8, sp0 + 2 * width);
+          auto v3_0 = Load(u8, sp0 + 3 * width);
+          auto v4_0 = Load(u8, sp0 + 4 * width);
+          auto v5_0 = Load(u8, sp0 + 5 * width);
+          auto v6_0 = Load(u8, sp0 + 6 * width);
+          auto v7_0 = Load(u8, sp0 + 7 * width);
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -323,28 +385,54 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV440:
       for (int j = 0; j < width; j += Lanes(u8)) {
         for (int i = 0; i < LINES; i += DCTSIZE) {
-          auto sp    = in + nc * i * width + nc * j;
+          auto sp0   = in[0] + i * width + j;
+          auto sp1   = in[1] + i * width + j;
+          auto sp2   = in[2] + i * width + j;
           pos        = j * 16 + i * 8;
           pos_Chroma = j * 8 + i * 4;
-          // clang-format off
-          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          // clang-format on
-
-          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          //          // clang-format off
+          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
+          //          // clang-format on
+          //
+          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          auto v0_0 = Load(u8, sp0 + 0 * width);
+          auto v1_0 = Load(u8, sp0 + 1 * width);
+          auto v2_0 = Load(u8, sp0 + 2 * width);
+          auto v3_0 = Load(u8, sp0 + 3 * width);
+          auto v4_0 = Load(u8, sp0 + 4 * width);
+          auto v5_0 = Load(u8, sp0 + 5 * width);
+          auto v6_0 = Load(u8, sp0 + 6 * width);
+          auto v7_0 = Load(u8, sp0 + 7 * width);
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -420,27 +508,53 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV420:
       for (int j = 0; j < width; j += Lanes(u8)) {
         for (int i = 0; i < LINES; i += DCTSIZE) {
-          auto sp    = in + nc * i * width + nc * j;
+          auto sp0   = in[0] + i * width + j;
+          auto sp1   = in[1] + i * width + j;
+          auto sp2   = in[2] + i * width + j;
           pos_Chroma = j * 4 + i * 4;
-          // clang-format off
-          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          // clang-format on
-
-          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          //          // clang-format off
+          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
+          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
+          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
+          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
+          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
+          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
+          //          // clang-format on
+          //
+          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
+          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
+          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
+          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
+          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
+          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
+          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
+          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+          auto v0_0 = Load(u8, sp0 + 0 * width);
+          auto v1_0 = Load(u8, sp0 + 1 * width);
+          auto v2_0 = Load(u8, sp0 + 2 * width);
+          auto v3_0 = Load(u8, sp0 + 3 * width);
+          auto v4_0 = Load(u8, sp0 + 4 * width);
+          auto v5_0 = Load(u8, sp0 + 5 * width);
+          auto v6_0 = Load(u8, sp0 + 6 * width);
+          auto v7_0 = Load(u8, sp0 + 7 * width);
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -515,20 +629,30 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV411:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8) * 2) {
-          auto sp  = in + nc * i * width + nc * j;
+          auto sp0 = in[0] + i * width + j;
+          auto sp1 = in[1] + i * width + j;
+          auto sp2 = in[2] + i * width + j;
+
           size_t p = 0;
           for (int y = 0; y < DCTSIZE; ++y) {
-            // clang-format off
-            auto v0_0 = Undefined(u8);
-            auto v0_1 = Undefined(u8);
-            auto v0_2 = Undefined(u8);
-            auto v1_0 = Undefined(u8);
-            auto v1_1 = Undefined(u8);
-            auto v1_2 = Undefined(u8);
-            // clang-format on
+            //            // clang-format off
+            //            auto v0_0 = Undefined(u8);
+            //            auto v0_1 = Undefined(u8);
+            //            auto v0_2 = Undefined(u8);
+            //            auto v1_0 = Undefined(u8);
+            //            auto v1_1 = Undefined(u8);
+            //            auto v1_2 = Undefined(u8);
+            //            // clang-format on
+            //
+            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
+            //            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
 
-            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
+            auto v0_0 = Load(u8, sp0 + y * width);
+            auto v0_1 = Load(u8, sp1 + y * width);
+            auto v0_2 = Load(u8, sp2 + y * width);
+            auto v1_0 = Load(u8, sp0 + y * width + Lanes(u8));
+            auto v1_1 = Load(u8, sp1 + y * width + Lanes(u8));
+            auto v1_2 = Load(u8, sp2 + y * width + Lanes(u8));
 
             // Y
             Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + p);
@@ -567,19 +691,27 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::YUV410:
       for (int j = 0; j < width; j += Lanes(u8) * 2) {
         for (int i = 0; i < LINES; i += DCTSIZE) {
-          auto sp  = in + nc * i * width + nc * j;
+          auto sp0 = in[0] + i * width + j;
+          auto sp1 = in[1] + i * width + j;
+          auto sp2 = in[2] + i * width + j;
           size_t p = 0, pc = 0;
           pos_Chroma = j * 2 + i * 4;
           auto cb    = Undefined(s16);
           auto cr    = Undefined(s16);
           for (int y = 0; y < DCTSIZE; ++y) {
-            // clang-format off
-            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-            auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-            // clang-format on
-
-            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
+            //            // clang-format off
+            //            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+            //            auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
+            //            // clang-format on
+            //
+            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
+            //            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
+            auto v0_0 = Load(u8, sp0 + y * width);
+            auto v0_1 = Load(u8, sp1 + y * width);
+            auto v0_2 = Load(u8, sp2 + y * width);
+            auto v1_0 = Load(u8, sp0 + y * width + Lanes(u8));
+            auto v1_1 = Load(u8, sp1 + y * width + Lanes(u8));
+            auto v1_2 = Load(u8, sp2 + y * width + Lanes(u8));
 
             // Y
             Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + p);
@@ -623,13 +755,15 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &o
     case YCC::GRAY2:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
-          auto sp = in + nc * i * width + nc * j;
+          auto sp0 = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE; ++y) {
-            // clang-format off
-            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-            // clang-format on
+            // //            clang-format off
+            //            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
+            //            // clang-format on
+            //
+            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
 
-            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
+            auto v0_0 = Load(u8, sp0 + y * width);
             Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + y * DCTSIZE);
             Store(Sub(PromoteUpperTo(s16, v0_0), c128), s16, out[0] + pos + 64 + y * DCTSIZE);
           }
@@ -759,8 +893,10 @@ namespace jpegenc_hwy {
 HWY_EXPORT(rgb2ycbcr);
 HWY_EXPORT(subsample_core);
 
-void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) { HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, width); }
-void subsample(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, const int width, const int YCCtype) {
+void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
+  HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, out, width);
+}
+void subsample(std::vector<uint8_t *> in, std::vector<int16_t *> &out, const int width, const int YCCtype) {
   HWY_DYNAMIC_DISPATCH(subsample_core)(in, out, width, YCCtype);
 }
 }  // namespace jpegenc_hwy
