@@ -92,7 +92,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
  */
 HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &out, int width,
                              int YCCtype) {
-  int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
+  //  int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
   int scale_y = YCC_HV[YCCtype][0] & 0xF;
 
@@ -155,16 +155,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto sp0 = in[0] + i * width + j;
           auto sp1 = in[1] + i * width + j;
           auto sp2 = in[2] + i * width + j;
-          // clang-format off
-//          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-//          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-//          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-//          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-//          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-//          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-//          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-//          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          // clang-format on
 
           auto v0_0 = Load(u8, sp0 + 0 * width);
           auto v1_0 = Load(u8, sp0 + 1 * width);
@@ -174,31 +164,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto v5_0 = Load(u8, sp0 + 5 * width);
           auto v6_0 = Load(u8, sp0 + 6 * width);
           auto v7_0 = Load(u8, sp0 + 7 * width);
-          auto v0_1 = Load(u8, sp1 + 0 * width);
-          auto v1_1 = Load(u8, sp1 + 1 * width);
-          auto v2_1 = Load(u8, sp1 + 2 * width);
-          auto v3_1 = Load(u8, sp1 + 3 * width);
-          auto v4_1 = Load(u8, sp1 + 4 * width);
-          auto v5_1 = Load(u8, sp1 + 5 * width);
-          auto v6_1 = Load(u8, sp1 + 6 * width);
-          auto v7_1 = Load(u8, sp1 + 7 * width);
-          auto v0_2 = Load(u8, sp2 + 0 * width);
-          auto v1_2 = Load(u8, sp2 + 1 * width);
-          auto v2_2 = Load(u8, sp2 + 2 * width);
-          auto v3_2 = Load(u8, sp2 + 3 * width);
-          auto v4_2 = Load(u8, sp2 + 4 * width);
-          auto v5_2 = Load(u8, sp2 + 5 * width);
-          auto v6_2 = Load(u8, sp2 + 6 * width);
-          auto v7_2 = Load(u8, sp2 + 7 * width);
-
-          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -217,6 +182,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(Sub(PromoteUpperTo(s16, v6_0), c128), s16, out[0] + pos + 8 * 14);
           Store(Sub(PromoteUpperTo(s16, v7_0), c128), s16, out[0] + pos + 8 * 15);
 
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
+
           Store(Sub(PromoteLowerTo(s16, v0_1), c128), s16, out[1] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_1), c128), s16, out[1] + pos + 8 * 1);
           Store(Sub(PromoteLowerTo(s16, v2_1), c128), s16, out[1] + pos + 8 * 2);
@@ -233,6 +207,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(Sub(PromoteUpperTo(s16, v5_1), c128), s16, out[1] + pos + 8 * 13);
           Store(Sub(PromoteUpperTo(s16, v6_1), c128), s16, out[1] + pos + 8 * 14);
           Store(Sub(PromoteUpperTo(s16, v7_1), c128), s16, out[1] + pos + 8 * 15);
+
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_2), c128), s16, out[2] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_2), c128), s16, out[2] + pos + 8 * 1);
@@ -261,25 +244,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto sp1 = in[1] + i * width + j;
           auto sp2 = in[2] + i * width + j;
 
-          //          // clang-format off
-          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          //          // clang-format on
-          //
-          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
           auto v0_0 = Load(u8, sp0 + 0 * width);
           auto v1_0 = Load(u8, sp0 + 1 * width);
           auto v2_0 = Load(u8, sp0 + 2 * width);
@@ -288,22 +252,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto v5_0 = Load(u8, sp0 + 5 * width);
           auto v6_0 = Load(u8, sp0 + 6 * width);
           auto v7_0 = Load(u8, sp0 + 7 * width);
-          auto v0_1 = Load(u8, sp1 + 0 * width);
-          auto v1_1 = Load(u8, sp1 + 1 * width);
-          auto v2_1 = Load(u8, sp1 + 2 * width);
-          auto v3_1 = Load(u8, sp1 + 3 * width);
-          auto v4_1 = Load(u8, sp1 + 4 * width);
-          auto v5_1 = Load(u8, sp1 + 5 * width);
-          auto v6_1 = Load(u8, sp1 + 6 * width);
-          auto v7_1 = Load(u8, sp1 + 7 * width);
-          auto v0_2 = Load(u8, sp2 + 0 * width);
-          auto v1_2 = Load(u8, sp2 + 1 * width);
-          auto v2_2 = Load(u8, sp2 + 2 * width);
-          auto v3_2 = Load(u8, sp2 + 3 * width);
-          auto v4_2 = Load(u8, sp2 + 4 * width);
-          auto v5_2 = Load(u8, sp2 + 5 * width);
-          auto v6_2 = Load(u8, sp2 + 6 * width);
-          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -321,6 +269,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(Sub(PromoteUpperTo(s16, v5_0), c128), s16, out[0] + pos + 8 * 13);
           Store(Sub(PromoteUpperTo(s16, v6_0), c128), s16, out[0] + pos + 8 * 14);
           Store(Sub(PromoteUpperTo(s16, v7_0), c128), s16, out[0] + pos + 8 * 15);
+
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
 
           auto cb00 = Sub(PromoteLowerTo(s16, v0_1), c128);
           auto cb01 = Sub(PromoteUpperTo(s16, v0_1), c128);
@@ -349,6 +306,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(hn::ShiftRight<1>(Add(Padd(s16, cb60, cb61), vhalf)), s16, out[1] + pos_Chroma + 8 * 6);
           Store(hn::ShiftRight<1>(Add(Padd(s16, cb70, cb71), vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
           // clang-format on
+
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           cb00 = Sub(PromoteLowerTo(s16, v0_2), c128);
           cb01 = Sub(PromoteUpperTo(s16, v0_2), c128);
@@ -390,25 +356,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto sp2   = in[2] + i * width + j;
           pos        = j * 16 + i * 8;
           pos_Chroma = j * 8 + i * 4;
-          //          // clang-format off
-          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          //          // clang-format on
-          //
-          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+
           auto v0_0 = Load(u8, sp0 + 0 * width);
           auto v1_0 = Load(u8, sp0 + 1 * width);
           auto v2_0 = Load(u8, sp0 + 2 * width);
@@ -417,22 +365,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto v5_0 = Load(u8, sp0 + 5 * width);
           auto v6_0 = Load(u8, sp0 + 6 * width);
           auto v7_0 = Load(u8, sp0 + 7 * width);
-          auto v0_1 = Load(u8, sp1 + 0 * width);
-          auto v1_1 = Load(u8, sp1 + 1 * width);
-          auto v2_1 = Load(u8, sp1 + 2 * width);
-          auto v3_1 = Load(u8, sp1 + 3 * width);
-          auto v4_1 = Load(u8, sp1 + 4 * width);
-          auto v5_1 = Load(u8, sp1 + 5 * width);
-          auto v6_1 = Load(u8, sp1 + 6 * width);
-          auto v7_1 = Load(u8, sp1 + 7 * width);
-          auto v0_2 = Load(u8, sp2 + 0 * width);
-          auto v1_2 = Load(u8, sp2 + 1 * width);
-          auto v2_2 = Load(u8, sp2 + 2 * width);
-          auto v3_2 = Load(u8, sp2 + 3 * width);
-          auto v4_2 = Load(u8, sp2 + 4 * width);
-          auto v5_2 = Load(u8, sp2 + 5 * width);
-          auto v6_2 = Load(u8, sp2 + 6 * width);
-          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -450,6 +382,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(Sub(PromoteUpperTo(s16, v5_0), c128), s16, out[0] + pos + 8 * 5 + 128);
           Store(Sub(PromoteUpperTo(s16, v6_0), c128), s16, out[0] + pos + 8 * 6 + 128);
           Store(Sub(PromoteUpperTo(s16, v7_0), c128), s16, out[0] + pos + 8 * 7 + 128);
+
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
 
           auto cb00 = Sub(PromoteLowerTo(s16, v0_1), c128);
           auto cb01 = Sub(PromoteUpperTo(s16, v0_1), c128);
@@ -476,6 +417,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), vhalf)), s16, out[1] + pos_Chroma + 8 * 9);
           Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), vhalf)), s16, out[1] + pos_Chroma + 8 * 10);
           Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), vhalf)), s16, out[1] + pos_Chroma + 8 * 11);
+
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           cb00 = Sub(PromoteLowerTo(s16, v0_2), c128);
           cb01 = Sub(PromoteUpperTo(s16, v0_2), c128);
@@ -512,25 +462,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto sp1   = in[1] + i * width + j;
           auto sp2   = in[2] + i * width + j;
           pos_Chroma = j * 4 + i * 4;
-          //          // clang-format off
-          //          auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-          //          auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-          //          auto v2_0 = Undefined(u8); auto v2_1 = Undefined(u8); auto v2_2 = Undefined(u8);
-          //          auto v3_0 = Undefined(u8); auto v3_1 = Undefined(u8); auto v3_2 = Undefined(u8);
-          //          auto v4_0 = Undefined(u8); auto v4_1 = Undefined(u8); auto v4_2 = Undefined(u8);
-          //          auto v5_0 = Undefined(u8); auto v5_1 = Undefined(u8); auto v5_2 = Undefined(u8);
-          //          auto v6_0 = Undefined(u8); auto v6_1 = Undefined(u8); auto v6_2 = Undefined(u8);
-          //          auto v7_0 = Undefined(u8); auto v7_1 = Undefined(u8); auto v7_2 = Undefined(u8);
-          //          // clang-format on
-          //
-          //          LoadInterleaved3(u8, sp + 0 * width * nc, v0_0, v0_1, v0_2);
-          //          LoadInterleaved3(u8, sp + 1 * width * nc, v1_0, v1_1, v1_2);
-          //          LoadInterleaved3(u8, sp + 2 * width * nc, v2_0, v2_1, v2_2);
-          //          LoadInterleaved3(u8, sp + 3 * width * nc, v3_0, v3_1, v3_2);
-          //          LoadInterleaved3(u8, sp + 4 * width * nc, v4_0, v4_1, v4_2);
-          //          LoadInterleaved3(u8, sp + 5 * width * nc, v5_0, v5_1, v5_2);
-          //          LoadInterleaved3(u8, sp + 6 * width * nc, v6_0, v6_1, v6_2);
-          //          LoadInterleaved3(u8, sp + 7 * width * nc, v7_0, v7_1, v7_2);
+
           auto v0_0 = Load(u8, sp0 + 0 * width);
           auto v1_0 = Load(u8, sp0 + 1 * width);
           auto v2_0 = Load(u8, sp0 + 2 * width);
@@ -539,22 +471,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto v5_0 = Load(u8, sp0 + 5 * width);
           auto v6_0 = Load(u8, sp0 + 6 * width);
           auto v7_0 = Load(u8, sp0 + 7 * width);
-          auto v0_1 = Load(u8, sp1 + 0 * width);
-          auto v1_1 = Load(u8, sp1 + 1 * width);
-          auto v2_1 = Load(u8, sp1 + 2 * width);
-          auto v3_1 = Load(u8, sp1 + 3 * width);
-          auto v4_1 = Load(u8, sp1 + 4 * width);
-          auto v5_1 = Load(u8, sp1 + 5 * width);
-          auto v6_1 = Load(u8, sp1 + 6 * width);
-          auto v7_1 = Load(u8, sp1 + 7 * width);
-          auto v0_2 = Load(u8, sp2 + 0 * width);
-          auto v1_2 = Load(u8, sp2 + 1 * width);
-          auto v2_2 = Load(u8, sp2 + 2 * width);
-          auto v3_2 = Load(u8, sp2 + 3 * width);
-          auto v4_2 = Load(u8, sp2 + 4 * width);
-          auto v5_2 = Load(u8, sp2 + 5 * width);
-          auto v6_2 = Load(u8, sp2 + 6 * width);
-          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + 8 * 0);
           Store(Sub(PromoteLowerTo(s16, v1_0), c128), s16, out[0] + pos + 8 * 1);
@@ -572,7 +488,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(Sub(PromoteUpperTo(s16, v5_0), c128), s16, out[0] + pos + 8 * 13);
           Store(Sub(PromoteUpperTo(s16, v6_0), c128), s16, out[0] + pos + 8 * 14);
           Store(Sub(PromoteUpperTo(s16, v7_0), c128), s16, out[0] + pos + 8 * 15);
-          // clang-format on
+
+          auto v0_1 = Load(u8, sp1 + 0 * width);
+          auto v1_1 = Load(u8, sp1 + 1 * width);
+          auto v2_1 = Load(u8, sp1 + 2 * width);
+          auto v3_1 = Load(u8, sp1 + 3 * width);
+          auto v4_1 = Load(u8, sp1 + 4 * width);
+          auto v5_1 = Load(u8, sp1 + 5 * width);
+          auto v6_1 = Load(u8, sp1 + 6 * width);
+          auto v7_1 = Load(u8, sp1 + 7 * width);
 
           auto cb00 = Sub(PromoteLowerTo(s16, v0_1), c128);
           auto cb01 = Sub(PromoteUpperTo(s16, v0_1), c128);
@@ -597,6 +521,15 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb40, cb50), Add(cb41, cb51)), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
           Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb60, cb70), Add(cb61, cb71)), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
           // clang-format on
+
+          auto v0_2 = Load(u8, sp2 + 0 * width);
+          auto v1_2 = Load(u8, sp2 + 1 * width);
+          auto v2_2 = Load(u8, sp2 + 2 * width);
+          auto v3_2 = Load(u8, sp2 + 3 * width);
+          auto v4_2 = Load(u8, sp2 + 4 * width);
+          auto v5_2 = Load(u8, sp2 + 5 * width);
+          auto v6_2 = Load(u8, sp2 + 6 * width);
+          auto v7_2 = Load(u8, sp2 + 7 * width);
 
           cb00 = Sub(PromoteLowerTo(s16, v0_2), c128);
           cb01 = Sub(PromoteUpperTo(s16, v0_2), c128);
@@ -635,18 +568,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
 
           size_t p = 0;
           for (int y = 0; y < DCTSIZE; ++y) {
-            //            // clang-format off
-            //            auto v0_0 = Undefined(u8);
-            //            auto v0_1 = Undefined(u8);
-            //            auto v0_2 = Undefined(u8);
-            //            auto v1_0 = Undefined(u8);
-            //            auto v1_1 = Undefined(u8);
-            //            auto v1_2 = Undefined(u8);
-            //            // clang-format on
-            //
-            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            //            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
-
             auto v0_0 = Load(u8, sp0 + y * width);
             auto v0_1 = Load(u8, sp1 + y * width);
             auto v0_2 = Load(u8, sp2 + y * width);
@@ -699,13 +620,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
           auto cb    = Undefined(s16);
           auto cr    = Undefined(s16);
           for (int y = 0; y < DCTSIZE; ++y) {
-            //            // clang-format off
-            //            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-            //            auto v1_0 = Undefined(u8); auto v1_1 = Undefined(u8); auto v1_2 = Undefined(u8);
-            //            // clang-format on
-            //
-            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-            //            LoadInterleaved3(u8, sp + y * width * nc + nc * Lanes(u8), v1_0, v1_1, v1_2);
             auto v0_0 = Load(u8, sp0 + y * width);
             auto v0_1 = Load(u8, sp1 + y * width);
             auto v0_2 = Load(u8, sp2 + y * width);
@@ -757,12 +671,6 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
         for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp0 = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE; ++y) {
-            // //            clang-format off
-            //            auto v0_0 = Undefined(u8); auto v0_1 = Undefined(u8); auto v0_2 = Undefined(u8);
-            //            // clang-format on
-            //
-            //            LoadInterleaved3(u8, sp + y * width * nc, v0_0, v0_1, v0_2);
-
             auto v0_0 = Load(u8, sp0 + y * width);
             Store(Sub(PromoteLowerTo(s16, v0_0), c128), s16, out[0] + pos + y * DCTSIZE);
             Store(Sub(PromoteUpperTo(s16, v0_0), c128), s16, out[0] + pos + 64 + y * DCTSIZE);
