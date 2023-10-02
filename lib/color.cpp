@@ -679,8 +679,9 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &
   }
 }
 #else
-HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) {
+HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
   uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
+  uint8_t *o0 = out[0], *o1 = out[1], *o2 = out[2];
   constexpr int32_t c00   = 9798;    // 0.299 * 2^15
   constexpr int32_t c01   = 19235;   // 0.587 * 2^15
   constexpr int32_t c02   = 3736;    // 0.114 * 2^15
@@ -697,16 +698,19 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, const int width) {
     Y     = ((c00 * I0[0] + c01 * I1[0] + c02 * I2[0] + half) >> shift);
     Cb    = (c10 * I0[0] + c11 * I1[0] + c12 * I2[0] + half) >> shift;
     Cr    = (c20 * I0[0] + c21 * I1[0] + c22 * I2[0] + half) >> shift;
-    I0[0] = static_cast<uint8_t>(Y);
-    I1[0] = static_cast<uint8_t>(Cb + 128);
-    I2[0] = static_cast<uint8_t>(Cr + 128);
+    o0[0] = static_cast<uint8_t>(Y);
+    o1[0] = static_cast<uint8_t>(Cb + 128);
+    o2[0] = static_cast<uint8_t>(Cr + 128);
     I0 += 3;
     I1 += 3;
     I2 += 3;
+    o0++;
+    o1++;
+    o2++;
   }
 }
 
-HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> out, const int width,
+HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> out, const int width,
                              const int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
@@ -733,10 +737,10 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
     case YCC::YUV411:
       for (int i = 0; i < LINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += DCTSIZE) {
-          auto sp = in + nc * i * width + nc * j;
+          auto sp = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE; ++y) {
             for (int x = 0; x < DCTSIZE; ++x) {
-              out[0][pos] = sp[y * width * nc + nc * x] - 128;
+              out[0][pos] = static_cast<int16_t>(sp[y * width + x] - 128);
               pos++;
             }
           }
@@ -748,12 +752,12 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
     case YCC::YUV410:
       for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
         for (int j = 0; j < width; j += DCTSIZE * scale_x) {
-          auto sp = in + nc * i * width + nc * j;
+          auto sp = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE * scale_y; y += DCTSIZE) {
             for (int x = 0; x < DCTSIZE * scale_x; x += DCTSIZE) {
               for (int p = 0; p < DCTSIZE; ++p) {
                 for (int q = 0; q < DCTSIZE; ++q) {
-                  out[0][pos] = sp[(y + p) * width * nc + nc * (x + q)] - 128;
+                  out[0][pos] = static_cast<int16_t>(sp[(y + p) * width + (x + q)] - 128);
                   pos++;
                 }
               }
@@ -768,13 +772,13 @@ HWY_ATTR void subsample_core(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> ou
     pos = 0;
     for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
       for (int j = 0; j < width; j += DCTSIZE * scale_x) {
-        auto sp = in + nc * i * width + nc * j + c;
+        auto sp = in[c] + i * width + j;
         for (int y = 0; y < DCTSIZE * scale_y; y += scale_y) {
           for (int x = 0; x < DCTSIZE * scale_x; x += scale_x) {
             int ave = 0;
             for (int p = 0; p < scale_y; ++p) {
               for (int q = 0; q < scale_x; ++q) {
-                ave += sp[(y + p) * width * nc + nc * (x + q)];
+                ave += sp[(y + p) * width + (x + q)];
               }
             }
             ave += half;
