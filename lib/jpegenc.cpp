@@ -64,7 +64,7 @@ class jpeg_encoder_impl {
 
     // Prepare line-buffers
     line_buffer0[0] = hwy::AllocateAligned<uint8_t>(bufsize_L);
-    for (size_t c = 1; c < ncomp; ++c) {
+    for (int c = 1; c < ncomp; ++c) {
       line_buffer0[c] = hwy::AllocateAligned<uint8_t>(bufsize_L);
     }
     yuv0[0] = line_buffer0[0].get();
