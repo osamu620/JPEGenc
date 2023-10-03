@@ -417,19 +417,25 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
   const uint32_t EOB_cwd = tab.AC_cwd[0x00];
   const int32_t EOB_len  = tab.AC_len[0x00];
 
+  uint32_t diff;
+  int32_t nbits;
   while (bitmap != 0) {
     int run = JPEGENC_CLZ64(bitmap);
     count += run;
     bitmap <<= run;
+    diff  = dp[count];
+    nbits = bits[count];
     while (run > 15) {
       // ZRL
       enc.put_bits(ZRL_cwd, ZRL_len);
       run -= 16;
     }
     // EncodeAC
-    size_t RS = (run << 4) + bits[count];
-    enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
-    enc.put_bits(dp[count], bits[count]);
+    size_t RS = (run << 4) + nbits;   //    size_t RS = (run << 4) + bits[count];
+    diff |= tab.AC_cwd[RS] << nbits;  //    enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
+    nbits += tab.AC_len[RS];          //    enc.put_bits(dp[count], bits[count]);
+    enc.put_bits(diff, nbits);
+
     count++;
     bitmap <<= 1;
   }
