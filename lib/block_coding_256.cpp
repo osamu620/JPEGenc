@@ -72,7 +72,7 @@ HWY_ALIGN uint64_t shift[4] = {24, 16, 8, 0};
 const auto vs               = Load(u64, shift);
 a0                          = Shl(a0, vs);
 a1                          = Shl(a1, vs);
-bitmap                      = (GetLane(SumOfLanes(u64, a0)) << 32) + GetLane(SumOfLanes(u64, a1));
+bitmap                      = (ReduceSum(u64, a0) << 32) | ReduceSum(u64, a1);
 
 auto abs_row01 = Abs(row01);
 auto abs_row23 = Abs(row23);
