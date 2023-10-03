@@ -125,9 +125,13 @@ class bitstream {
   }
 
   void flush() {
-    int n = (bits + 8 - 1) / 8;
-    tmp <<= 8 * n - bits;
-    tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits));
+    //    int n = (bits + 8 - 1) / 8;
+    //    tmp <<= 8 * n - bits;
+    //    tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits));
+    const int bits_to_flush = 64 - bits;
+    int n                   = (bits_to_flush + 8 - 1) / 8;
+    tmp <<= 8 * n - bits_to_flush;
+    tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits_to_flush));
     uint64_t mask = 0xFF00000000000000UL >> (64 - n * 8);
     for (int i = n - 1; i >= 0; --i) {
       uint8_t upper_byte = (tmp & mask) >> (8 * i);
@@ -149,7 +153,7 @@ class bitstream {
   explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 #else
-  explicit bitstream(size_t length) : bits(0), tmp(0), stream(length) {}
+  explicit bitstream(size_t length) : bits(64), tmp(0), stream(length) {}
   inline void put_byte(uint8_t d) { stream.put_byte(d); }
 #endif
 
@@ -162,40 +166,50 @@ class bitstream {
 #ifndef NDEBUG
     assert(len > 0);
 #endif
-#if not defined(NAIVE)
-    const int32_t exlen = bits + len;
-    if (exlen < 64) {
-      tmp <<= len;
-      tmp |= (uint64_t)cwd & ((1 << len) - 1);
-      bits = exlen;
-    } else {
-      tmp <<= 64 - bits;
-      uint64_t mask = (~(0xFFFFFFFFFFFFFFFFU << (exlen - 64)));
-      uint64_t val  = cwd & mask;
-      cwd &= ((1 << len) - 1);
-      cwd >>= (exlen - 64);
-      tmp |= cwd;
+    bits -= len;
+    if (bits < 0) {
+      // PUT_AND_FLUSH
+      tmp = (tmp << (len + bits)) | (cwd >> -bits);
       emit_qword(tmp);
-      tmp  = val;
-      bits = exlen - 64;
+      bits += 64;
+      tmp = cwd;
+    } else {
+      tmp = (tmp << len) | cwd;
     }
-#else
-    while (len) {
-      tmp <<= 1;
-      tmp |= (cwd >> (len - 1)) & 1;
-      len--;
-      bits++;
-      if (bits == 8) {
-        put_byte(tmp);
-        if (tmp == 0xFF) {
-          // byte stuff
-          put_byte(0x00);
-        }
-        tmp  = 0;
-        bits = 0;
-      }
-    }
-#endif
+    // #if not defined(NAIVE)
+    //     const int32_t exlen = bits + len;
+    //     if (exlen < 64) {
+    //       tmp <<= len;
+    //       tmp |= (uint64_t)cwd & ((1 << len) - 1);
+    //       bits = exlen;
+    //     } else {
+    //       tmp <<= 64 - bits;
+    //       uint64_t mask = (~(0xFFFFFFFFFFFFFFFFU << (exlen - 64)));
+    //       uint64_t val  = cwd & mask;
+    //       cwd &= ((1 << len) - 1);
+    //       cwd >>= (exlen - 64);
+    //       tmp |= cwd;
+    //       emit_qword(tmp);
+    //       tmp  = val;
+    //       bits = exlen - 64;
+    //     }
+    // #else
+    //     while (len) {
+    //       tmp <<= 1;
+    //       tmp |= (cwd >> (len - 1)) & 1;
+    //       len--;
+    //       bits++;
+    //       if (bits == 8) {
+    //         put_byte(tmp);
+    //         if (tmp == 0xFF) {
+    //           // byte stuff
+    //           put_byte(0x00);
+    //         }
+    //         tmp  = 0;
+    //         bits = 0;
+    //       }
+    //     }
+    // #endif
   }
 
   void put_RST(int n) {
