@@ -85,7 +85,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
  Subsampling operation arranges component sample values in MCU order.
  (In other words, component samples in an MCU are 1-d contiguous array.)
  */
-HWY_ATTR void subsample_core(std::vector<uint8_t *> in, std::vector<int16_t *> &out, int width,
+HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> &out, int width,
                              int YCCtype) {
   //  int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
@@ -710,7 +710,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, c
   }
 }
 
-HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> out, const int width,
+HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> &out, const int width,
                              const int YCCtype) {
   int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
   int scale_x = YCC_HV[YCCtype][0] >> 4;
