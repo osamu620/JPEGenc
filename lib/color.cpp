@@ -803,7 +803,8 @@ HWY_EXPORT(subsample_core);
 void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
   HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, out, width);
 }
-void subsample(std::vector<uint8_t *> in, std::vector<int16_t *> &out, const int width, const int YCCtype) {
+void subsample(std::vector<uint8_t *> &in, std::vector<int16_t *> &out, const int width,
+               const int YCCtype) {
   HWY_DYNAMIC_DISPATCH(subsample_core)(in, out, width, YCCtype);
 }
 }  // namespace jpegenc_hwy
