@@ -87,28 +87,13 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
  */
 HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> &out, int width,
                              int YCCtype) {
-  //  int nc      = (YCCtype == YCC::GRAY) ? 1 : 3;
-  int scale_x = YCC_HV[YCCtype][0] >> 4;
-  int scale_y = YCC_HV[YCCtype][0] & 0xF;
-
-  int shift = 0;
-  int bound = 1;
-  while ((scale_x * scale_y) > bound) {
-    bound += bound;
-    shift++;
-  }
-  int half = 0;
-  if (shift) {
-    half = 1 << (shift - 1);
-  }
   size_t pos        = 0;
   size_t pos_Chroma = 0;
-  //  HWY_CAPPED(uint8_t, 16) u8;
-  //  HWY_CAPPED(int16_t, 8) s16;
+
   hn::FixedTag<uint8_t, 16> u8;
   hn::FixedTag<int16_t, 8> s16;
-  const auto c128  = Set(s16, 128);
-  const auto vhalf = Set(s16, half);
+  const auto c128 = Set(s16, 128);
+
   switch (YCCtype) {
     case YCC::GRAY:
       for (int i = 0; i < LINES; i += DCTSIZE) {
@@ -292,14 +277,14 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           auto cb71 = Sub(PromoteUpperTo(s16, v7_1), c128);
 
           // clang-format off
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb00, cb01), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb10, cb11), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb20, cb21), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb30, cb31), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb40, cb41), vhalf)), s16, out[1] + pos_Chroma + 8 * 4);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb50, cb51), vhalf)), s16, out[1] + pos_Chroma + 8 * 5);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb60, cb61), vhalf)), s16, out[1] + pos_Chroma + 8 * 6);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb70, cb71), vhalf)), s16, out[1] + pos_Chroma + 8 * 7);
+          Store(hn::ShiftRight<1>(Padd(s16, cb00, cb01)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Padd(s16, cb10, cb11)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Padd(s16, cb20, cb21)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Padd(s16, cb30, cb31)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Padd(s16, cb40, cb41)), s16, out[1] + pos_Chroma + 8 * 4);
+          Store(hn::ShiftRight<1>(Padd(s16, cb50, cb51)), s16, out[1] + pos_Chroma + 8 * 5);
+          Store(hn::ShiftRight<1>(Padd(s16, cb60, cb61)), s16, out[1] + pos_Chroma + 8 * 6);
+          Store(hn::ShiftRight<1>(Padd(s16, cb70, cb71)), s16, out[1] + pos_Chroma + 8 * 7);
           // clang-format on
 
           auto v0_2 = Load(u8, sp2 + 0 * width);
@@ -329,14 +314,14 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           cb71 = Sub(PromoteUpperTo(s16, v7_2), c128);
 
           // clang-format off
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb00, cb01), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb10, cb11), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb20, cb21), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb30, cb31), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb40, cb41), vhalf)), s16, out[2] + pos_Chroma + 8 * 4);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb50, cb51), vhalf)), s16, out[2] + pos_Chroma + 8 * 5);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb60, cb61), vhalf)), s16, out[2] + pos_Chroma + 8 * 6);
-          Store(hn::ShiftRight<1>(Add(Padd(s16, cb70, cb71), vhalf)), s16, out[2] + pos_Chroma + 8 * 7);
+          Store(hn::ShiftRight<1>(Padd(s16, cb00, cb01)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Padd(s16, cb10, cb11)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Padd(s16, cb20, cb21)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Padd(s16, cb30, cb31)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Padd(s16, cb40, cb41)), s16, out[2] + pos_Chroma + 8 * 4);
+          Store(hn::ShiftRight<1>(Padd(s16, cb50, cb51)), s16, out[2] + pos_Chroma + 8 * 5);
+          Store(hn::ShiftRight<1>(Padd(s16, cb60, cb61)), s16, out[2] + pos_Chroma + 8 * 6);
+          Store(hn::ShiftRight<1>(Padd(s16, cb70, cb71)), s16, out[2] + pos_Chroma + 8 * 7);
           // clang-format on
           pos += 128;
           pos_Chroma += 64;
@@ -404,14 +389,14 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           auto cb70 = Sub(PromoteLowerTo(s16, v7_1), c128);
           auto cb71 = Sub(PromoteUpperTo(s16, v7_1), c128);
 
-          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), vhalf)), s16, out[1] + pos_Chroma + 8 * 8);
-          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), vhalf)), s16, out[1] + pos_Chroma + 8 * 9);
-          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), vhalf)), s16, out[1] + pos_Chroma + 8 * 10);
-          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), vhalf)), s16, out[1] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(cb00, cb10)), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(cb20, cb30)), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(cb40, cb50)), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(cb60, cb70)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(cb01, cb11)), s16, out[1] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(cb21, cb31)), s16, out[1] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(cb41, cb51)), s16, out[1] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(cb61, cb71)), s16, out[1] + pos_Chroma + 8 * 11);
 
           auto v0_2 = Load(u8, sp2 + 0 * width);
           auto v1_2 = Load(u8, sp2 + 1 * width);
@@ -439,14 +424,14 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           cb70 = Sub(PromoteLowerTo(s16, v7_2), c128);
           cb71 = Sub(PromoteUpperTo(s16, v7_2), c128);
 
-          Store(hn::ShiftRight<1>(Add(Add(cb00, cb10), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<1>(Add(Add(cb20, cb30), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<1>(Add(Add(cb40, cb50), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<1>(Add(Add(cb60, cb70), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
-          Store(hn::ShiftRight<1>(Add(Add(cb01, cb11), vhalf)), s16, out[2] + pos_Chroma + 8 * 8);
-          Store(hn::ShiftRight<1>(Add(Add(cb21, cb31), vhalf)), s16, out[2] + pos_Chroma + 8 * 9);
-          Store(hn::ShiftRight<1>(Add(Add(cb41, cb51), vhalf)), s16, out[2] + pos_Chroma + 8 * 10);
-          Store(hn::ShiftRight<1>(Add(Add(cb61, cb71), vhalf)), s16, out[2] + pos_Chroma + 8 * 11);
+          Store(hn::ShiftRight<1>(Add(cb00, cb10)), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<1>(Add(cb20, cb30)), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<1>(Add(cb40, cb50)), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<1>(Add(cb60, cb70)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<1>(Add(cb01, cb11)), s16, out[2] + pos_Chroma + 8 * 8);
+          Store(hn::ShiftRight<1>(Add(cb21, cb31)), s16, out[2] + pos_Chroma + 8 * 9);
+          Store(hn::ShiftRight<1>(Add(cb41, cb51)), s16, out[2] + pos_Chroma + 8 * 10);
+          Store(hn::ShiftRight<1>(Add(cb61, cb71)), s16, out[2] + pos_Chroma + 8 * 11);
         }
       }
       break;
@@ -511,10 +496,10 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           auto cb71 = Sub(PromoteUpperTo(s16, v7_1), c128);
 
           // clang-format off
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb00, cb10), Add(cb01, cb11)), vhalf)), s16, out[1] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb20, cb30), Add(cb21, cb31)), vhalf)), s16, out[1] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb40, cb50), Add(cb41, cb51)), vhalf)), s16, out[1] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb60, cb70), Add(cb61, cb71)), vhalf)), s16, out[1] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb00, cb10), Add(cb01, cb11))), s16, out[1] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb20, cb30), Add(cb21, cb31))), s16, out[1] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb40, cb50), Add(cb41, cb51))), s16, out[1] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb60, cb70), Add(cb61, cb71))), s16, out[1] + pos_Chroma + 8 * 3);
           // clang-format on
 
           auto v0_2 = Load(u8, sp2 + 0 * width);
@@ -544,10 +529,10 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
           cb71 = Sub(PromoteUpperTo(s16, v7_2), c128);
 
           // clang-format off
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb00, cb10), Add(cb01, cb11)), vhalf)), s16, out[2] + pos_Chroma + 8 * 0);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb20, cb30), Add(cb21, cb31)), vhalf)), s16, out[2] + pos_Chroma + 8 * 1);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb40, cb50), Add(cb41, cb51)), vhalf)), s16, out[2] + pos_Chroma + 8 * 2);
-          Store(hn::ShiftRight<2>(Add(Padd(s16, Add(cb60, cb70), Add(cb61, cb71)), vhalf)), s16, out[2] + pos_Chroma + 8 * 3);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb00, cb10), Add(cb01, cb11))), s16, out[2] + pos_Chroma + 8 * 0);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb20, cb30), Add(cb21, cb31))), s16, out[2] + pos_Chroma + 8 * 1);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb40, cb50), Add(cb41, cb51))), s16, out[2] + pos_Chroma + 8 * 2);
+          Store(hn::ShiftRight<2>(Padd(s16, Add(cb60, cb70), Add(cb61, cb71))), s16, out[2] + pos_Chroma + 8 * 3);
           // clang-format on
 
           pos += 128;
@@ -585,7 +570,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
             auto t0   = Padd(s16, cb00, cb01);
             auto t1   = Padd(s16, cb10, cb11);
             auto tb00 = Padd(s16, t0, t1);
-            Store(hn::ShiftRight<2>(Add(Padd(s16, t0, t1), vhalf)), s16, out[1] + pos_Chroma + p);
+            Store(hn::ShiftRight<2>(Padd(s16, t0, t1)), s16, out[1] + pos_Chroma + p);
 
             // Cr
             cb00 = Sub(PromoteLowerTo(s16, v0_2), c128);
@@ -596,7 +581,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
             t0   = Padd(s16, cb00, cb01);
             t1   = Padd(s16, cb10, cb11);
             tb00 = Padd(s16, t0, t1);
-            Store(hn::ShiftRight<2>(Add(Padd(s16, t0, t1), vhalf)), s16, out[2] + pos_Chroma + p);
+            Store(hn::ShiftRight<2>(Padd(s16, t0, t1)), s16, out[2] + pos_Chroma + p);
             p += 8;
           }
           pos += 256;
@@ -649,8 +634,8 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
               cb = Padd(s16, tb0, tb1);
               cr = Padd(s16, tr0, tr1);
             } else {
-              cb = hn::ShiftRight<3>(Add(Add(cb, Padd(s16, tb0, tb1)), vhalf));
-              cr = hn::ShiftRight<3>(Add(Add(cr, Padd(s16, tr0, tr1)), vhalf));
+              cb = hn::ShiftRight<3>(Add(cb, Padd(s16, tb0, tb1)));
+              cr = hn::ShiftRight<3>(Add(cr, Padd(s16, tr0, tr1)));
               Store(cb, s16, out[1] + pos_Chroma + pc);
               Store(cr, s16, out[2] + pos_Chroma + pc);
               pc += 8;
