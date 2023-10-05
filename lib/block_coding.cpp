@@ -10,7 +10,6 @@
 #include "block_coding.hpp"
 #include "constants.hpp"
 #include "dct.hpp"
-#include "huffman_tables.hpp"
 #include "quantization.hpp"
 #include "ycctype.hpp"
 

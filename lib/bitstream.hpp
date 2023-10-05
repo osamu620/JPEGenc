@@ -13,7 +13,7 @@
 #define USE_VECTOR 0
 
 namespace jpegenc_hwy {
-void send_8_bytes(uint8_t *in, uint8_t *out);
+[[maybe_unused]] void send_8_bytes(uint8_t *in, uint8_t *out);
 }  // namespace jpegenc_hwy
 
 class stream_buf {
@@ -216,7 +216,8 @@ class bitstream {
     flush();
     put_word(RST[n]);
   }
-  auto get_stream() {
+
+  [[maybe_unused]] auto get_stream() {
     flush();
     return &stream;
   }

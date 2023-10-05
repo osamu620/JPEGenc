@@ -5,7 +5,6 @@
 #include "block_coding.hpp"
 #include "color.hpp"
 #include "constants.hpp"
-#include "dct.hpp"
 #include "image_chunk.hpp"
 #include "huffman_tables.hpp"
 #include "jpgheaders.hpp"

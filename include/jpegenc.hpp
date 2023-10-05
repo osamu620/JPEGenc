@@ -17,11 +17,11 @@ namespace jpegenc {
 
 struct im_info {
   FILE *data;
-  const int32_t pos;
+  const size_t pos;
   const int32_t width;
   const int32_t height;
   const int32_t nc;
-  im_info(FILE *buf, int32_t fpos, int32_t w, int32_t h, int32_t c)
+  im_info(FILE *buf, size_t fpos, int32_t w, int32_t h, int32_t c)
       : data(buf), pos(fpos), width(w), height(h), nc(c) {}
 };
 

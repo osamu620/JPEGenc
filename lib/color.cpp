@@ -5,8 +5,6 @@
 
 #include <hwy/highway.h>
 
-#include <utility>
-
 #include "color.hpp"
 #include "ycctype.hpp"
 #include "constants.hpp"
