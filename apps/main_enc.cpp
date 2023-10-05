@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   FILE *fp;
-  int fpos = read_pnm(fp, infile, width, height, nc);
+  size_t fpos = read_pnm(fp, infile, width, height, nc);
   jpegenc::im_info inimg(fp, fpos, width, height, nc);
 
   size_t duration = 0;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     constexpr double warmuptime = 2000.0;  // duration of warmup in milliseconds
     constexpr double benchtime  = 1000.0;  // duration of benchmark in milliseconds
     int iter                    = 0;
-    while (1) {
+    while (true) {
       encoder.invoke();
       iter++;
       auto stop = std::chrono::high_resolution_clock::now() - start;

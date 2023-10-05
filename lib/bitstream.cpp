@@ -28,7 +28,7 @@ HWY_ATTR void trial(uint8_t *HWY_RESTRICT in, uint8_t *HWY_RESTRICT out) {
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(trial);
-void send_8_bytes(uint8_t *in, uint8_t *out) {
+[[maybe_unused]] void send_8_bytes(uint8_t *in, uint8_t *out) {
   HWY_DYNAMIC_DISPATCH(trial)
   (in, out);
 }

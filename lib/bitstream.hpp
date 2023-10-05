@@ -13,7 +13,7 @@
 #define USE_VECTOR 0
 
 namespace jpegenc_hwy {
-void send_8_bytes(uint8_t *in, uint8_t *out);
+[[maybe_unused]] void send_8_bytes(uint8_t *in, uint8_t *out);
 }  // namespace jpegenc_hwy
 
 class stream_buf {
@@ -54,15 +54,15 @@ class stream_buf {
     if (pos + 8 > len) {
       expand();
     }
-    //    // #if HWY_TARGET == HWY_NEON
-    // #if (HWY_TARGET | HWY_NEON_WITHOUT_AES) == HWY_NEON_WITHOUT_AES
-    //    *(uint64_t *)cur_byte = __builtin_bswap64(val);
-    // #elif (HWY_TARGET | HWY_NEON) == HWY_NEON
-    //    *(uint64_t *)cur_byte = __builtin_bswap64(val);
-    // #elif HWY_TARGET <= HWY_SSE2
-    //    *(uint64_t *)cur_byte = __bswap_64(val);
-    // #endif
-    jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
+    // emits eight uint8_t values at once
+#if (HWY_TARGET | HWY_NEON_WITHOUT_AES) == HWY_NEON_WITHOUT_AES
+    *(uint64_t *)cur_byte = __builtin_bswap64(val);
+#elif (HWY_TARGET | HWY_NEON) == HWY_NEON
+    *(uint64_t *)cur_byte = __builtin_bswap64(val);
+#elif HWY_TARGET <= HWY_SSE2
+    *(uint64_t *)cur_byte = __bswap_64(val);
+#endif
+    //    jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
     cur_byte += 8;
     pos += 8;
   }
@@ -216,7 +216,8 @@ class bitstream {
     flush();
     put_word(RST[n]);
   }
-  auto get_stream() {
+
+  [[maybe_unused]] auto get_stream() {
     flush();
     return &stream;
   }

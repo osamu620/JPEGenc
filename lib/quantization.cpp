@@ -5,9 +5,6 @@
 #include <hwy/highway.h>
 
 #include <cmath>
-#include <utility>
-#include "ycctype.hpp"
-#include "constants.hpp"
 #include "quantization.hpp"
 
 namespace jpegenc_hwy {
