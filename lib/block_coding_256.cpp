@@ -20,14 +20,23 @@ HWY_ALIGN constexpr int16_t indices[] = {
 
 auto v0 = Load(s16, sp);
 auto v1 = Load(s16, sp + 16);
-auto v2 = Load(s16, sp + 32);
-auto v3 = Load(s16, sp + 48);
 
-auto row01   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 16]));
-auto row23   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 16]));
-auto row45   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 16]));
-auto row67   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[3 * 16]));
-auto row23_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 16]));
+auto row01              = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 16]));
+auto v2                 = Load(s16, sp + 32);
+row01                   = InsertLane(row01, 10, ExtractLane(v2, 0));
+auto row23              = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 16]));
+auto v3                 = Load(s16, sp + 48);
+auto row23_1            = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 16]));
+HWY_ALIGN uint8_t m1[8] = {0x07, 0xFF};
+auto maskv1             = LoadMaskBits(s16, m1);
+row23                   = IfThenElseZero(maskv1, row23);
+row23_1                 = IfThenZeroElse(maskv1, row23_1);
+row23                   = Or(row23, row23_1);
+
+auto row45 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 16]));
+auto row67 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[3 * 16]));
+row67      = InsertLane(row67, 5, ExtractLane(v1, 15));
+
 auto row45_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 16]));
 
 // HWY_ALIGN int16_t m[32] = {
@@ -42,19 +51,11 @@ auto row45_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5
 // row23_1 = IfThenZeroElse(MaskFromVec(maskv1), row23_1);
 // row45_1 = IfThenZeroElse(MaskFromVec(maskv2), row45_1);
 
-HWY_ALIGN uint8_t m1[8] = {0x07, 0xFF};
 HWY_ALIGN uint8_t m2[8] = {0xFF, 0xE0};
-auto maskv1             = LoadMaskBits(s16, m1);
 auto maskv2             = LoadMaskBits(s16, m2);
-
-row23   = IfThenElseZero(maskv1, row23);
-row45   = IfThenElseZero(maskv2, row45);
-row23_1 = IfThenZeroElse(maskv1, row23_1);
-row45_1 = IfThenZeroElse(maskv2, row45_1);
-row23   = Or(row23, row23_1);
-row45   = Or(row45, row45_1);
-row01   = InsertLane(row01, 10, ExtractLane(v2, 0));
-row67   = InsertLane(row67, 5, ExtractLane(v1, 15));
+row45                   = IfThenElseZero(maskv2, row45);
+row45_1                 = IfThenZeroElse(maskv2, row45_1);
+row45                   = Or(row45, row45_1);
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
