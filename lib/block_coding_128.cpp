@@ -89,10 +89,14 @@ auto row4_ne_0  = VecFromMask(s16, Eq(row4, zero));
 auto row5_ne_0  = VecFromMask(s16, Eq(row5, zero));
 auto row6_ne_0  = VecFromMask(s16, Eq(row6, zero));
 auto row7_ne_0  = VecFromMask(s16, Eq(row7, zero));
-auto row10_ne_0 = ConcatEven(u8, BitCast(u8, row0_ne_0), BitCast(u8, row1_ne_0));
-auto row32_ne_0 = ConcatEven(u8, BitCast(u8, row2_ne_0), BitCast(u8, row3_ne_0));
-auto row54_ne_0 = ConcatEven(u8, BitCast(u8, row4_ne_0), BitCast(u8, row5_ne_0));
-auto row76_ne_0 = ConcatEven(u8, BitCast(u8, row6_ne_0), BitCast(u8, row7_ne_0));
+auto row10_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row1_ne_0), BitCast(u16, row0_ne_0));
+auto row32_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row3_ne_0), BitCast(u16, row2_ne_0));
+auto row54_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row5_ne_0), BitCast(u16, row4_ne_0));
+auto row76_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row7_ne_0), BitCast(u16, row6_ne_0));
+// auto row10_ne_0 = ConcatEven(u8, BitCast(u8, row0_ne_0), BitCast(u8, row1_ne_0));
+// auto row32_ne_0 = ConcatEven(u8, BitCast(u8, row2_ne_0), BitCast(u8, row3_ne_0));
+// auto row54_ne_0 = ConcatEven(u8, BitCast(u8, row4_ne_0), BitCast(u8, row5_ne_0));
+// auto row76_ne_0 = ConcatEven(u8, BitCast(u8, row6_ne_0), BitCast(u8, row7_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
 HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080};
@@ -129,10 +133,14 @@ auto row6_lz = LeadingZeroCount(abs_row6);
 auto row7_lz = LeadingZeroCount(abs_row7);
 
 /* Narrow leading zero count to 8 bits. */
-auto row01_lz = ConcatEven(u8, BitCast(u8, row1_lz), BitCast(u8, row0_lz));
-auto row23_lz = ConcatEven(u8, BitCast(u8, row3_lz), BitCast(u8, row2_lz));
-auto row45_lz = ConcatEven(u8, BitCast(u8, row5_lz), BitCast(u8, row4_lz));
-auto row67_lz = ConcatEven(u8, BitCast(u8, row7_lz), BitCast(u8, row6_lz));
+auto row01_lz = OrderedTruncate2To(u8, BitCast(u16, row0_lz), BitCast(u16, row1_lz));
+auto row23_lz = OrderedTruncate2To(u8, BitCast(u16, row2_lz), BitCast(u16, row3_lz));
+auto row45_lz = OrderedTruncate2To(u8, BitCast(u16, row4_lz), BitCast(u16, row5_lz));
+auto row67_lz = OrderedTruncate2To(u8, BitCast(u16, row6_lz), BitCast(u16, row7_lz));
+// auto row01_lz = ConcatEven(u8, BitCast(u8, row1_lz), BitCast(u8, row0_lz));
+// auto row23_lz = ConcatEven(u8, BitCast(u8, row3_lz), BitCast(u8, row2_lz));
+// auto row45_lz = ConcatEven(u8, BitCast(u8, row5_lz), BitCast(u8, row4_lz));
+// auto row67_lz = ConcatEven(u8, BitCast(u8, row7_lz), BitCast(u8, row6_lz));
 /* Compute nbits needed to specify magnitude of each coefficient. */
 const auto sixteen = Set(u8, 16);
 auto row01_nbits   = Sub(sixteen, row01_lz);

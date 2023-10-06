@@ -67,8 +67,8 @@ auto row01_ne_0   = VecFromMask(s16, Eq(row01, zero));
 auto row23_ne_0   = VecFromMask(s16, Eq(row23, zero));
 auto row45_ne_0   = VecFromMask(s16, Eq(row45, zero));
 auto row67_ne_0   = VecFromMask(s16, Eq(row67, zero));
-auto row3210_ne_0 = ConcatEven(u8, BitCast(u8, row23_ne_0), BitCast(u8, row01_ne_0));
-auto row7654_ne_0 = ConcatEven(u8, BitCast(u8, row67_ne_0), BitCast(u8, row45_ne_0));
+auto row3210_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row01_ne_0), BitCast(u16, row23_ne_0));
+auto row7654_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row45_ne_0), BitCast(u16, row67_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
 HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080, 0x0102040810204080,
@@ -96,8 +96,8 @@ auto row23_lz = LeadingZeroCount(abs_row23);
 auto row45_lz = LeadingZeroCount(abs_row45);
 auto row67_lz = LeadingZeroCount(abs_row67);
 /* Narrow leading zero count to 8 bits. */
-auto row0123_lz = ConcatEven(u8, BitCast(u8, row23_lz), BitCast(u8, row01_lz));
-auto row4567_lz = ConcatEven(u8, BitCast(u8, row67_lz), BitCast(u8, row45_lz));
+auto row0123_lz = OrderedTruncate2To(u8, BitCast(u16, row01_lz), BitCast(u16, row23_lz));
+auto row4567_lz = OrderedTruncate2To(u8, BitCast(u16, row45_lz), BitCast(u16, row67_lz));
 /* Compute nbits needed to specify magnitude of each coefficient. */
 auto row0123_nbits = Sub(Set(u8, 16), row0123_lz);
 auto row4567_nbits = Sub(Set(u8, 16), row4567_lz);
