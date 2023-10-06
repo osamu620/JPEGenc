@@ -21,59 +21,59 @@ HWY_ALIGN constexpr int16_t indices[] = {
 HWY_CAPPED(uint8_t, Lanes(u8) / 2) u8_64;
 HWY_CAPPED(uint64_t, Lanes(u64) / 2) u64_64;
 
-auto v0 = Load(s16, sp);
-auto v1 = Load(s16, sp + 8);
-auto v2 = Load(s16, sp + 16);
-auto v3 = Load(s16, sp + 24);
-auto v4 = Load(s16, sp + 32);
-auto v5 = Load(s16, sp + 40);
-auto v6 = Load(s16, sp + 48);
-auto v7 = Load(s16, sp + 56);
+auto v0   = Load(s16, sp);
+auto v1   = Load(s16, sp + 8);
+auto row0 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
+auto v2   = Load(s16, sp + 16);
+row0      = InsertLane(row0, 3, ExtractLane(v2, 0));
 
-auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
-row0        = InsertLane(row0, 3, ExtractLane(v2, 0));
-auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
-auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
-auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
-auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
-auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+auto row1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
+auto v3   = Load(s16, sp + 24);
+auto v4   = Load(s16, sp + 32);
+auto v5   = Load(s16, sp + 40);
+auto v6   = Load(s16, sp + 48);
+
+auto row1_1                   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
+auto m5                       = FirstN(s16, 5);
+row1                          = IfThenZeroElse(m5, row1);
+row1_1                        = IfThenElseZero(m5, row1_1);
+row1                          = Or(row1, row1_1);
+row1                          = InsertLane(row1, 2, ExtractLane(v4, 0));
+auto row2                     = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
+auto m3                       = FirstN(s16, 3);
+row2                          = IfThenZeroElse(m3, row2);
+row2                          = InsertLane(row2, 0, ExtractLane(v1, 4));
+row2                          = InsertLane(row2, 1, ExtractLane(v2, 3));
+row2                          = InsertLane(row2, 2, ExtractLane(v3, 2));
+row2                          = InsertLane(row2, 5, ExtractLane(v6, 0));
+auto v7                       = Load(s16, sp + 56);
+auto row3                     = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
+auto row3_1                   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+alignas(16) uint8_t mask34[8] = {0b00111100};
+auto m34                      = LoadMaskBits(s16, mask34);
+row3                          = IfThenZeroElse(m34, row3);
+row3_1                        = IfThenElseZero(m34, row3_1);
+row3                          = Or(row3, row3_1);
+
 auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
 auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
+row4        = IfThenZeroElse(m34, row4);
+row4_1      = IfThenElseZero(m34, row4_1);
+row4        = Or(row4, row4_1);
 auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
 auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
 auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
 auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
 row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
-
-auto m5                     = FirstN(s16, 5);
-auto m3                     = FirstN(s16, 3);
-HWY_ALIGN uint8_t mask34[8] = {0b00111100};
-auto m34                    = LoadMaskBits(s16, mask34);
-
-row1   = IfThenZeroElse(m5, row1);
-row1_1 = IfThenElseZero(m5, row1_1);
-row1   = Or(row1, row1_1);
-row1   = InsertLane(row1, 2, ExtractLane(v4, 0));
-row2   = IfThenZeroElse(m3, row2);
-row2   = InsertLane(row2, 0, ExtractLane(v1, 4));
-row2   = InsertLane(row2, 1, ExtractLane(v2, 3));
-row2   = InsertLane(row2, 2, ExtractLane(v3, 2));
-row2   = InsertLane(row2, 5, ExtractLane(v6, 0));
-row3   = IfThenZeroElse(m34, row3);
-row3_1 = IfThenElseZero(m34, row3_1);
-row3   = Or(row3, row3_1);
-row4   = IfThenZeroElse(m34, row4);
-row4_1 = IfThenElseZero(m34, row4_1);
-row4   = Or(row4, row4_1);
-row5   = IfThenZeroElse(Not(m5), row5);
-row5   = InsertLane(row5, 2, ExtractLane(v1, 7));
-row5   = InsertLane(row5, 5, ExtractLane(v4, 5));
-row5   = InsertLane(row5, 6, ExtractLane(v5, 4));
-row5   = InsertLane(row5, 7, ExtractLane(v6, 3));
-row6   = IfThenZeroElse(m3, row6);
-row6_1 = IfThenElseZero(m3, row6_1);
-row6   = Or(row6, row6_1);
-row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
+row5        = IfThenZeroElse(Not(m5), row5);
+row5        = InsertLane(row5, 2, ExtractLane(v1, 7));
+row5        = InsertLane(row5, 5, ExtractLane(v4, 5));
+row5        = InsertLane(row5, 6, ExtractLane(v5, 4));
+row5        = InsertLane(row5, 7, ExtractLane(v6, 3));
+row6        = IfThenZeroElse(m3, row6);
+row6_1      = IfThenElseZero(m3, row6_1);
+row6        = Or(row6, row6_1);
+row6        = InsertLane(row6, 5, ExtractLane(v3, 7));
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
