@@ -28,7 +28,7 @@ auto row4567 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1
 auto zero             = Zero(s16);
 auto row0123_ne_0     = VecFromMask(s16, Eq(row0123, zero));
 auto row4567_ne_0     = VecFromMask(s16, Eq(row4567, zero));
-auto row76543210_ne_0 = ConcatEven(u8, BitCast(u8, row4567_ne_0), BitCast(u8, row0123_ne_0));
+auto row76543210_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row0123_ne_0), BitCast(u16, row4567_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
 HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080, 0x0102040810204080,
@@ -50,7 +50,7 @@ auto abs_row4567 = Abs(row4567);
 auto row0123_lz = LeadingZeroCount(abs_row0123);
 auto row4567_lz = LeadingZeroCount(abs_row4567);
 /* Narrow leading zero count to 8 bits. */
-auto row01234567_lz = ConcatEven(u8, BitCast(u8, row4567_lz), BitCast(u8, row0123_lz));
+auto row01234567_lz = OrderedTruncate2To(u8, BitCast(u16, row0123_lz), BitCast(u16, row4567_lz));
 /* Compute nbits needed to specify magnitude of each coefficient. */
 auto row01234567_nbits = Sub(Set(u8, 16), row01234567_lz);
 /* Store nbits. */
