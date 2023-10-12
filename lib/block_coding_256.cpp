@@ -71,9 +71,8 @@ auto row3210_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row01_ne_0), BitCast(u16
 auto row7654_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row45_ne_0), BitCast(u16, row67_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
-HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080, 0x0102040810204080,
-                                     0x0102040810204080};
-auto bitmap_mask                  = BitCast(u8, Load(u64, bm));
+HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080};
+auto bitmap_mask                  = BitCast(u8, LoadDup128(u64, bm));
 
 auto bitmap_rows_3210 = AndNot(row3210_ne_0, bitmap_mask);
 auto bitmap_rows_7654 = AndNot(row7654_ne_0, bitmap_mask);

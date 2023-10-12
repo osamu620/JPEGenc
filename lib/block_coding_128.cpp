@@ -112,7 +112,8 @@ auto bitmap_rows_7654     = Padd(u8, bitmap_rows_76, bitmap_rows_54);
 auto bitmap_rows_76543210 = Padd(u8, bitmap_rows_7654, bitmap_rows_3210);
 auto bitmap_all = Padd(u8_64, LowerHalf(bitmap_rows_76543210), UpperHalf(u8_64, bitmap_rows_76543210));
 /* Move bitmap to 64-bit scalar register. */
-bitmap = GetLane(BitCast(u64_64, bitmap_all));
+Store(BitCast(u64_64, bitmap_all), u64_64, &bitmap);
+// bitmap = GetLane(BitCast(u64_64, bitmap_all));
 
 auto abs_row0 = Abs(row0);
 auto abs_row1 = Abs(row1);

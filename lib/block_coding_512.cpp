@@ -31,10 +31,8 @@ auto row4567_ne_0     = VecFromMask(s16, Eq(row4567, zero));
 auto row76543210_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row0123_ne_0), BitCast(u16, row4567_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
-HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080, 0x0102040810204080,
-                                     0x0102040810204080, 0x0102040810204080, 0x0102040810204080,
-                                     0x0102040810204080, 0x0102040810204080};
-auto bitmap_mask                  = BitCast(u8, Load(u64, bm));
+HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080};
+auto bitmap_mask                  = BitCast(u8, LoadDup128(u64, bm));
 
 auto bitmap_rows_76543210 = AndNot(row76543210_ne_0, bitmap_mask);
 auto a0                   = SumsOf8(bitmap_rows_76543210);
