@@ -29,10 +29,10 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
   auto v1 = Undefined(u8);
   auto v2 = Undefined(u8);
 
-  uint8_t *o0        = out[0];
-  uint8_t *o1        = out[1];
-  uint8_t *o2        = out[2];
-  constexpr size_t N = Lanes(u8);
+  uint8_t *HWY_RESTRICT o0 = out[0];
+  uint8_t *HWY_RESTRICT o1 = out[1];
+  uint8_t *HWY_RESTRICT o2 = out[2];
+  constexpr size_t N       = Lanes(u8);
   for (size_t i = width * LINES; i > 0; i -= N) {
     LoadInterleaved3(u8, in, v0, v1, v2);
 
