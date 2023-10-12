@@ -74,6 +74,7 @@ void create_DHT(int c, bitstream &enc) {
     }
   }
   std::vector<uint8_t> tmp;
+  tmp.reserve(256);
   // Li
   for (int f : freq) {
     tmp.push_back(f);

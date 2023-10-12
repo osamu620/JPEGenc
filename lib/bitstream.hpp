@@ -10,6 +10,9 @@
 
 #include "jpgmarkers.hpp"
 
+#define BIT_BUF_SIZE 64
+#define BYTE_BUF_SIZE 8
+
 #define USE_VECTOR 0
 
 namespace jpegenc_hwy {
@@ -32,13 +35,11 @@ class stream_buf {
   }
 
   inline void expand() {
-    uint8_t *p                         = buf.release();
     std::unique_ptr<uint8_t[]> new_buf = std::make_unique<uint8_t[]>(len + len);
-    memcpy(new_buf.get(), p, len);
-    buf = std::move(new_buf);
+    memcpy(new_buf.get(), buf.get(), len);
+    buf.swap(new_buf);
+    new_buf.reset();
     len += len;
-    delete[] p;
-    //    __builtin_prefetch(buf.get() + pos, 0, 1);
     cur_byte = buf.get() + pos;
   }
 
@@ -51,7 +52,7 @@ class stream_buf {
   }
 
   inline void put_qword(uint64_t val) {
-    if (pos + 8 > len) {
+    if (pos + BYTE_BUF_SIZE > len) {
       expand();
     }
     // emits eight uint8_t values at once
@@ -61,10 +62,11 @@ class stream_buf {
     *(uint64_t *)cur_byte = __builtin_bswap64(val);
 #elif HWY_TARGET <= HWY_SSE2
     *(uint64_t *)cur_byte = __bswap_64(val);
+#else
+    jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
 #endif
-    //    jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
-    cur_byte += 8;
-    pos += 8;
+    cur_byte += BYTE_BUF_SIZE;
+    pos += BYTE_BUF_SIZE;
   }
 
   uint8_t *get_buf() {
@@ -128,11 +130,11 @@ class bitstream {
     //    int n = (bits + 8 - 1) / 8;
     //    tmp <<= 8 * n - bits;
     //    tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits));
-    const int bits_to_flush = 64 - bits;
+    const int bits_to_flush = BIT_BUF_SIZE - bits;
     int n                   = (bits_to_flush + 8 - 1) / 8;
     tmp <<= 8 * n - bits_to_flush;
     tmp |= ~(0xFFFFFFFFFFFFFFFFUL << (8 * n - bits_to_flush));
-    uint64_t mask = 0xFF00000000000000UL >> (64 - n * 8);
+    uint64_t mask = 0xFF00000000000000UL >> (BIT_BUF_SIZE - n * 8);
     for (int i = n - 1; i >= 0; --i) {
       uint8_t upper_byte = (tmp & mask) >> (8 * i);
       put_byte(upper_byte);
@@ -143,7 +145,7 @@ class bitstream {
       mask >>= 8;
     }
     tmp  = 0;
-    bits = 0;
+    bits = BIT_BUF_SIZE;
   }
 
  public:
@@ -153,7 +155,7 @@ class bitstream {
   explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 #else
-  explicit bitstream(size_t length) : bits(64), tmp(0), stream(length) {}
+  explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0), stream(length) {}
   inline void put_byte(uint8_t d) { stream.put_byte(d); }
 #endif
 
@@ -171,7 +173,7 @@ class bitstream {
       // PUT_AND_FLUSH
       tmp = (tmp << (len + bits)) | (cwd >> -bits);
       emit_qword(tmp);
-      bits += 64;
+      bits += BIT_BUF_SIZE;
       tmp = cwd;
     } else {
       tmp = (tmp << len) | cwd;

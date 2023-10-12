@@ -9,6 +9,7 @@
 
 #include "constants.hpp"
 #include "ycctype.hpp"
+#include "hwy/ops/set_macros-inl.h"
 
 class imchunk {
  private:
@@ -27,7 +28,7 @@ class imchunk {
       : width(w),
         height(h),
         ncomp(nc),
-        rounded_width(round_up(width, DCTSIZE * (YCC_HV[YCCtype][0] >> 4))),
+        rounded_width(round_up(width, HWY_MAX(DCTSIZE * (YCC_HV[YCCtype][0] >> 4), HWY_MAX_BYTES))),
         origin(p),
         g_buf(imdata),
         buf(hwy::AllocateAligned<uint8_t>(static_cast<size_t>(width) * ncomp * LINES)),
