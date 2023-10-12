@@ -32,13 +32,11 @@ class stream_buf {
   }
 
   inline void expand() {
-    uint8_t *p                         = buf.release();
     std::unique_ptr<uint8_t[]> new_buf = std::make_unique<uint8_t[]>(len + len);
-    memcpy(new_buf.get(), p, len);
-    buf = std::move(new_buf);
+    memcpy(new_buf.get(), buf.get(), len);
+    buf.swap(new_buf);
+    new_buf.reset();
     len += len;
-    delete[] p;
-    //    __builtin_prefetch(buf.get() + pos, 0, 1);
     cur_byte = buf.get() + pos;
   }
 
