@@ -23,7 +23,10 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
 
   HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
   const auto coeffs                       = LoadDup128(s16, constants);
-  const auto scaled_128_1                 = Set(u16, (128 << 1) + 0);
+  // clang-format off
+  //  const auto coeffs = hn::Dup128VecFromValues(s16, 19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329);
+  // clang-format on
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
 
   auto v0 = Undefined(u8);
   auto v1 = Undefined(u8);
