@@ -389,11 +389,10 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
   HWY_ALIGN int16_t dp[64];
   HWY_ALIGN uint8_t bits[64];
 
-  using namespace hn;
-  const ScalableTag<int16_t> s16;
-  const ScalableTag<uint16_t> u16;
-  const ScalableTag<uint8_t> u8;
-  const ScalableTag<uint64_t> u64;
+  const hn::ScalableTag<int16_t> s16;
+  const hn::ScalableTag<uint16_t> u16;
+  const hn::ScalableTag<uint8_t> u8;
+  const hn::ScalableTag<uint64_t> u64;
 
   #if HWY_CAP_GE512
     #include "block_coding_512.cpp"
