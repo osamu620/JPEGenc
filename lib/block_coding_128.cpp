@@ -94,10 +94,6 @@ auto row10_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row1_ne_0), BitCast(u16, r
 auto row32_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row3_ne_0), BitCast(u16, row2_ne_0));
 auto row54_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row5_ne_0), BitCast(u16, row4_ne_0));
 auto row76_ne_0 = OrderedTruncate2To(u8, BitCast(u16, row7_ne_0), BitCast(u16, row6_ne_0));
-// auto row10_ne_0 = ConcatEven(u8, BitCast(u8, row0_ne_0), BitCast(u8, row1_ne_0));
-// auto row32_ne_0 = ConcatEven(u8, BitCast(u8, row2_ne_0), BitCast(u8, row3_ne_0));
-// auto row54_ne_0 = ConcatEven(u8, BitCast(u8, row4_ne_0), BitCast(u8, row5_ne_0));
-// auto row76_ne_0 = ConcatEven(u8, BitCast(u8, row6_ne_0), BitCast(u8, row7_ne_0));
 
 /* { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 } */
 HWY_ALIGN constexpr uint64_t bm[] = {0x0102040810204080, 0x0102040810204080};
@@ -108,13 +104,18 @@ auto bitmap_rows_32 = AndNot(row32_ne_0, bitmap_mask);
 auto bitmap_rows_54 = AndNot(row54_ne_0, bitmap_mask);
 auto bitmap_rows_76 = AndNot(row76_ne_0, bitmap_mask);
 
-auto bitmap_rows_3210     = Padd(u8, bitmap_rows_32, bitmap_rows_10);
-auto bitmap_rows_7654     = Padd(u8, bitmap_rows_76, bitmap_rows_54);
-auto bitmap_rows_76543210 = Padd(u8, bitmap_rows_7654, bitmap_rows_3210);
-auto bitmap_all = Padd(u8_64, LowerHalf(bitmap_rows_76543210), UpperHalf(u8_64, bitmap_rows_76543210));
+auto bitmap_rows_3210     = PairwiseOrU8(bitmap_rows_32, bitmap_rows_10);
+auto bitmap_rows_7654     = PairwiseOrU8(bitmap_rows_76, bitmap_rows_54);
+auto bitmap_rows_76543210 = PairwiseOrU8(bitmap_rows_7654, bitmap_rows_3210);
+
+auto t00        = DupEven(bitmap_rows_76543210);
+auto t01        = DupOdd(bitmap_rows_76543210);
+auto tt0        = Or(t00, t01);
+auto bitmap_all = TruncateTo(u8_64, BitCast(u16, tt0));
+
 /* Move bitmap to 64-bit scalar register. */
-Store(BitCast(u64_64, bitmap_all), u64_64, &bitmap);
 // bitmap = GetLane(BitCast(u64_64, bitmap_all));
+Store(BitCast(u64_64, bitmap_all), u64_64, &bitmap);
 
 auto abs_row0 = Abs(row0);
 auto abs_row1 = Abs(row1);
@@ -144,11 +145,11 @@ auto row67_lz = OrderedTruncate2To(u8, BitCast(u16, row6_lz), BitCast(u16, row7_
 // auto row45_lz = ConcatEven(u8, BitCast(u8, row5_lz), BitCast(u8, row4_lz));
 // auto row67_lz = ConcatEven(u8, BitCast(u8, row7_lz), BitCast(u8, row6_lz));
 /* Compute nbits needed to specify magnitude of each coefficient. */
-const auto sixteen = Set(u8, 16);
-auto row01_nbits   = Sub(sixteen, row01_lz);
-auto row23_nbits   = Sub(sixteen, row23_lz);
-auto row45_nbits   = Sub(sixteen, row45_lz);
-auto row67_nbits   = Sub(sixteen, row67_lz);
+const auto Val16 = Set(u8, 16);
+auto row01_nbits = Sub(Val16, row01_lz);
+auto row23_nbits = Sub(Val16, row23_lz);
+auto row45_nbits = Sub(Val16, row45_lz);
+auto row67_nbits = Sub(Val16, row67_lz);
 /* Store nbits. */
 Store(row01_nbits, u8, bits + 0 * DCTSIZE);
 Store(row23_nbits, u8, bits + 2 * DCTSIZE);
