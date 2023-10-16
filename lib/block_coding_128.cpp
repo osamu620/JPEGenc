@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <hwy/highway.h>
+#include "constants.hpp"
 
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[] = {
