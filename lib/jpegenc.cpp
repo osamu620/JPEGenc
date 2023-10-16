@@ -6,7 +6,6 @@
 #include "color.hpp"
 #include "constants.hpp"
 #include "image_chunk.hpp"
-#include "huffman_tables.hpp"
 #include "jpgheaders.hpp"
 #include "quantization.hpp"
 #include "ycctype.hpp"
@@ -87,10 +86,9 @@ class jpeg_encoder_impl {
   }
 
   void invoke(std::vector<uint8_t> &codestream) {
-    jpegenc_hwy::huff_info tab_Y((const uint16_t *)DC_cwd[0], (const uint16_t *)AC_cwd[0],
-                                 (const uint8_t *)DC_len[0], (const uint8_t *)AC_len[0]);
-    jpegenc_hwy::huff_info tab_C((const uint16_t *)DC_cwd[1], (const uint16_t *)AC_cwd[1],
-                                 (const uint8_t *)DC_len[1], (const uint8_t *)AC_len[1]);
+    jpegenc_hwy::huff_info tab_Y, tab_C;
+    tab_Y.init<0>();
+    tab_C.init<1>();
     std::vector<int> prev_dc(3, 0);
 
     // Prepare main-header
