@@ -51,7 +51,6 @@ int main(int argc, char *argv[]) {
     printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
     printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
   }
-  fclose(fp);
 
   const std::vector<uint8_t> codestream = encoder.get_codestream();
   std::cout << "Codestream bytes = " << codestream.size() << std::endl;
