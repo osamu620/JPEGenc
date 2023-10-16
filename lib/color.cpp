@@ -35,8 +35,11 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
   uint8_t *HWY_RESTRICT o0 = out[0];
   uint8_t *HWY_RESTRICT o1 = out[1];
   uint8_t *HWY_RESTRICT o2 = out[2];
+
   constexpr size_t N       = Lanes(u8);
-  for (size_t i = width * LINES; i > 0; i -= N) {
+  const size_t num_samples = width * LINES;
+
+  for (size_t i = num_samples; i > 0; i -= N) {
     LoadInterleaved3(u8, in, v0, v1, v2);
 
     // clang-format off
