@@ -24,9 +24,9 @@ class jpeg_encoder_impl {
   int YCCtype;
   const int rounded_width;
   const int rounded_height;
-  std::vector<std::unique_ptr<uint8_t[], hwy::AlignedFreer>> line_buffer0;
-  std::vector<std::unique_ptr<int16_t[], hwy::AlignedFreer>> line_buffer1;
-  std::unique_ptr<int16_t[], hwy::AlignedFreer> mcu_buffer;
+  std::vector<hwy::AlignedFreeUniquePtr<uint8_t[]>> line_buffer0;
+  std::vector<hwy::AlignedFreeUniquePtr<int16_t[]>> line_buffer1;
+  hwy::AlignedFreeUniquePtr<int16_t[]> mcu_buffer;
   std::vector<uint8_t *> yuv0;
   std::vector<int16_t *> yuv1;
   int16_t *mcu;

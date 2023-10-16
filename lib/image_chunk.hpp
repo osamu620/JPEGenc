@@ -19,8 +19,8 @@ class imchunk {
   const int rounded_width;
   int origin;
   FILE *g_buf;
-  std::unique_ptr<uint8_t[], hwy::AlignedFreer> buf;
-  std::unique_ptr<uint8_t[], hwy::AlignedFreer> buf_extended;
+  hwy::AlignedFreeUniquePtr<uint8_t[]> buf;
+  hwy::AlignedFreeUniquePtr<uint8_t[]> buf_extended;
   int32_t cur_line;
 
  public:
