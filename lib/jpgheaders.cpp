@@ -69,8 +69,8 @@ void create_DHT(int c, bitstream &enc) {
 
   // DC
   for (int i = 0; i < 16; ++i) {
-    if (DC_len[c][i]) {
-      freq[DC_len[c][i] - 1]++;
+    if (DC_len_[c][i]) {
+      freq[DC_len_[c][i] - 1]++;
     }
   }
   std::vector<uint8_t> tmp;
@@ -81,7 +81,7 @@ void create_DHT(int c, bitstream &enc) {
   }
   // Vi
   for (int i = 0; i < 16; ++i) {
-    if (DC_len[c][i]) {
+    if (DC_len_[c][i]) {
       tmp.push_back(i);
     }
   }
@@ -103,7 +103,7 @@ void create_DHT(int c, bitstream &enc) {
   std::vector<std::pair<int, int>> ACpair;
   ACpair.reserve(256);
   for (int i = 0; i < 256; ++i) {
-    ACpair.emplace_back(AC_len[c][i], i);
+    ACpair.emplace_back(AC_len_[c][i], i);
   }
   std::sort(ACpair.begin(), ACpair.end());
   for (int i = 0; i < 256; ++i) {
