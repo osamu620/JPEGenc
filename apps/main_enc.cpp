@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   } else {
     bool warmup                 = true;
     constexpr double warmuptime = 2000.0;  // duration of warmup in milliseconds
-    constexpr double benchtime  = 1000.0;  // duration of benchmark in milliseconds
+    constexpr double benchtime  = 2000.0;  // duration of benchmark in milliseconds
     int iter                    = 0;
     while (true) {
       encoder.invoke();
