@@ -37,7 +37,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
   uint8_t *HWY_RESTRICT o2 = out[2];
 
   constexpr size_t N       = Lanes(u8);
-  const size_t num_samples = width * LINES;
+  const size_t num_samples = width * BUFLINES;
 
   for (size_t i = num_samples; i > 0; i -= N) {
     LoadInterleaved3(u8, in, v0, v1, v2);
@@ -100,7 +100,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
 
   switch (YCCtype) {
     case YCC::GRAY:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp = in[0] + i * width + j;
           auto v0 = Load(u8, sp + 0 * width);
@@ -134,7 +134,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       }
       break;
     case YCC::YUV444:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp0 = in[0] + i * width + j;
           auto sp1 = in[1] + i * width + j;
@@ -222,7 +222,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       }
       break;
     case YCC::YUV422:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp0 = in[0] + i * width + j;
           auto sp1 = in[1] + i * width + j;
@@ -334,7 +334,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       break;
     case YCC::YUV440:
       for (int j = 0; j < width; j += Lanes(u8)) {
-        for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int i = 0; i < BUFLINES; i += DCTSIZE) {
           auto sp0   = in[0] + i * width + j;
           auto sp1   = in[1] + i * width + j;
           auto sp2   = in[2] + i * width + j;
@@ -441,7 +441,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       break;
     case YCC::YUV420:
       for (int j = 0; j < width; j += Lanes(u8)) {
-        for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int i = 0; i < BUFLINES; i += DCTSIZE) {
           auto sp0   = in[0] + i * width + j;
           auto sp1   = in[1] + i * width + j;
           auto sp2   = in[2] + i * width + j;
@@ -544,7 +544,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       }
       break;
     case YCC::YUV411:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8) * 2) {
           auto sp0 = in[0] + i * width + j;
           auto sp1 = in[1] + i * width + j;
@@ -595,7 +595,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       break;
     case YCC::YUV410:
       for (int j = 0; j < width; j += Lanes(u8) * 2) {
-        for (int i = 0; i < LINES; i += DCTSIZE) {
+        for (int i = 0; i < BUFLINES; i += DCTSIZE) {
           auto sp0 = in[0] + i * width + j;
           auto sp1 = in[1] + i * width + j;
           auto sp2 = in[2] + i * width + j;
@@ -651,7 +651,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       }
       break;
     case YCC::GRAY2:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += Lanes(u8)) {
           auto sp0 = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE; ++y) {
@@ -683,7 +683,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, c
   constexpr int32_t shift = 15;
   constexpr int32_t half  = 1 << (shift - 1);
   int32_t Y, Cb, Cr;
-  for (int i = 0; i < width * 3 * LINES; i += 3) {
+  for (int i = 0; i < width * 3 * BUFLINES; i += 3) {
     Y     = ((c00 * I0[0] + c01 * I1[0] + c02 * I2[0] + half) >> shift);
     Cb    = (c10 * I0[0] + c11 * I1[0] + c12 * I2[0] + half) >> shift;
     Cr    = (c20 * I0[0] + c21 * I1[0] + c22 * I2[0] + half) >> shift;
@@ -724,7 +724,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
     case YCC::YUV444:
     case YCC::YUV422:
     case YCC::YUV411:
-      for (int i = 0; i < LINES; i += DCTSIZE) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE) {
         for (int j = 0; j < width; j += DCTSIZE) {
           auto sp = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE; ++y) {
@@ -739,7 +739,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
     case YCC::YUV440:
     case YCC::YUV420:
     case YCC::YUV410:
-      for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
+      for (int i = 0; i < BUFLINES; i += DCTSIZE * scale_y) {
         for (int j = 0; j < width; j += DCTSIZE * scale_x) {
           auto sp = in[0] + i * width + j;
           for (int y = 0; y < DCTSIZE * scale_y; y += DCTSIZE) {
@@ -759,7 +759,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
   // Chroma, Cb and Cr
   for (int c = 1; c < nc; ++c) {
     pos = 0;
-    for (int i = 0; i < LINES; i += DCTSIZE * scale_y) {
+    for (int i = 0; i < BUFLINES; i += DCTSIZE * scale_y) {
       for (int j = 0; j < width; j += DCTSIZE * scale_x) {
         auto sp = in[c] + i * width + j;
         for (int y = 0; y < DCTSIZE * scale_y; y += scale_y) {

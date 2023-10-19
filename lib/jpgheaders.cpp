@@ -170,7 +170,7 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     enc.put_word(DRI);
     enc.put_word(4);
     size_t mcu_x = round_up(width, DCTSIZE * Hl) / (DCTSIZE * Hl);
-    size_t mcu_y = LINES / (DCTSIZE * Vl);
+    size_t mcu_y = BUFLINES / (DCTSIZE * Vl);
     enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);

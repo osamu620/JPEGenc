@@ -14,7 +14,7 @@
 // Constants
 constexpr int32_t DCTSIZE  = 8;
 constexpr int32_t DCTSIZE2 = DCTSIZE * DCTSIZE;
-constexpr int32_t LINES    = 16;
+constexpr int32_t BUFLINES = 16;
 
 // Macros
 #define round_up(x, n) (((x) + (n)-1) & (-n))

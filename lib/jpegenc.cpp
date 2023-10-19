@@ -57,8 +57,8 @@ class jpeg_encoder_impl {
     ncomp_out              = (YCCtype == YCC::GRAY2) ? 1 : ncomp_out;
     const int scale_x      = YCC_HV[YCCtype][0] >> 4;
     const int scale_y      = YCC_HV[YCCtype][0] & 0xF;
-    const size_t bufsize_L = rounded_width * LINES;
-    const size_t bufsize_C = rounded_width / scale_x * LINES / scale_y;
+    const size_t bufsize_L = rounded_width * BUFLINES;
+    const size_t bufsize_C = rounded_width / scale_x * BUFLINES / scale_y;
 
     // Prepare line-buffers
     line_buffer0[0] = hwy::AllocateAligned<uint8_t>(bufsize_L);
@@ -72,6 +72,7 @@ class jpeg_encoder_impl {
 
     line_buffer1[0] = hwy::AllocateAligned<int16_t>(bufsize_L);
     for (size_t c = 1; c < line_buffer1.size(); ++c) {
+      // subsampled chroma
       line_buffer1[c] = hwy::AllocateAligned<int16_t>(bufsize_C);
     }
     yuv1[0] = line_buffer1[0].get();
@@ -101,24 +102,24 @@ class jpeg_encoder_impl {
     uint8_t *src = image.get_lines_from(0);
 
     // Loop of 16 pixels height
-    for (int n = 0; n < rounded_height - LINES; n += LINES) {
+    for (int n = 0; n < rounded_height - BUFLINES; n += BUFLINES) {
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
       } else {
         yuv0[0] = src;
       }
       jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-      jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, LINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
+      jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
                                 enc);
       // RST marker insertion, if any
       if (use_RESET) {
-        enc.put_RST((n / LINES) % 8);
+        enc.put_RST((n / BUFLINES) % 8);
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
       }
-      src = image.get_lines_from(n + LINES);
+      src = image.get_lines_from(n + BUFLINES);
     }
     // Last chunk or leftover (< 16 pixels)
-    const int last_mcu_height = (rounded_height % LINES) ? DCTSIZE : LINES;
+    const int last_mcu_height = (rounded_height % BUFLINES) ? DCTSIZE : BUFLINES;
 
     if (ncomp == 3) {
       jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
