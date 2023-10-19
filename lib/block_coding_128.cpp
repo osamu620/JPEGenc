@@ -3,6 +3,26 @@
 #include "constants.hpp"
 
 // clang-format off
+#if 1 && (HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES)
+HWY_ALIGN constexpr uint8_t indices[] = {
+        0,   1,   2,   3,  16,  17,  32,  33,
+        18,  19,   4,   5,   6,   7,  20,  21,
+        34,  35,  48,  49, 255, 255,  50,  51,
+        36,  37,  22,  23,   8,   9,  10,  11,
+        255, 255,   6,   7,  20,  21,  34,  35,
+        48,  49, 255, 255,  50,  51,  36,  37,
+        54,  55,  40,  41,  26,  27,  12,  13,
+        14,  15,  28,  29,  42,  43,  56,  57,
+        6,   7,  20,  21,  34,  35,  48,  49,
+        50,  51,  36,  37,  22,  23,   8,   9,
+        26,  27,  12,  13, 255, 255,  14,  15,
+        28,  29,  42,  43,  56,  57, 255, 255,
+        52,  53,  54,  55,  40,  41,  26,  27,
+        12,  13, 255, 255,  14,  15,  28,  29,
+        26,  27,  40,  41,  42,  43,  28,  29,
+        14,  15,  30,  31,  44,  45,  46,  47
+};
+#else
 HWY_ALIGN constexpr int16_t indices[] = {
         0, 1, 8, 0, 9, 2, 3, 10,
         0, 0, 0, 0, 0, 11, 4, 5,
@@ -17,64 +37,118 @@ HWY_ALIGN constexpr int16_t indices[] = {
         10, 11, 4, 0, 0, 0, 0, 0,
         5, 12, 13, 6, 0, 7, 14, 15
 };
+#endif
 // clang-format on
 
 hn::FixedTag<uint8_t, 8> u8_64;
 hn::FixedTag<uint64_t, 1> u64_64;
 
-auto v0   = Load(s16, sp);
-auto v1   = Load(s16, sp + 8);
-auto row0 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
-auto v2   = Load(s16, sp + 16);
-row0      = InsertLane(row0, 3, ExtractLane(v2, 0));
+#if 1 && (HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES)
+const uint8x16x4_t idx_rows_0123 = vld1q_u8_x4(indices + 0 * DCTSIZE);
+const uint8x16x4_t idx_rows_4567 = vld1q_u8_x4(indices + 8 * DCTSIZE);
+const int8x16x4_t tbl_rows_0123  = vld1q_s8_x4((int8_t *)(sp + 0 * DCTSIZE));
+const int8x16x4_t tbl_rows_4567  = vld1q_s8_x4((int8_t *)(sp + 4 * DCTSIZE));
+/* Initialise extra lookup tables. */
+const int8x16x4_t tbl_rows_2345 = {
+    {tbl_rows_0123.val[2], tbl_rows_0123.val[3], tbl_rows_4567.val[0], tbl_rows_4567.val[1]}};
+const int8x16x3_t tbl_rows_567 = {{tbl_rows_4567.val[1], tbl_rows_4567.val[2], tbl_rows_4567.val[3]}};
 
-auto row1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
-auto v3   = Load(s16, sp + 24);
-auto v4   = Load(s16, sp + 32);
-auto v5   = Load(s16, sp + 40);
-auto v6   = Load(s16, sp + 48);
+/* Shuffle coefficients into zig-zag order. */
+int16x8_t rrow0 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[0]));
+int16x8_t rrow1 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[1]));
+int16x8_t rrow2 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_2345, idx_rows_0123.val[2]));
+int16x8_t rrow3 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_0123, idx_rows_0123.val[3]));
+int16x8_t rrow4 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_4567, idx_rows_4567.val[0]));
+int16x8_t rrow5 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_2345, idx_rows_4567.val[1]));
+int16x8_t rrow6 = vreinterpretq_s16_s8(vqtbl4q_s8(tbl_rows_4567, idx_rows_4567.val[2]));
+int16x8_t rrow7 = vreinterpretq_s16_s8(vqtbl3q_s8(tbl_rows_567, idx_rows_4567.val[3]));
 
-auto row1_1                   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
-auto m5                       = FirstN(s16, 5);
-row1                          = IfThenZeroElse(m5, row1);
-row1_1                        = IfThenElseZero(m5, row1_1);
-row1                          = Or(row1, row1_1);
-row1                          = InsertLane(row1, 2, ExtractLane(v4, 0));
-auto row2                     = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
-auto m3                       = FirstN(s16, 3);
-row2                          = IfThenZeroElse(m3, row2);
-row2                          = InsertLane(row2, 0, ExtractLane(v1, 4));
-row2                          = InsertLane(row2, 1, ExtractLane(v2, 3));
-row2                          = InsertLane(row2, 2, ExtractLane(v3, 2));
-row2                          = InsertLane(row2, 5, ExtractLane(v6, 0));
-auto v7                       = Load(s16, sp + 56);
-auto row3                     = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
-auto row3_1                   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+/* Compute DC coefficient difference value (F.1.1.5.1). */
+auto row0 = Undefined(s16);
+auto row1 = Undefined(s16);
+auto row2 = Undefined(s16);
+auto row3 = Undefined(s16);
+auto row4 = Undefined(s16);
+auto row5 = Undefined(s16);
+auto row6 = Undefined(s16);
+auto row7 = Undefined(s16);
+row0.raw  = rrow0;
+row1.raw  = rrow1;
+row2.raw  = rrow2;
+row3.raw  = rrow3;
+row4.raw  = rrow4;
+row5.raw  = rrow5;
+row6.raw  = rrow6;
+row7.raw  = rrow7;
+
+/* Initialize AC coefficient lanes not reachable by lookup tables. */
+row1.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[0]), 0), row1.raw, 2);
+row2.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[1]), 4), row2.raw, 0);
+row2.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[2]), 0), row2.raw, 5);
+row5.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[1]), 7), row5.raw, 2);
+row5.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_4567.val[2]), 3), row5.raw, 7);
+row6.raw = vsetq_lane_s16(vgetq_lane_s16(vreinterpretq_s16_s8(tbl_rows_0123.val[3]), 7), row6.raw, 5);
+
+#else
+auto v0     = Load(s16, sp);
+auto v1     = Load(s16, sp + 8);
+auto v2     = Load(s16, sp + 16);
+auto v3     = Load(s16, sp + 24);
+auto v4     = Load(s16, sp + 32);
+auto v5     = Load(s16, sp + 40);
+auto v6     = Load(s16, sp + 48);
+auto v7     = Load(s16, sp + 56);
+auto row0   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0 * 8]));
+auto row1   = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 8]));
+auto row1_1 = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[2 * 8]));
+auto row2   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[3 * 8]));
+auto row3   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[4 * 8]));
+auto row3_1 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[5 * 8]));
+auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
+auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
+auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
+auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
+auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
+auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
+
+row0    = InsertLane(row0, 3, ExtractLane(v2, 0));
+row0    = InsertLane(row0, 0, (int16_t)(sp[0] - prev_dc));
+auto m5 = FirstN(s16, 5);
+row1    = IfThenZeroElse(m5, row1);
+row1_1  = IfThenElseZero(m5, row1_1);
+row1    = Or(row1, row1_1);
+row1    = InsertLane(row1, 2, ExtractLane(v4, 0));
+
+auto m3 = FirstN(s16, 3);
+row2    = IfThenZeroElse(m3, row2);
+row2    = InsertLane(row2, 0, ExtractLane(v1, 4));
+row2    = InsertLane(row2, 1, ExtractLane(v2, 3));
+row2    = InsertLane(row2, 2, ExtractLane(v3, 2));
+row2    = InsertLane(row2, 5, ExtractLane(v6, 0));
+
 alignas(16) uint8_t mask34[8] = {0b00111100};
 auto m34                      = LoadMaskBits(s16, mask34);
 row3                          = IfThenZeroElse(m34, row3);
 row3_1                        = IfThenElseZero(m34, row3_1);
 row3                          = Or(row3, row3_1);
 
-auto row4   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[6 * 8]));
-auto row4_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[7 * 8]));
-row4        = IfThenZeroElse(m34, row4);
-row4_1      = IfThenElseZero(m34, row4_1);
-row4        = Or(row4, row4_1);
-auto row5   = TwoTablesLookupLanes(s16, v2, v3, SetTableIndices(s16, &indices[8 * 8]));
-auto row6   = TwoTablesLookupLanes(s16, v4, v5, SetTableIndices(s16, &indices[9 * 8]));
-auto row6_1 = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[10 * 8]));
-auto row7   = TwoTablesLookupLanes(s16, v6, v7, SetTableIndices(s16, &indices[11 * 8]));
-row7        = InsertLane(row7, 4, ExtractLane(v5, 7));
-row5        = IfThenZeroElse(Not(m5), row5);
-row5        = InsertLane(row5, 2, ExtractLane(v1, 7));
-row5        = InsertLane(row5, 5, ExtractLane(v4, 5));
-row5        = InsertLane(row5, 6, ExtractLane(v5, 4));
-row5        = InsertLane(row5, 7, ExtractLane(v6, 3));
-row6        = IfThenZeroElse(m3, row6);
-row6_1      = IfThenElseZero(m3, row6_1);
-row6        = Or(row6, row6_1);
-row6        = InsertLane(row6, 5, ExtractLane(v3, 7));
+row4   = IfThenZeroElse(m34, row4);
+row4_1 = IfThenElseZero(m34, row4_1);
+row4   = Or(row4, row4_1);
+
+row5 = IfThenZeroElse(Not(m5), row5);
+row5 = InsertLane(row5, 2, ExtractLane(v1, 7));
+row5 = InsertLane(row5, 5, ExtractLane(v4, 5));
+row5 = InsertLane(row5, 6, ExtractLane(v5, 4));
+row5 = InsertLane(row5, 7, ExtractLane(v6, 3));
+
+row6   = IfThenZeroElse(m3, row6);
+row6_1 = IfThenElseZero(m3, row6_1);
+row6   = Or(row6, row6_1);
+row6   = InsertLane(row6, 5, ExtractLane(v3, 7));
+
+row7 = InsertLane(row7, 4, ExtractLane(v5, 7));
+#endif
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
