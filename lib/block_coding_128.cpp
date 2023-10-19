@@ -151,7 +151,7 @@ row7 = InsertLane(row7, 4, ExtractLane(v5, 7));
 #endif
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
-
+row0 = InsertLane(row0, 0, (int16_t)(sp[0] - prev_dc));
 /* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
  * means that the corresponding coefficient != 0.
  */

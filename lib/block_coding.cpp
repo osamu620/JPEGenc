@@ -380,10 +380,6 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTR
 }
 
 HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
-  int dc  = sp[0];
-  sp[0]   = static_cast<int16_t>(sp[0] - prev_dc);
-  prev_dc = dc;
-
 #if HWY_TARGET != HWY_SCALAR
   uint64_t bitmap;
   HWY_ALIGN int16_t dp[64];
@@ -401,6 +397,9 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
   #else
     #include "block_coding_128.cpp"
   #endif
+
+  // update previous dc value
+  prev_dc = sp[0];
 
   // EncodeDC
   enc.put_bits(tab.DC_cwd[bits[0]], tab.DC_len[bits[0]]);

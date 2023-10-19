@@ -59,6 +59,7 @@ row45                   = Or(row45, row45_1);
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
 
+row01 = InsertLane(row01, 0, (int16_t)(sp[0] - prev_dc));
 /* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
  * means that the corresponding coefficient != 0.
  */
