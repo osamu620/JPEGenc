@@ -73,31 +73,33 @@ void create_DHT(int c, bitstream &enc) {
       freq[DC_len_[c][i] - 1]++;
     }
   }
-  std::vector<uint8_t> tmp;
-  tmp.reserve(256);
+  uint8_t tmp[256] = {0};
+  int idx          = 0;
   // Li
   for (int f : freq) {
-    tmp.push_back(f);
+    tmp[idx] = f;
+    idx++;
   }
   // Vi
   for (int i = 0; i < 16; ++i) {
     if (DC_len_[c][i]) {
-      tmp.push_back(i);
+      tmp[idx] = i;
+      idx++;
     }
   }
   enc.put_word(DHT);
-  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
+  Lh = static_cast<uint8_t>(idx + 2 + 1);
   enc.put_word(Lh);
   Tc = 0;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
-  for (auto &e : tmp) {
-    enc.put_byte(e);
+  for (int i = 0; i < idx; ++i) {
+    enc.put_byte(tmp[i]);
   }
-  tmp.clear();
   for (int &f : freq) {
     f = 0;
   }
+  idx = 0;
 
   // AC
   std::vector<std::pair<int, int>> ACpair;
@@ -114,25 +116,26 @@ void create_DHT(int c, bitstream &enc) {
   }
   // Li
   for (int f : freq) {
-    tmp.push_back(f);
+    tmp[idx] = f;
+    idx++;
   }
   // Vi
   for (int i = 0; i < 256; ++i) {
     if (ACpair[i].first) {
-      tmp.push_back(ACpair[i].second);
+      tmp[idx] = ACpair[i].second;
+      idx++;
     }
   }
 
   enc.put_word(DHT);
-  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
+  Lh = static_cast<uint8_t>(idx + 2 + 1);
   enc.put_word(Lh);
   Tc = 1;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
-  for (auto &e : tmp) {
-    enc.put_byte(e);
+  for (int i = 0; i < idx; ++i) {
+    enc.put_byte(tmp[i]);
   }
-  tmp.clear();
 }
 
 void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc, bool use_RESET) {
