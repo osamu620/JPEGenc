@@ -102,10 +102,10 @@ void create_DHT(int c, bitstream &enc) {
   idx = 0;
 
   // AC
-  std::vector<std::pair<int, int>> ACpair;
-  ACpair.reserve(256);
+  std::vector<std::pair<int, int>> ACpair(256);
   for (int i = 0; i < 256; ++i) {
-    ACpair.emplace_back(AC_len_[c][i], i);
+    ACpair[i].first  = AC_len_[c][i];
+    ACpair[i].second = i;
   }
   std::sort(ACpair.begin(), ACpair.end());
   for (int i = 0; i < 256; ++i) {
