@@ -374,7 +374,7 @@ HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTR
   int shift = 15;
   int half  = 1 << (shift - 1);
   for (int i = 0; i < DCTSIZE2; ++i) {
-    data[i] = static_cast<int16_t>(((int32_t)data[i] * qtable[i] + half) >> shift);
+    data[i] = static_cast<int16_t>((data[i] * qtable[i] + half) >> shift);
   }
 #endif
 }
@@ -428,7 +428,7 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
       run -= 16;
     }
     // EncodeAC
-    int32_t RS = (run << 4) + nbits;  //    size_t RS = (run << 4) + bits[count];
+    size_t RS = (run << 4) + nbits;   //    size_t RS = (run << 4) + bits[count];
     diff |= tab.AC_cwd[RS] << nbits;  //    enc.put_bits(tab.AC_cwd[RS], tab.AC_len[RS]);
     nbits += tab.AC_len[RS];          //    enc.put_bits(dp[count], bits[count]);
     enc.put_bits(diff, nbits);
@@ -446,55 +446,75 @@ HWY_ATTR void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int 
 #endif
 }
 
-HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, const int YCCtype,
-                          const int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
-                          huff_info &tab_C, bitstream &enc) {
-  const int nc       = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width,
+                          const int mcu_height, const int YCCtype, int16_t *HWY_RESTRICT qtable,
+                          std::vector<int> &prev_dc, huff_info &tab_Y, huff_info &tab_C, bitstream &enc) {
+  int nc = (YCCtype == YCC::GRAY || YCCtype == YCC::GRAY2) ? 1 : 3;
+  int Hl = YCC_HV[YCCtype][0] >> 4;
+  int Vl = YCC_HV[YCCtype][0] & 0xF;
+
   const int num_mcus = (mcu_height / (DCTSIZE)) * (width / (DCTSIZE));
-  const int mcu_skip = (YCC_HV[YCCtype][0] >> 4) * (YCC_HV[YCCtype][0] & 0xF);
+  const int mcu_skip = Hl * Vl;
 
-  int16_t *block0 = in[0];
-  int16_t *block1 = in[1];
-  int16_t *block2 = in[2];
+  int16_t *ssp0 = in[0];
+  int16_t *ssp1 = in[1];
+  int16_t *ssp2 = in[2];
 
+  int16_t *wp;
+
+  int pdc[3];
+  pdc[0] = prev_dc[0];
+  pdc[1] = prev_dc[1];
+  pdc[2] = prev_dc[2];
   if (nc == 3) {  // color
     for (int k = 0; k < num_mcus; k += mcu_skip) {
-      // DCT, Quantization
-      for (int i = mcu_skip; i > 0; --i) {
-        dct2_core(block0);
-        quantize_core(block0, qtable);
-        block0 += DCTSIZE2;
+      wp = mcu;
+      memcpy(wp, ssp0, sizeof(int16_t) * DCTSIZE2 * mcu_skip);
+      memcpy(wp + DCTSIZE2 * mcu_skip, ssp1, sizeof(int16_t) * DCTSIZE2);
+      memcpy(wp + DCTSIZE2 * mcu_skip + DCTSIZE2, ssp2, sizeof(int16_t) * DCTSIZE2);
+      ssp0 += DCTSIZE2 * mcu_skip;
+      ssp1 += DCTSIZE2;
+      ssp2 += DCTSIZE2;
+      // DCT
+      for (int i = 0; i < mcu_skip; ++i) {
+        dct2_core(wp + i * DCTSIZE2);
       }
-      dct2_core(block1);
-      quantize_core(block1, qtable + DCTSIZE2);
-      dct2_core(block2);
-      quantize_core(block2, qtable + DCTSIZE2);
+      dct2_core(wp + mcu_skip * DCTSIZE2);
+      dct2_core(wp + mcu_skip * DCTSIZE2 + DCTSIZE2);
 
-      block0 = in[0] + k * DCTSIZE2;
+      // Quantization
+      for (int i = 0; i < mcu_skip; ++i) {
+        quantize_core(wp + i * DCTSIZE2, qtable);
+      }
+      quantize_core(wp + mcu_skip * DCTSIZE2, qtable + DCTSIZE2);
+      quantize_core(wp + mcu_skip * DCTSIZE2 + DCTSIZE2, qtable + DCTSIZE2);
 
       // Huffman-coding
       for (int i = mcu_skip; i > 0; --i) {
-        encode_single_block(block0, tab_Y, prev_dc[0], enc);
-        block0 += DCTSIZE2;
+        encode_single_block(wp, tab_Y, pdc[0], enc);
+        wp += DCTSIZE2;
       }
-      encode_single_block(block1, tab_C, prev_dc[1], enc);
-      encode_single_block(block2, tab_C, prev_dc[2], enc);
-
-      block1 += DCTSIZE2;
-      block2 += DCTSIZE2;
+      encode_single_block(wp, tab_C, pdc[1], enc);
+      wp += DCTSIZE2;
+      encode_single_block(wp, tab_C, pdc[2], enc);
     }
   } else {  // monochrome
     for (int k = 0; k < num_mcus; k += mcu_skip * 2) {
       // Process two blocks within a single iteration for the speed
-      dct2_core(block0);
-      dct2_core(block0 + DCTSIZE2);
-      quantize_core(block0, qtable);
-      quantize_core(block0 + DCTSIZE2, qtable);
-      encode_single_block(block0, tab_Y, prev_dc[0], enc);
-      encode_single_block(block0 + DCTSIZE2, tab_Y, prev_dc[0], enc);
-      block0 += DCTSIZE2 * 2;
+      wp = mcu;
+      memcpy(wp, ssp0, sizeof(int16_t) * DCTSIZE2 * 2);
+      ssp0 += DCTSIZE2 * 2;
+      dct2_core(wp);
+      dct2_core(wp + DCTSIZE2);
+      quantize_core(wp, qtable);
+      quantize_core(wp + DCTSIZE2, qtable);
+      encode_single_block(wp, tab_Y, pdc[0], enc);
+      encode_single_block(wp + DCTSIZE2, tab_Y, pdc[0], enc);
     }
   }
+  prev_dc[0] = pdc[0];
+  prev_dc[1] = pdc[1];
+  prev_dc[2] = pdc[2];
 }
 
 }  // namespace HWY_NAMESPACE
@@ -503,11 +523,11 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_h
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(encode_mcus);
-void encode_lines(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype,
-                  int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
+void encode_lines(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width, int mcu_height,
+                  int YCCtype, int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &tab_Y,
                   huff_info &tab_C, bitstream &enc) {
   HWY_DYNAMIC_DISPATCH(encode_mcus)
-  (in, width, mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
+  (in, mcu, width, mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
 }
 }  // namespace jpegenc_hwy
 #endif
