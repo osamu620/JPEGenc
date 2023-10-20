@@ -462,12 +462,18 @@ HWY_ATTR void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_h
       // DCT, Quantization
       for (int i = mcu_skip; i > 0; --i) {
         dct2_core(block0);
-        quantize_core(block0, qtable);
         block0 += DCTSIZE2;
       }
       dct2_core(block1);
-      quantize_core(block1, qtable + DCTSIZE2);
       dct2_core(block2);
+
+      block0 = in[0] + k * DCTSIZE2;
+
+      for (int i = mcu_skip; i > 0; --i) {
+        quantize_core(block0, qtable);
+        block0 += DCTSIZE2;
+      }
+      quantize_core(block1, qtable + DCTSIZE2);
       quantize_core(block2, qtable + DCTSIZE2);
 
       block0 = in[0] + k * DCTSIZE2;
