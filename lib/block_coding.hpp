@@ -8,8 +8,6 @@
 namespace jpegenc_hwy {
 
 struct huff_info {
-  //  std::unique_ptr<uint8_t[], hwy::AlignedFreer> DC_;
-  //  std::unique_ptr<uint8_t[], hwy::AlignedFreer> AC_;
   HWY_ALIGN uint8_t DC_[16 + 32];
   HWY_ALIGN uint8_t AC_[256 + 512];
   uint16_t *DC_cwd;
@@ -18,15 +16,10 @@ struct huff_info {
   uint8_t *AC_len;
 
   huff_info() : DC_cwd(nullptr), AC_cwd(nullptr), DC_len(nullptr), AC_len(nullptr){};
+
   template <int C>
   void init(const uint16_t *dc = &DC_cwd_[C][0], const uint16_t *ac = &AC_cwd_[C][0],
             const uint8_t *dl = &DC_len_[C][0], const uint8_t *al = &AC_len_[C][0]) {
-    //    DC_    = hwy::AllocateAligned<uint8_t>(static_cast<size_t>(16 + 32));
-    //    AC_    = hwy::AllocateAligned<uint8_t>(static_cast<size_t>(256 + 512));
-    //    DC_cwd = (uint16_t *)DC_.get();
-    //    AC_cwd = (uint16_t *)AC_.get();
-    //    DC_len = DC_.get() + 32;
-    //    AC_len = AC_.get() + 512;
     DC_cwd = (uint16_t *)&DC_[0];
     AC_cwd = (uint16_t *)&AC_[0];
     DC_len = &DC_[32];
@@ -38,7 +31,7 @@ struct huff_info {
   }
 };
 
-void encode_lines(std::vector<int16_t *> &in, int16_t *HWY_RESTRICT mcu, int width, int mcu_height,
-                  int YCCtype, int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &table_Y,
+void encode_lines(std::vector<int16_t *> &in, int width, int mcu_height, int YCCtype,
+                  int16_t *HWY_RESTRICT qtable, std::vector<int> &prev_dc, huff_info &table_Y,
                   huff_info &table_C, bitstream &enc);
 }  // namespace jpegenc_hwy
