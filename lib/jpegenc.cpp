@@ -25,10 +25,8 @@ class jpeg_encoder_impl {
   const int rounded_height;
   std::vector<hwy::AlignedFreeUniquePtr<uint8_t[]>> line_buffer0;
   std::vector<hwy::AlignedFreeUniquePtr<int16_t[]>> line_buffer1;
-  hwy::AlignedFreeUniquePtr<int16_t[]> mcu_buffer;
   std::vector<uint8_t *> yuv0;
   std::vector<int16_t *> yuv1;
-  int16_t *mcu;
   HWY_ALIGN int16_t qtable[DCTSIZE2 * 2];
   bitstream enc;
   const bool use_RESET;
@@ -79,11 +77,6 @@ class jpeg_encoder_impl {
     for (int c = 1; c < ncomp_out; ++c) {
       yuv1[c] = line_buffer1[c].get();
     }
-
-    // Prepare mcu-buffers
-    const int c = (ncomp_out == 1) ? 1 : 0;
-    mcu_buffer  = hwy::AllocateAligned<int16_t>(DCTSIZE2 * scale_x * scale_y + ((DCTSIZE2 * 2) >> c));
-    mcu         = mcu_buffer.get();
   }
 
   void invoke(std::vector<uint8_t> &codestream) {
@@ -109,8 +102,7 @@ class jpeg_encoder_impl {
         yuv0[0] = src;
       }
       jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-      jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
-                                enc);
+      jpegenc_hwy::encode_lines(yuv1, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
       // RST marker insertion, if any
       if (use_RESET) {
         enc.put_RST((n / BUFLINES) % 8);
@@ -127,8 +119,8 @@ class jpeg_encoder_impl {
       yuv0[0] = src;
     }
     jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-    jpegenc_hwy::encode_lines(yuv1, mcu, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
-                              tab_C, enc);
+    jpegenc_hwy::encode_lines(yuv1, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C,
+                              enc);
 
     // Finalize codestream
     codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
