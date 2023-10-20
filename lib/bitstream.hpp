@@ -149,7 +149,7 @@ class bitstream {
   //  bitstream() : bits(0), tmp(0) {}
 
 #if USE_VECTOR != 0
-  explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
+  explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 #else
   explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0), stream(length) {}
