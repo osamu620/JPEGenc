@@ -1,4 +1,3 @@
-#include <hwy/highway.h>
 #include <hwy/aligned_allocator.h>
 #include <jpegenc.hpp>
 
@@ -11,7 +10,6 @@
 #include "ycctype.hpp"
 
 namespace jpegenc {
-namespace hn = hwy::HWY_NAMESPACE;
 
 class jpeg_encoder_impl {
  private:

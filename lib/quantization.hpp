@@ -37,8 +37,11 @@ constexpr float qmatrix[2][64] = {
 // clang-format on
 
 void create_scaled_qtable(int c, int QF, int16_t *qtable);
+
+HWY_BEFORE_NAMESPACE();
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
-HWY_ATTR void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTRICT qtable);
+void quantize_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTRICT qtable);
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
+HWY_AFTER_NAMESPACE();

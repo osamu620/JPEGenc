@@ -9,7 +9,7 @@
 
 #include "constants.hpp"
 #include "ycctype.hpp"
-#include "hwy/ops/set_macros-inl.h"
+// #include "hwy/ops/set_macros-inl.h"
 
 class imchunk {
  private:

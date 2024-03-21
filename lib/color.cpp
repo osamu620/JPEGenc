@@ -9,6 +9,7 @@
 #include "ycctype.hpp"
 #include "constants.hpp"
 
+HWY_BEFORE_NAMESPACE();
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
@@ -783,6 +784,7 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
 #endif
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
+HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 namespace jpegenc_hwy {

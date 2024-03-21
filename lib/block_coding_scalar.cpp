@@ -5,8 +5,6 @@
 //  Branchless abs:
 //  https://stackoverflow.com/questions/9772348/get-absolute-value-without-using-abs-function-nor-if-statement
 #define JPEGENC_ABS16(x) ((x) + ((x) >> 15)) ^ ((x) >> 15)
-uint64_t bitmap;
-HWY_ALIGN int16_t dp[64];
 
 int16_t dc = sp[0];
 sp[0] -= prev_dc;
