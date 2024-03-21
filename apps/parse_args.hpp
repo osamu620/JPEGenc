@@ -21,10 +21,9 @@ int parse_args(int argc, char **&argv, std::string &inname, std::string &outname
                bool &benchmark) {
   YCCtype = YCC::YUV420;
   QF      = 75;
-  std::vector<std::string> args;
-  args.reserve(argc);
+  std::vector<std::string> args(argc);
   for (int i = 0; i < argc; ++i) {
-    args.emplace_back(argv[i]);
+    args[i] = argv[i];
   }
 
   if (args.size() == 1) {

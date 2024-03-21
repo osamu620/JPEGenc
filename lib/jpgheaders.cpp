@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "bitstream.hpp"
@@ -7,8 +8,8 @@
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
 #include "jpgheaders.hpp"
-#include "quantization.hpp"
 #include "constants.hpp"
+#include "qmatrix.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
   enc.put_word(SOF);
@@ -69,41 +70,43 @@ void create_DHT(int c, bitstream &enc) {
 
   // DC
   for (int i = 0; i < 16; ++i) {
-    if (DC_len[c][i]) {
-      freq[DC_len[c][i] - 1]++;
+    if (DC_len_[c][i]) {
+      freq[DC_len_[c][i] - 1]++;
     }
   }
-  std::vector<uint8_t> tmp;
-  tmp.reserve(256);
+  uint8_t tmp[256] = {0};
+  int idx          = 0;
   // Li
   for (int f : freq) {
-    tmp.push_back(f);
+    tmp[idx] = f;
+    idx++;
   }
   // Vi
   for (int i = 0; i < 16; ++i) {
-    if (DC_len[c][i]) {
-      tmp.push_back(i);
+    if (DC_len_[c][i]) {
+      tmp[idx] = i;
+      idx++;
     }
   }
   enc.put_word(DHT);
-  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
+  Lh = static_cast<uint8_t>(idx + 2 + 1);
   enc.put_word(Lh);
   Tc = 0;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
-  for (auto &e : tmp) {
-    enc.put_byte(e);
+  for (int i = 0; i < idx; ++i) {
+    enc.put_byte(tmp[i]);
   }
-  tmp.clear();
   for (int &f : freq) {
     f = 0;
   }
+  idx = 0;
 
   // AC
-  std::vector<std::pair<int, int>> ACpair;
-  ACpair.reserve(256);
+  std::vector<std::pair<int, int>> ACpair(256);
   for (int i = 0; i < 256; ++i) {
-    ACpair.emplace_back(AC_len[c][i], i);
+    ACpair[i].first  = AC_len_[c][i];
+    ACpair[i].second = i;
   }
   std::sort(ACpair.begin(), ACpair.end());
   for (int i = 0; i < 256; ++i) {
@@ -114,25 +117,26 @@ void create_DHT(int c, bitstream &enc) {
   }
   // Li
   for (int f : freq) {
-    tmp.push_back(f);
+    tmp[idx] = f;
+    idx++;
   }
   // Vi
   for (int i = 0; i < 256; ++i) {
     if (ACpair[i].first) {
-      tmp.push_back(ACpair[i].second);
+      tmp[idx] = ACpair[i].second;
+      idx++;
     }
   }
 
   enc.put_word(DHT);
-  Lh = static_cast<uint8_t>(tmp.size() + 2 + 1);
+  Lh = static_cast<uint8_t>(idx + 2 + 1);
   enc.put_word(Lh);
   Tc = 1;
   Th = c;
   enc.put_byte((Tc << 4) + Th);
-  for (auto &e : tmp) {
-    enc.put_byte(e);
+  for (int i = 0; i < idx; ++i) {
+    enc.put_byte(tmp[i]);
   }
-  tmp.clear();
 }
 
 void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &enc, bool use_RESET) {
@@ -143,7 +147,7 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
     for (int i = 0; i < DCTSIZE2; ++i) {
       float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
-      stepsize       = floor(stepsize);
+      stepsize       = std::floor(stepsize);
       if (stepsize < 1.0) {
         stepsize = 1;
       }
@@ -170,8 +174,25 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     enc.put_word(DRI);
     enc.put_word(4);
     size_t mcu_x = round_up(width, DCTSIZE * Hl) / (DCTSIZE * Hl);
-    size_t mcu_y = LINES / (DCTSIZE * Vl);
+    size_t mcu_y = BUFLINES / (DCTSIZE * Vl);
     enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);
+}
+
+void create_scaled_qtable(int c, int QF, int16_t *qtable) {
+  float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
+  for (int i = 0; i < 64; ++i) {
+    float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
+    int16_t val;
+    stepsize = std::floor(stepsize);
+    if (stepsize < 1.0F) {
+      stepsize = 1.0F;
+    }
+    if (stepsize > 255.0F) {
+      stepsize = 255.0F;
+    }
+    val       = static_cast<int16_t>(std::lround((qscale[i] / stepsize) * (1 << 15)));
+    qtable[i] = val;
+  }
 }

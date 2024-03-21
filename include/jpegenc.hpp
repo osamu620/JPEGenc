@@ -11,8 +11,6 @@
   #define JPEGENC_EXPORT
 #endif
 
-#define round_up(x, n) (((x) + (n)-1) & (-n))
-
 namespace jpegenc {
 
 struct im_info {
@@ -23,6 +21,7 @@ struct im_info {
   const int32_t nc;
   im_info(FILE *buf, size_t fpos, int32_t w, int32_t h, int32_t c)
       : data(buf), pos(fpos), width(w), height(h), nc(c) {}
+  ~im_info() { fclose(data); }
 };
 
 class jpeg_encoder {

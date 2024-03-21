@@ -21,7 +21,7 @@ auto row0123 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[0
 auto row4567 = TwoTablesLookupLanes(s16, v0, v1, SetTableIndices(s16, &indices[1 * 32]));
 
 /* DCT block is now in zig-zag order; start Huffman encoding process. */
-
+row0123 = InsertLane(row0123, 0, (int16_t)(sp[0] - prev_dc));
 /* Construct bitmap to accelerate encoding of AC coefficients.  A set bit
  * means that the corresponding coefficient != 0.
  */

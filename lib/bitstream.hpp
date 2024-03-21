@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "jpgmarkers.hpp"
+#include "constants.hpp"
 
 #define BIT_BUF_SIZE 64
 #define BYTE_BUF_SIZE 8
@@ -56,14 +57,10 @@ class stream_buf {
       expand();
     }
     // emits eight uint8_t values at once
-#if (HWY_TARGET | HWY_NEON_WITHOUT_AES) == HWY_NEON_WITHOUT_AES
-    *(uint64_t *)cur_byte = __builtin_bswap64(val);
-#elif (HWY_TARGET | HWY_NEON) == HWY_NEON
-    *(uint64_t *)cur_byte = __builtin_bswap64(val);
-#elif HWY_TARGET <= HWY_SSE2
-    *(uint64_t *)cur_byte = __bswap_64(val);
-#else
+#if defined(BSWAP64_UNAVAILABLE)
     jpegenc_hwy::send_8_bytes((uint8_t *)&val, cur_byte);
+#else
+    *(uint64_t *)cur_byte = JPEGENC_BSWAP64(val);
 #endif
     cur_byte += BYTE_BUF_SIZE;
     pos += BYTE_BUF_SIZE;
@@ -152,7 +149,7 @@ class bitstream {
   //  bitstream() : bits(0), tmp(0) {}
 
 #if USE_VECTOR != 0
-  explicit bitstream(size_t length) : bits(0), tmp(0) { stream.reserve(length); }
+  explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 #else
   explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0), stream(length) {}
