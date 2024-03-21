@@ -6,7 +6,6 @@
 #include "constants.hpp"
 #include "image_chunk.hpp"
 #include "jpgheaders.hpp"
-#include "quantization.hpp"
 #include "ycctype.hpp"
 
 namespace jpegenc {

@@ -1,20 +1,9 @@
-// Generates code for every target that this compiler can support.
-#undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "dct.cpp"  // this file
-#include <hwy/foreach_target.h>       // must come before highway.h
+#include <cmath>
 #include <hwy/highway.h>
 
-#include <utility>
-
-#include "dct.hpp"
 #include "constants.hpp"
-#include "ycctype.hpp"
 
-HWY_BEFORE_NAMESPACE();
-namespace jpegenc_hwy {
-namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
-
 /* The following DCT algorithm is derived from
  * Yukihiro Arai, Takeshi Agui, and Masayuki Nakajima, "A Fast DCT-SQ Scheme for Images, "
  * IEICE Transactions on Fundamentals of Electronics, Communications and Computer Sciences 71 (1988),
@@ -350,7 +339,3 @@ void dct2_core(int16_t *HWY_RESTRICT data) {
   }
 #endif
 }
-
-}  // namespace HWY_NAMESPACE
-}  // namespace jpegenc_hwy
-HWY_AFTER_NAMESPACE();

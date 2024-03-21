@@ -8,9 +8,6 @@
 #include <cmath>
 
 #include "block_coding.hpp"
-#include "constants.hpp"
-#include "dct.hpp"
-#include "quantization.hpp"
 #include "ycctype.hpp"
 
 HWY_BEFORE_NAMESPACE();
@@ -18,7 +15,10 @@ namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
 namespace hn = hwy::HWY_NAMESPACE;
 
-void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
+#include "dct.cpp"
+#include "quantization.cpp"
+
+void encode_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstream &enc) {
   uint64_t bitmap;
   HWY_ALIGN int16_t dp[64];
 #if HWY_TARGET != HWY_SCALAR
@@ -29,9 +29,9 @@ void encode_single_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc,
   const hn::ScalableTag<uint8_t> u8;
   const hn::ScalableTag<uint64_t> u64;
 
-  #if HWY_CAP_GE512
+  #if HWY_TARGET <= HWY_AVX3
     #include "block_coding_512.cpp"
-  #elif HWY_CAP_GE256
+  #elif HWY_TARGET <= HWY_AVX2
     #include "block_coding_256.cpp"
   #else
     #include "block_coding_128.cpp"
@@ -119,11 +119,11 @@ void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, co
 
       // Huffman-coding
       for (int i = mcu_skip; i > 0; --i) {
-        encode_single_block(block0, tab_Y, prev_dc[0], enc);
+        encode_block(block0, tab_Y, prev_dc[0], enc);
         block0 += DCTSIZE2;
       }
-      encode_single_block(block1, tab_C, prev_dc[1], enc);
-      encode_single_block(block2, tab_C, prev_dc[2], enc);
+      encode_block(block1, tab_C, prev_dc[1], enc);
+      encode_block(block2, tab_C, prev_dc[2], enc);
 
       block1 += DCTSIZE2;
       block2 += DCTSIZE2;
@@ -135,8 +135,8 @@ void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, co
       dct2_core(block0 + DCTSIZE2);
       quantize_core(block0, qtable);
       quantize_core(block0 + DCTSIZE2, qtable);
-      encode_single_block(block0, tab_Y, prev_dc[0], enc);
-      encode_single_block(block0 + DCTSIZE2, tab_Y, prev_dc[0], enc);
+      encode_block(block0, tab_Y, prev_dc[0], enc);
+      encode_block(block0 + DCTSIZE2, tab_Y, prev_dc[0], enc);
       block0 += DCTSIZE2 * 2;
     }
   }
@@ -145,6 +145,7 @@ void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, co
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
 HWY_AFTER_NAMESPACE();
+
 #if HWY_ONCE
 namespace jpegenc_hwy {
 HWY_EXPORT(encode_mcus);

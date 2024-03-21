@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "bitstream.hpp"
@@ -7,8 +8,8 @@
 #include "ycctype.hpp"
 #include "zigzag_order.hpp"
 #include "jpgheaders.hpp"
-#include "quantization.hpp"
 #include "constants.hpp"
+#include "qmatrix.hpp"
 
 void create_SOF(int P, int Y, int X, int Nf, int YCCtype, bitstream &enc) {
   enc.put_word(SOF);
@@ -146,7 +147,7 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
     for (int i = 0; i < DCTSIZE2; ++i) {
       float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
-      stepsize       = floor(stepsize);
+      stepsize       = std::floor(stepsize);
       if (stepsize < 1.0) {
         stepsize = 1;
       }
@@ -177,4 +178,21 @@ void create_mainheader(int width, int height, int QF, int YCCtype, bitstream &en
     enc.put_word(mcu_x * mcu_y);
   }
   create_SOS(nc, enc);
+}
+
+void create_scaled_qtable(int c, int QF, int16_t *qtable) {
+  float scale = (QF < 50) ? 5000.0F / static_cast<float>(QF) : 200.0F - 2.0F * static_cast<float>(QF);
+  for (int i = 0; i < 64; ++i) {
+    float stepsize = (qmatrix[c][i] * scale + 50.0F) / 100.0F;
+    int16_t val;
+    stepsize = std::floor(stepsize);
+    if (stepsize < 1.0F) {
+      stepsize = 1.0F;
+    }
+    if (stepsize > 255.0F) {
+      stepsize = 255.0F;
+    }
+    val       = static_cast<int16_t>(std::lround((qscale[i] / stepsize) * (1 << 15)));
+    qtable[i] = val;
+  }
 }
