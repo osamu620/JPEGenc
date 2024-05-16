@@ -2,6 +2,13 @@
 #include <hwy/highway.h>
 #include "constants.hpp"
 
+namespace hn = hwy::HWY_NAMESPACE;
+
+const hn::ScalableTag<int16_t> s16;
+const hn::ScalableTag<uint16_t> u16;
+const hn::ScalableTag<uint8_t> u8;
+const hn::ScalableTag<uint64_t> u64;
+
 // clang-format off
 #define USE_ARM_SPECIFIC 0
 #if USE_ARM_SPECIFIC && (HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES)

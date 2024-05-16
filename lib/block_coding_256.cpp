@@ -1,5 +1,13 @@
 #include <cstdint>
 #include <hwy/highway.h>
+#include "constants.hpp"
+
+namespace hn = hwy::HWY_NAMESPACE;
+
+const hn::ScalableTag<int16_t> s16;
+const hn::ScalableTag<uint16_t> u16;
+const hn::ScalableTag<uint8_t> u8;
+const hn::ScalableTag<uint64_t> u64;
 
 // clang-format off
 HWY_ALIGN constexpr int16_t indices[] = {

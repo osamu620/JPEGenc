@@ -13,7 +13,6 @@
 HWY_BEFORE_NAMESPACE();
 namespace jpegenc_hwy {
 namespace HWY_NAMESPACE {
-namespace hn = hwy::HWY_NAMESPACE;
 
 #include "dct.cpp"
 #include "quantization.cpp"
@@ -23,11 +22,6 @@ void encode_block(int16_t *HWY_RESTRICT sp, huff_info &tab, int &prev_dc, bitstr
   HWY_ALIGN int16_t dp[64];
 #if HWY_TARGET != HWY_SCALAR
   HWY_ALIGN uint8_t bits[64];
-
-  const hn::ScalableTag<int16_t> s16;
-  const hn::ScalableTag<uint16_t> u16;
-  const hn::ScalableTag<uint8_t> u8;
-  const hn::ScalableTag<uint64_t> u64;
 
   #if HWY_TARGET <= HWY_AVX3
     #include "block_coding_512.cpp"
