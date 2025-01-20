@@ -44,7 +44,7 @@ class jpeg_encoder_impl {
         yuv1(ncomp),
         qtable{0},
         enc(3000000),
-        use_RESET(false) {
+        use_RESET(true) {
     int ncomp_out = inimg.nc;
     if (ncomp_out == 1) {
       YCCtype = YCC::GRAY;
@@ -91,18 +91,24 @@ class jpeg_encoder_impl {
     image.init();
     uint8_t *src = image.get_lines_from(0);
 
+    std::vector<bitstream> enc_thread_local(rounded_height / BUFLINES);
+    for (auto &i : enc_thread_local) {
+      i.init(8192);
+    }
     // Loop of 16 pixels height
-    for (int n = 0; n < rounded_height - BUFLINES; n += BUFLINES) {
+    size_t num_unit = 0;
+    for (int n = 0; n < rounded_height - BUFLINES; n += BUFLINES, num_unit++) {
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
       } else {
         yuv0[0] = src;
       }
       jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-      jpegenc_hwy::encode_lines(yuv1, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C, enc);
+      jpegenc_hwy::encode_lines(yuv1, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
+                                enc_thread_local[num_unit]);
       // RST marker insertion, if any
       if (use_RESET) {
-        enc.put_RST((n / BUFLINES) % 8);
+        enc_thread_local[num_unit].put_RST((n / BUFLINES) % 8);
         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
       }
       src = image.get_lines_from(n + BUFLINES);
@@ -117,10 +123,27 @@ class jpeg_encoder_impl {
     }
     jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
     jpegenc_hwy::encode_lines(yuv1, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y, tab_C,
-                              enc);
+                              enc_thread_local[rounded_height / BUFLINES - 1]);
 
     // Finalize codestream
-    codestream = const_cast<std::vector<uint8_t> &&>(enc.finalize());
+    size_t total_length = 0;
+    for (auto &i : enc_thread_local) {
+      total_length += i.get_len();
+    }
+    size_t header_len = enc.get_len();
+    bitstream final(total_length + header_len);
+    size_t tmp_len = 0;
+    uint8_t *p     = final.get_stream()->get_buf();
+    memcpy(p + tmp_len, enc.get_stream()->get_buf(), header_len);
+    tmp_len += header_len;
+    for (auto &i : enc_thread_local) {
+      size_t len     = i.get_len();
+      auto buf_local = i.get_stream();
+      memcpy(p + tmp_len, buf_local->get_buf(), len);
+      tmp_len += len;
+    }
+    final.get_stream()->put_pos(tmp_len);
+    codestream = const_cast<std::vector<uint8_t> &&>(final.finalize());
   }
 
   ~jpeg_encoder_impl() = default;

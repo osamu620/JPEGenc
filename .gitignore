@@ -42,10 +42,10 @@ build/
 .idea/
 build-*/
 cmake-*/
-xcode*/
+xcode/*
 
-thirdparty/highway/WORKSPACE
-thirdparty/highway/CMakeLists.txt.in
-thirdparty/highway/hwy/*
+thirdparty/
+thirdparty/highway/
+
 
 

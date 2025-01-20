@@ -29,7 +29,17 @@ class stream_buf {
   size_t pos;
   uint8_t *cur_byte;
 
-  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr){};
+  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr) {};
+
+  void init(size_t size) {
+    len      = size;
+    buf      = std::make_unique<uint8_t[]>(size);
+    pos      = 0;
+    cur_byte = buf.get();
+  }
+
+  void put_pos(size_t pos) { this->pos = pos; }
+
   explicit stream_buf(size_t size) : buf(std::make_unique<uint8_t[]>(size)), len(size) {
     pos      = 0;
     cur_byte = buf.get();
@@ -146,7 +156,8 @@ class bitstream {
   }
 
  public:
-  //  bitstream() : bits(0), tmp(0) {}
+  bitstream() : bits(BIT_BUF_SIZE), tmp(0) {}
+  void init(size_t length) { stream.init(length); };
 
 #if USE_VECTOR != 0
   explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0) { stream.reserve(length); }
@@ -219,6 +230,11 @@ class bitstream {
   [[maybe_unused]] auto get_stream() {
     flush();
     return &stream;
+  }
+
+  size_t get_len() {
+    flush();
+    return stream.pos;
   }
 
   std::vector<uint8_t> finalize() {
