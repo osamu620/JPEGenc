@@ -11,14 +11,25 @@ set(CMAKE_PREFIX_PATH "./include") # for include
 #add_definitions("-DHWY_COMPILE_ONLY_EMU128") # uncomment to build non-intrinsic code
 #add_definitions("-DHWY_COMPILE_ONLY_SCALAR") # uncomment to build non-simd code
 
+
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
 add_library(jpegenc ${SOURCES})
 target_include_directories(
 		jpegenc
 		PRIVATE lib include thirdparty/hwy
 )
+
+find_package(OpenMP)
+
 target_include_directories(jpegenc INTERFACE include)
+if(OpenMP_FOUND)
+message(STATUS "OpenMP is found.")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+target_link_libraries(jpegenc PRIVATE hwy OpenMP::OpenMP_CXX)
+else()
 target_link_libraries(jpegenc PRIVATE hwy)
+endif()
 add_subdirectory(lib)
 set_target_properties(jpegenc PROPERTIES OUTPUT_NAME
 		$<IF:$<CONFIG:Debug>,jpegenc_d,jpegenc_R>)
