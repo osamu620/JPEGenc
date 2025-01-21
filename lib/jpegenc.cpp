@@ -40,7 +40,7 @@ class jpeg_encoder_impl {
     std::vector<int16_t *> yuv1;
     bitstream cs;
     std::vector<int> prev_dc;
-    enc_object() : src(nullptr), cs(8192), prev_dc(3, 0) {};
+    enc_object() : src(nullptr), cs(1024), prev_dc(3, 0) {};
   };
 
   std::vector<enc_object> enc_objects;
@@ -55,14 +55,14 @@ class jpeg_encoder_impl {
         YCCtype(ycc),
         rounded_width(round_up(width, HWY_MAX(DCTSIZE * (YCC_HV[YCCtype][0] >> 4), HWY_MAX_BYTES))),
         rounded_height(round_up(height, DCTSIZE * (YCC_HV[YCCtype][0] & 0xF))),
-        enc_objects(rounded_height / BUFLINES),
         line_buffer0(ncomp),
         line_buffer1(ncomp),
         yuv0(ncomp),
         yuv1(ncomp),
         qtable{0},
         enc(1024),
-        use_RESET(true) {
+        use_RESET(true),
+        enc_objects(rounded_height / BUFLINES) {
     int ncomp_out = inimg.nc;
     if (ncomp_out == 1) {
       YCCtype = YCC::GRAY;
@@ -85,7 +85,7 @@ class jpeg_encoder_impl {
       }
 
       enc_objects[i].line_buffer1.emplace_back(hwy::AllocateAligned<int16_t>(bufsize_L));
-      for (size_t c = 1; c < ncomp_out; ++c) {
+      for (int c = 1; c < ncomp_out; ++c) {
         // subsampled chroma
         enc_objects[i].line_buffer1.emplace_back(hwy::AllocateAligned<int16_t>(bufsize_C));
       }
