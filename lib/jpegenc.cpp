@@ -8,10 +8,7 @@
 #include "jpgheaders.hpp"
 #include "ycctype.hpp"
 
-#include "ThreadPool.hpp"
-
-ThreadPool *ThreadPool::singleton = nullptr;
-std::mutex ThreadPool::singleton_mutex;
+#include "BS_thread_pool.hpp"
 
 namespace jpegenc {
 
@@ -124,103 +121,39 @@ class jpeg_encoder_impl {
     create_scaled_qtable(1, QF, qtable + DCTSIZE2);
     create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
 
-    //// Encoding
-    // image.init();
-    uint8_t *src;  // = image.get_lines_from(0);
-
     // Loop of 16 pixels height
-    ThreadPool::instance(16);
-    auto pool = ThreadPool::get();
-    std::vector<std::future<int>> results;
+    BS::thread_pool pool(std::thread::hardware_concurrency());
 
-    for (int n = 0; n < num_unit; ++n) {
-      results.emplace_back(pool->enqueue([this, &tab_Y, &tab_C, n] {
-        if (ncomp == 3) {
-          jpegenc_hwy::rgb2ycbcr(enc_objects[n].src, enc_objects[n].yuv0, rounded_width);
-        } else {
-          enc_objects[n].yuv0[0] = enc_objects[n].src;
-        }
-        jpegenc_hwy::subsample(enc_objects[n].yuv0, enc_objects[n].yuv1, rounded_width, YCCtype);
-        jpegenc_hwy::encode_lines(enc_objects[n].yuv1, rounded_width, BUFLINES, YCCtype, qtable,
-                                  enc_objects[n].prev_dc, tab_Y, tab_C, enc_objects[n].cs);
-        // RST marker insertion, if any
-        if (use_RESET) {
-          enc_objects[n].cs.put_RST((n * 16 / BUFLINES) % 8);
-          enc_objects[n].prev_dc[0] = enc_objects[n].prev_dc[1] = enc_objects[n].prev_dc[2] = 0;
-        }
-        return 0;
-      }));
-    }
-    // last chunk
-    results.emplace_back(pool->enqueue([this, &tab_Y, &tab_C, num_unit, last_mcu_height] {
+    // const BS::multi_future<void> loop_future =
+    pool.detach_loop(0, num_unit, [this, &tab_Y, &tab_C](const int n) {
       if (ncomp == 3) {
-        jpegenc_hwy::rgb2ycbcr(enc_objects[num_unit].src, enc_objects[num_unit].yuv0, rounded_width);
+        jpegenc_hwy::rgb2ycbcr(enc_objects[n].src, enc_objects[n].yuv0, rounded_width);
       } else {
-        enc_objects[num_unit].yuv0[0] = enc_objects[num_unit].src;
+        enc_objects[n].yuv0[0] = enc_objects[n].src;
       }
-      jpegenc_hwy::subsample(enc_objects[num_unit].yuv0, enc_objects[num_unit].yuv1, rounded_width,
-                             YCCtype);
-      jpegenc_hwy::encode_lines(enc_objects[num_unit].yuv1, rounded_width, last_mcu_height, YCCtype, qtable,
-                                enc_objects[num_unit].prev_dc, tab_Y, tab_C, enc_objects[num_unit].cs);
-      return 0;
-    }));
-    for (auto &result : results) {
-      result.get();
+      jpegenc_hwy::subsample(enc_objects[n].yuv0, enc_objects[n].yuv1, rounded_width, YCCtype);
+      jpegenc_hwy::encode_lines(enc_objects[n].yuv1, rounded_width, BUFLINES, YCCtype, qtable,
+                                enc_objects[n].prev_dc, tab_Y, tab_C, enc_objects[n].cs);
+      // RST marker insertion, if any
+      if (use_RESET) {
+        enc_objects[n].cs.put_RST((n * 16 / BUFLINES) % 8);
+        enc_objects[n].prev_dc[0] = enc_objects[n].prev_dc[1] = enc_objects[n].prev_dc[2] = 0;
+      }
+    });
+    // loop_future.wait();
+    pool.wait();
+
+    // last chunk
+    if (ncomp == 3) {
+      jpegenc_hwy::rgb2ycbcr(enc_objects[num_unit].src, enc_objects[num_unit].yuv0, rounded_width);
+    } else {
+      enc_objects[num_unit].yuv0[0] = enc_objects[num_unit].src;
     }
-    // for (int n = 0; n < rounded_height - BUFLINES; n += BUFLINES, num_unit++) {
-    //   // results.emplace_back(
-    //   //     pool->enqueue([&num_unit, &src, this, &enc_thread_local, &prev_dc, &tab_Y, &tab_C, &n] {
-    //   //       src = image.get_lines_from(num_unit * BUFLINES);
-    //   //       if (ncomp == 3) {
-    //   //         jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
-    //   //       } else {
-    //   //         yuv0[0] = src;
-    //   //       }
-    //   //       jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-    //   //       jpegenc_hwy::encode_lines(yuv1, rounded_width, BUFLINES, YCCtype, qtable, prev_dc,
-    //   tab_Y,
-    //   //       tab_C,
-    //   //                                 enc_thread_local[num_unit]);
-    //   //       // RST marker insertion, if any
-    //   //       if (use_RESET) {
-    //   //         enc_thread_local[num_unit].put_RST((n / BUFLINES) % 8);
-    //   //         prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
-    //   //       }
-    //   //       // src = image.get_lines_from(n + BUFLINES);
-    //   //       return 0;
-    //   //     }));
-    //   src = image.get_lines_from(num_unit * BUFLINES);
-    //   if (ncomp == 3) {
-    //     jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
-    //   } else {
-    //     yuv0[0] = src;
-    //   }
-    //   jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-    //   jpegenc_hwy::encode_lines(yuv1, rounded_width, BUFLINES, YCCtype, qtable, prev_dc, tab_Y, tab_C,
-    //                             enc_thread_local[num_unit]);
-    //   // RST marker insertion, if any
-    //   if (use_RESET) {
-    //     enc_thread_local[num_unit].put_RST((n / BUFLINES) % 8);
-    //     prev_dc[0] = prev_dc[1] = prev_dc[2] = 0;
-    //   }
-    //   // src = image.get_lines_from(n + BUFLINES);
-    // }
-    // // for (auto &result : results) {
-    // //   result.get();
-    // // }
-    // // Last chunk or leftover (< 16 pixels)
-    // const int last_mcu_height = (rounded_height % BUFLINES) ? DCTSIZE : BUFLINES;
-    //
-    // src = image.get_lines_from(num_unit * BUFLINES);
-    // if (ncomp == 3) {
-    //   jpegenc_hwy::rgb2ycbcr(src, yuv0, rounded_width);
-    // } else {
-    //   yuv0[0] = src;
-    // }
-    // jpegenc_hwy::subsample(yuv0, yuv1, rounded_width, YCCtype);
-    // jpegenc_hwy::encode_lines(yuv1, rounded_width, last_mcu_height, YCCtype, qtable, prev_dc, tab_Y,
-    // tab_C,
-    //                           enc_thread_local[rounded_height / BUFLINES - 1]);
+    jpegenc_hwy::subsample(enc_objects[num_unit].yuv0, enc_objects[num_unit].yuv1, rounded_width, YCCtype);
+    jpegenc_hwy::encode_lines(enc_objects[num_unit].yuv1, rounded_width, last_mcu_height, YCCtype, qtable,
+                              enc_objects[num_unit].prev_dc, tab_Y, tab_C, enc_objects[num_unit].cs);
+    enc_objects[num_unit].prev_dc[0] = enc_objects[num_unit].prev_dc[1] = enc_objects[num_unit].prev_dc[2] =
+        0;
 
     // Finalize codestream
     size_t total_length = 0;
@@ -241,7 +174,6 @@ class jpeg_encoder_impl {
     }
     final.get_stream()->put_pos(tmp_len);
     codestream = const_cast<std::vector<uint8_t> &&>(final.finalize());
-    ThreadPool::release();
   }
 
   ~jpeg_encoder_impl() = default;

@@ -20,16 +20,16 @@ target_include_directories(
 		PRIVATE lib include thirdparty/hwy
 )
 
-find_package(OpenMP)
+#find_package(OpenMP)
 
 target_include_directories(jpegenc INTERFACE include)
-if(OpenMP_FOUND)
-message(STATUS "OpenMP is found.")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-target_link_libraries(jpegenc PRIVATE hwy OpenMP::OpenMP_CXX)
-else()
-target_link_libraries(jpegenc PRIVATE hwy)
-endif()
+#if(OpenMP_FOUND)
+#message(STATUS "OpenMP is found.")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#target_link_libraries(jpegenc PRIVATE hwy OpenMP::OpenMP_CXX)
+#else()
+target_link_libraries(jpegenc PRIVATE hwy pthread)
+#endif()
 add_subdirectory(lib)
 set_target_properties(jpegenc PROPERTIES OUTPUT_NAME
 		$<IF:$<CONFIG:Debug>,jpegenc_d,jpegenc_R>)
