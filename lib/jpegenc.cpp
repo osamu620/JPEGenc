@@ -61,7 +61,7 @@ class jpeg_encoder_impl {
         yuv0(ncomp),
         yuv1(ncomp),
         qtable{0},
-        enc(3000000),
+        enc(1024),
         use_RESET(true) {
     int ncomp_out = inimg.nc;
     if (ncomp_out == 1) {
@@ -101,14 +101,12 @@ class jpeg_encoder_impl {
     tab_Y.init<0>();
     tab_C.init<1>();
 
+    // Prepare buffers for chunks of input image
     image.init();
     size_t num_unit = 0;
     for (int n = 0; n < rounded_height - BUFLINES; n += BUFLINES, num_unit++) {
       enc_objects[num_unit].buf = hwy::AllocateAligned<uint8_t>(rounded_width * BUFLINES * ncomp);
       enc_objects[num_unit].src = enc_objects[num_unit].buf.get();
-      for (int i = 0; i < rounded_width * BUFLINES * ncomp; i++) {
-        enc_objects[num_unit].src[i] = 0;
-      }
       image.get_lines_from(n, enc_objects[num_unit].src);
     }
     const int last_mcu_height = (rounded_height % BUFLINES) ? DCTSIZE : BUFLINES;
@@ -121,11 +119,11 @@ class jpeg_encoder_impl {
     create_scaled_qtable(1, QF, qtable + DCTSIZE2);
     create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
 
-    // Loop of 16 pixels height
+    // create a thread-pool
     BS::thread_pool pool(std::thread::hardware_concurrency());
 
-    // const BS::multi_future<void> loop_future =
-    pool.detach_loop(0, num_unit, [this, &tab_Y, &tab_C](const int n) {
+    // labmda function to process 16 pixels height
+    thread_local auto encfunc = [&](const int n) {
       if (ncomp == 3) {
         jpegenc_hwy::rgb2ycbcr(enc_objects[n].src, enc_objects[n].yuv0, rounded_width);
       } else {
@@ -139,10 +137,10 @@ class jpeg_encoder_impl {
         enc_objects[n].cs.put_RST((n * 16 / BUFLINES) % 8);
         enc_objects[n].prev_dc[0] = enc_objects[n].prev_dc[1] = enc_objects[n].prev_dc[2] = 0;
       }
-    });
-    // loop_future.wait();
+    };
+    // parallelized loop
+    pool.detach_loop(0, num_unit, encfunc);
     pool.wait();
-
     // last chunk
     if (ncomp == 3) {
       jpegenc_hwy::rgb2ycbcr(enc_objects[num_unit].src, enc_objects[num_unit].yuv0, rounded_width);
@@ -155,7 +153,7 @@ class jpeg_encoder_impl {
     enc_objects[num_unit].prev_dc[0] = enc_objects[num_unit].prev_dc[1] = enc_objects[num_unit].prev_dc[2] =
         0;
 
-    // Finalize codestream
+    // Finalize codestream by concatenating partial codestreams
     size_t total_length = 0;
     for (auto &i : enc_objects) {
       total_length += i.cs.get_len();
