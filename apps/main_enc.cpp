@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     double et = benchtime / (static_cast<double>(duration) / 1000.0);
     printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
-    printf("Throughput: %7.3f [MP/s], %f\n", (width * height * iter * et) / (benchtime * 1000.0));
+    printf("Throughput: %7.3f [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
   }
 
   const std::vector<uint8_t> codestream = encoder.get_codestream();
