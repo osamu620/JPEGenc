@@ -27,7 +27,7 @@ class jpeg_encoder_impl {
   std::vector<uint8_t *> yuv0;
   std::vector<int16_t *> yuv1;
   HWY_ALIGN int16_t qtable[DCTSIZE2 * 2];
-  bitstream enc;
+  bitstream header;
   const bool use_RESET;
 
   class enc_object {
@@ -40,7 +40,7 @@ class jpeg_encoder_impl {
     std::vector<int16_t *> yuv1;
     bitstream cs;
     std::vector<int> prev_dc;
-    enc_object() : src(nullptr), cs(1024), prev_dc(3, 0) {};
+    enc_object() : src(nullptr), cs(1024), prev_dc({0, 0, 0}) {};
   };
 
   std::vector<enc_object> enc_objects;
@@ -60,7 +60,7 @@ class jpeg_encoder_impl {
         yuv0(ncomp),
         yuv1(ncomp),
         qtable{0},
-        enc(1024),
+        header(1024),
         use_RESET(true),
         enc_objects(rounded_height / BUFLINES) {
     int ncomp_out = inimg.nc;
@@ -117,7 +117,7 @@ class jpeg_encoder_impl {
     // Prepare main-header
     create_scaled_qtable(0, QF, qtable);
     create_scaled_qtable(1, QF, qtable + DCTSIZE2);
-    create_mainheader(width, height, QF, YCCtype, enc, use_RESET);
+    create_mainheader(width, height, QF, YCCtype, header, use_RESET);
 
     // create a thread-pool
     BS::thread_pool pool(std::thread::hardware_concurrency());
@@ -158,11 +158,11 @@ class jpeg_encoder_impl {
     for (auto &i : enc_objects) {
       total_length += i.cs.get_len();
     }
-    size_t header_len = enc.get_len();
+    size_t header_len = header.get_len();
     bitstream final(total_length + header_len);
     size_t tmp_len = 0;
     uint8_t *p     = final.get_stream()->get_buf();
-    memcpy(p + tmp_len, enc.get_stream()->get_buf(), header_len);
+    memcpy(p + tmp_len, header.get_stream()->get_buf(), header_len);
     tmp_len += header_len;
     for (auto &i : enc_objects) {
       size_t len     = i.cs.get_len();
