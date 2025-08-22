@@ -124,19 +124,18 @@ class jpeg_encoder_impl {
 
     // labmda function to process 16 pixels height
     thread_local auto encfunc = [&](const int n) {
-      thread_local enc_object *eobj = &enc_objects[n];
       if (ncomp == 3) {
-        jpegenc_hwy::rgb2ycbcr(eobj->src, eobj->yuv0, rounded_width);
+        jpegenc_hwy::rgb2ycbcr(enc_objects[n].src, enc_objects[n].yuv0, rounded_width);
       } else {
-        eobj->yuv0[0] = eobj->src;
+        enc_objects[n].yuv0[0] = enc_objects[n].src;
       }
-      jpegenc_hwy::subsample(eobj->yuv0, eobj->yuv1, rounded_width, YCCtype);
-      jpegenc_hwy::encode_lines(eobj->yuv1, rounded_width, BUFLINES, YCCtype, qtable, eobj->prev_dc, tab_Y,
-                                tab_C, eobj->cs);
+      jpegenc_hwy::subsample(enc_objects[n].yuv0, enc_objects[n].yuv1, rounded_width, YCCtype);
+      jpegenc_hwy::encode_lines(enc_objects[n].yuv1, rounded_width, BUFLINES, YCCtype, qtable,
+                                enc_objects[n].prev_dc, tab_Y, tab_C, enc_objects[n].cs);
       // RST marker insertion, if any
       if (use_RESET) {
-        eobj->cs.put_RST((n * 16 / BUFLINES) % 8);
-        eobj->prev_dc[0] = eobj->prev_dc[1] = eobj->prev_dc[2] = 0;
+        enc_objects[n].cs.put_RST((n * 16 / BUFLINES) % 8);
+        enc_objects[n].prev_dc[0] = enc_objects[n].prev_dc[1] = enc_objects[n].prev_dc[2] = 0;
       }
     };
     // parallelized loop
