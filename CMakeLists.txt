@@ -11,6 +11,7 @@ set(CMAKE_PREFIX_PATH "./include") # for include
 #add_definitions("-DHWY_COMPILE_ONLY_EMU128") # uncomment to build non-intrinsic code
 #add_definitions("-DHWY_COMPILE_ONLY_SCALAR") # uncomment to build non-simd code
 
+add_definitions("-DHWY_DISABLED_TARGETS=HWY_NEON_BF16")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
 add_library(jpegenc ${SOURCES})
 target_include_directories(
@@ -51,7 +52,7 @@ endif()
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^[aA][rR][mM]64$|^[aA][aA][rR][cC][hH]64$") # aarch64
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 		if(APPLE)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m1")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -mcpu=apple-m3")
 		else()
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a72 -march=armv8-a")
 		endif()

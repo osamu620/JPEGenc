@@ -29,7 +29,7 @@ class stream_buf {
   size_t pos;
   uint8_t *cur_byte;
 
-  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr){};
+  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr) {};
   explicit stream_buf(size_t size) : buf(std::make_unique<uint8_t[]>(size)), len(size) {
     pos      = 0;
     cur_byte = buf.get();
