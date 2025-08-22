@@ -11,8 +11,7 @@ set(CMAKE_PREFIX_PATH "./include") # for include
 #add_definitions("-DHWY_COMPILE_ONLY_EMU128") # uncomment to build non-intrinsic code
 #add_definitions("-DHWY_COMPILE_ONLY_SCALAR") # uncomment to build non-simd code
 
-
-
+add_definitions("-DHWY_DISABLED_TARGETS=HWY_NEON_BF16")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/highway)
 add_library(jpegenc ${SOURCES})
 target_include_directories(
