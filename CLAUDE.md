@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-JPEG-1 baseline encoder in C++17, SIMD-vectorized via [Google Highway](https://github.com/google/highway). Highway is a git submodule under `thirdparty/highway`.
+JPEG-1 baseline encoder in C++17, SIMD-vectorized via [Google Highway](https://github.com/google/highway) and optionally multi-threaded via the bundled `BS::thread_pool` (`lib/BS_thread_pool.hpp`). Highway is a git submodule under `thirdparty/highway`.
 
-The encoder is single-threaded — strips are processed sequentially within `jpeg_encoder_impl::invoke()`. A separate `multithread` branch carries a parallel variant; this branch keeps the pipeline simple and minimizes per-invoke overhead.
+The encoder runs in either of two modes, selected by the `num_threads` constructor parameter (or the `-t` CLI flag):
+- **Single-thread (`num_threads == 1`, default):** strips are processed sequentially and written directly into one `bitstream`; no RST markers, no thread pool, lowest per-invoke overhead.
+- **Multi-thread (`num_threads >= 2` or `0` = auto):** producer/consumer with `min(num_threads, hardware_concurrency, num_strips)` workers; strips encode into per-strip bitstreams that are concatenated at the end, with RST markers between strips so each strip is independently decodable.
 
 The build produces a shared library `libjpegenc` and a CLI `jpenc` (release) / `jpenc_dbg` (debug) under `${BUILD_DIR}/bin/`.
 
@@ -42,10 +44,10 @@ To restrict Highway to a single ISA when debugging vector code, uncomment one of
 There is no formal test suite. Validation is done by encoding the sample images and checking PSNR against the source. From `${BUILD_DIR}/bin/`:
 
 ```sh
-./jpenc -i input.ppm -o out.jpg [-q 0..100] [-c 444|422|411|440|420|410|GRAY] [-b]
+./jpenc -i input.ppm -o out.jpg [-q 0..100] [-c 444|422|411|440|420|410|GRAY] [-t N] [-b]
 ```
 
-`-b` enables benchmark mode (2 s warmup + 2 s measurement, reports fps and MP/s). Default quality is 75, default subsampling is 4:2:0.
+`-t N` selects threading: `1` (default) is the single-thread fast path, `0` auto-picks `hardware_concurrency()`, and `N >= 2` requests that many workers (capped to `min(hardware_concurrency, num_strips)`). `-b` enables benchmark mode (2 s warmup + 2 s measurement, reports fps and MP/s). Default quality is 75, default subsampling is 4:2:0.
 
 `do.sh` and `do_mono.sh` (in repo root) sweep all chroma subsampling modes and run ImageMagick `compare -metric PSNR` against the source — copy or symlink them next to `jpenc` and call `./do.sh basename QF` (where `basename.ppm` exists).
 
@@ -55,20 +57,24 @@ There is no formal test suite. Validation is done by encoding the sample images 
 `include/jpegenc.hpp` is the only public header. It exposes `jpegenc::im_info` (input descriptor wrapping a `FILE*`, owns the file handle) and `jpegenc::jpeg_encoder`. The encoder is a thin pimpl over `jpeg_encoder_impl` in `lib/jpegenc.cpp`. Everything else under `lib/` is private.
 
 ### Encoder lifecycle
-`jpeg_encoder_impl`'s constructor is the heavyweight setup point. It allocates the input buffer + planar Y/Cb/Cr line buffers (sized for one strip), builds the Huffman tables (`tab_Y.init<0>()` / `tab_C.init<1>()`), and computes the scaled quantization table. These all depend only on fixed image params (width, height, ncomp, QF, YCCtype) and are reused across every `invoke()` call — repeated invocation is therefore very cheap relative to first-encode.
+`jpeg_encoder_impl`'s constructor is the heavyweight setup point. It picks `num_workers` (clamped to `min(num_threads, hardware_concurrency, num_strips)`, with `0 → hardware_concurrency`), allocates `num_workers` `worker_buffers` sets (input + planar Y/Cb/Cr line buffers — recycled across strips and across invokes), builds the Huffman tables (`tab_Y.init<0>()` / `tab_C.init<1>()`), and computes the scaled quantization table. The `BS::thread_pool`, the per-strip output bitstreams, and the free-buffer queue are allocated only when `num_workers > 1`. These all depend only on fixed image params (width, height, ncomp, QF, YCCtype, num_threads) and are reused across every `invoke()` call.
 
-`invoke()` is sequential: it rewinds the file via `image.init()`, writes the JPEG main header into the encoder's `bitstream`, then loops `num_strips = ceil(rounded_height / BUFLINES)` times, reading each strip and pipelining it through color → subsample → DCT/quantize/Huffman. After the strips, `enc.finalize()` flushes pending bits, appends EOI, and returns the codestream as a `std::vector<uint8_t>`. The `bitstream`'s internal buffer is rewound to pos=0 inside `finalize()`, so the next invocation reuses the same allocation.
+`invoke()` dispatches to one of two private bodies based on `num_workers`:
+
+- **`invoke_st()` (`num_workers == 1`):** writes the JPEG main header into the shared `bitstream enc`, then loops `num_strips = ceil(rounded_height / BUFLINES)` times — reading each strip into the single shared input buffer and pipelining it through color → subsample → DCT/quantize/Huffman, all written directly into `enc`. After the strips, `enc.finalize()` flushes pending bits, appends EOI, and returns the codestream as a `std::vector<uint8_t>`. The `bitstream`'s internal buffer is rewound to pos=0 inside `finalize()`, so the next invocation reuses the allocation. **No RST markers.**
+
+- **`invoke_mt()` (`num_workers > 1`):** the main thread acts as a producer — for each strip it acquires a free worker buffer (blocking on the cv if all are in flight), reads the strip into that buffer, then dispatches a pool task that runs the encode + an RST marker into a per-strip `bitstream`. After `pool->wait()`, the codestream is assembled in one pass directly into the caller's vector: cached header bytes + each `strip_cs[s]` + EOI. **RST_n marker between strips** keeps each strip independently decodable, which is what makes per-strip parallelism legal.
+
+`use_RESET = (num_workers > 1)` — controlled internally by the constructor, never read from outside.
 
 ### Encoding pipeline
-The image is processed in horizontal strips of `BUFLINES = 16` rows (see `lib/constants.hpp`). Per strip, in `invoke()`:
+The image is processed in horizontal strips of `BUFLINES = 16` rows (see `lib/constants.hpp`). Per strip, in `encode_strip()`:
 
-1. `imchunk::get_lines_from(row_off, input_buf)` (`lib/image_chunk.hpp`) — `fread` 16 rows into the temporary buffer, replicate-pad right edge to `rounded_width` (multiple of `DCTSIZE * H_max` and of `HWY_MAX_BYTES`) and bottom edge to a full strip. Tracks `expected_pos` to skip the per-call `fseek` when reads are sequential (the common case) — `fseek` invalidates the FILE's internal buffer and is not free.
+1. `imchunk::get_lines_from(row_off, input_buf)` (`lib/image_chunk.hpp`) — `fread` 16 rows into the temporary buffer, replicate-pad right edge to `rounded_width` (multiple of `DCTSIZE * H_max` and of `HWY_MAX_BYTES`) and bottom edge to a full strip. Tracks `expected_pos` to skip the per-call `fseek` when reads are sequential (the common case) — `fseek` invalidates the FILE's internal buffer and is not free. Always called from the producer (main) thread, never inside a worker, so no synchronization is needed on the `imchunk`.
 2. `jpegenc_hwy::rgb2ycbcr` (`lib/color.cpp`) — interleaved RGB → planar Y/Cb/Cr (uint8). Skipped for grayscale input.
 3. `jpegenc_hwy::subsample` (`lib/color.cpp`) — chroma decimation per `YCCtype` and level-shift by 128 (output is int16).
-4. `jpegenc_hwy::encode_lines` → `encode_mcus` (`lib/block_coding.cpp`) — for each MCU: forward DCT (`dct2_core` in `lib/dct.cpp`), quantize (`quantize_core` in `lib/quantization.cpp`), then `encode_block` does zigzag+run-length+Huffman directly into the shared `bitstream`.
+4. `jpegenc_hwy::encode_lines` → `encode_mcus` (`lib/block_coding.cpp`) — for each MCU: forward DCT (`dct2_core` in `lib/dct.cpp`), quantize (`quantize_core` in `lib/quantization.cpp`), then `encode_block` does zigzag+run-length+Huffman directly into the strip's `bitstream` (the shared `enc` in ST, `strip_cs[s]` in MT).
 5. `mcu_height` for the last strip is `min(BUFLINES, rounded_height - row_off)`, which correctly handles `chroma_v=1` modes whose `rounded_height` is a multiple of 8 but not 16.
-
-`use_RESET` defaults to `false` on this branch — RST markers between strips would only matter for parallel decode or stream-level error recovery, neither of which the single-thread pipeline needs.
 
 ### Highway / SIMD pattern
 `color.cpp` and `block_coding.cpp` are the two foreach-target translation units. Each follows the standard Highway recipe:
