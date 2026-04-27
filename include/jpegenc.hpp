@@ -30,7 +30,12 @@ class jpeg_encoder {
   std::vector<uint8_t> codestream;
 
  public:
-  JPEGENC_EXPORT jpeg_encoder(im_info &inimg, int &QF, int &YCCtype);
+  // num_threads:
+  //   1 (default) — single-threaded fast path; codestream has no RST markers.
+  //   N >= 2      — multi-threaded with min(N, hardware_concurrency, num_strips) workers;
+  //                 codestream has RST markers between strips.
+  //   0           — auto: use hardware_concurrency().
+  JPEGENC_EXPORT jpeg_encoder(im_info &inimg, int &QF, int &YCCtype, int num_threads = 1);
   JPEGENC_EXPORT void invoke();
   JPEGENC_EXPORT std::vector<uint8_t> get_codestream();
   JPEGENC_EXPORT ~jpeg_encoder();
