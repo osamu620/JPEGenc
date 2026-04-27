@@ -14,13 +14,17 @@ void print_help() {
   std::cout << "  -q quality 0-100, default = 75" << std::endl;
   std::cout << "  -c color subsampling type, default = 420" << std::endl;
   std::cout << "   (444, 422, 420, 440, 411, 410, GRAY)" << std::endl;
+  std::cout << "  -t N threads (1 = single-thread fast path, default;" << std::endl;
+  std::cout << "       0 = auto, N>=2 = N workers with RST markers)" << std::endl;
+  std::cout << "  -b benchmark mode" << std::endl;
   std::cout << "  -h print this help" << std::endl;
 }
 
 int parse_args(int argc, char **&argv, std::string &inname, std::string &outname, int &QF, int &YCCtype,
-               bool &benchmark) {
-  YCCtype = YCC::YUV420;
-  QF      = 75;
+               bool &benchmark, int &num_threads) {
+  YCCtype     = YCC::YUV420;
+  QF          = 75;
+  num_threads = 1;
   std::vector<std::string> args(argc);
   for (int i = 0; i < argc; ++i) {
     args[i] = argv[i];
@@ -77,6 +81,18 @@ int parse_args(int argc, char **&argv, std::string &inname, std::string &outname
             YCCtype = YCC::GRAY2;
           } else {
             std::cerr << "Unknown chroma format " << args[i + 1] << std::endl;
+            return EXIT_FAILURE;
+          }
+          ++i;
+        } else if (args[i].substr(1) == "t") {
+          try {
+            num_threads = std::stoi(args[i + 1], nullptr, 10);
+          } catch (std::invalid_argument &e) {
+            std::cerr << "Thread count is missing." << std::endl;
+            return EXIT_FAILURE;
+          }
+          if (num_threads < 0) {
+            std::cerr << "Thread count must be >= 0." << std::endl;
             return EXIT_FAILURE;
           }
           ++i;

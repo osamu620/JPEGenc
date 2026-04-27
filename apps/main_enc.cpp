@@ -7,9 +7,9 @@
 
 int main(int argc, char *argv[]) {
   bool benchmark = false;
-  int QF, YCCtype, width, height, nc;
+  int QF, YCCtype, width, height, nc, num_threads;
   std::string infile, outfile;
-  if (parse_args(argc, argv, infile, outfile, QF, YCCtype, benchmark)) {
+  if (parse_args(argc, argv, infile, outfile, QF, YCCtype, benchmark, num_threads)) {
     return EXIT_FAILURE;
   }
   FILE *fp;
@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 
   size_t duration = 0;
   auto start      = std::chrono::high_resolution_clock::now();
-  jpegenc::jpeg_encoder encoder(inimg, QF, YCCtype);
+  jpegenc::jpeg_encoder encoder(inimg, QF, YCCtype, num_threads);
   if (!benchmark) {
     encoder.invoke();
     auto stop = std::chrono::high_resolution_clock::now() - start;
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     bool warmup                 = true;
     constexpr double warmuptime = 2000.0;  // duration of warmup in milliseconds
     constexpr double benchtime  = 2000.0;  // duration of benchmark in milliseconds
-    int iter                    = 0;
+    int64_t iter                = 0;
     while (true) {
       encoder.invoke();
       iter++;
@@ -47,9 +47,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    double et = benchtime / (static_cast<double>(duration) / 1000.0);
+    const double et     = benchtime / (static_cast<double>(duration) / 1000.0);
+    const double pixels = static_cast<double>(width) * static_cast<double>(height);
     printf("Frames rate: %7.3lf [fps]\n", iter * et / (benchtime / 1000.0));
-    printf("Throughput: %7.3lf [MP/s]\n", (width * height * iter * et) / (benchtime * 1000.0));
+    printf("Throughput: %7.3lf [MP/s]\n", (pixels * iter * et) / (benchtime * 1000.0));
   }
 
   const std::vector<uint8_t> codestream = encoder.get_codestream();

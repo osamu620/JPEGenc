@@ -35,6 +35,13 @@ class stream_buf {
     cur_byte = buf.get();
   }
 
+  void init(size_t size) {
+    len      = size;
+    buf      = std::make_unique<uint8_t[]>(size);
+    pos      = 0;
+    cur_byte = buf.get();
+  }
+
   inline void expand() {
     std::unique_ptr<uint8_t[]> new_buf = std::make_unique<uint8_t[]>(len + len);
     memcpy(new_buf.get(), buf.get(), len);
@@ -146,13 +153,15 @@ class bitstream {
   }
 
  public:
-  //  bitstream() : bits(0), tmp(0) {}
+  bitstream() : bits(BIT_BUF_SIZE), tmp(0) {}
 
 #if USE_VECTOR != 0
   explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0) { stream.reserve(length); }
+  void init(size_t length) { stream.reserve(length); }
   inline void put_byte(uint8_t d) { stream.push_back(d); }
 #else
   explicit bitstream(size_t length) : bits(BIT_BUF_SIZE), tmp(0), stream(length) {}
+  void init(size_t length) { stream.init(length); }
   inline void put_byte(uint8_t d) { stream.put_byte(d); }
 #endif
 
@@ -219,6 +228,15 @@ class bitstream {
   [[maybe_unused]] auto get_stream() {
     flush();
     return &stream;
+  }
+
+  size_t get_len() {
+    flush();
+#if USE_VECTOR != 0
+    return stream.size();
+#else
+    return stream.pos;
+#endif
   }
 
   std::vector<uint8_t> finalize() {
