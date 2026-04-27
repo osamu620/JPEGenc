@@ -37,7 +37,7 @@ HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, i
   uint8_t *HWY_RESTRICT o1 = out[1];
   uint8_t *HWY_RESTRICT o2 = out[2];
 
-  constexpr size_t N       = Lanes(u8);
+  const size_t N           = Lanes(u8);
   const size_t num_samples = width * BUFLINES;
 
   for (size_t i = num_samples; i > 0; i -= N) {
