@@ -19,7 +19,6 @@ class imchunk {
   const size_t out_width;
   int origin;
   FILE *file;
-  hwy::AlignedFreeUniquePtr<uint8_t[]> buf_tmp;
   hwy::AlignedFreeUniquePtr<uint8_t[]> buf;
   int32_t cur_line;
 
@@ -31,7 +30,6 @@ class imchunk {
         out_width(round_up(w, HWY_MAX(DCTSIZE * (YCC_HV[YCCtype][0] >> 4), HWY_MAX_BYTES)) * ncomp),
         origin(p),
         file(imdata),
-        buf_tmp(hwy::AllocateAligned<uint8_t>(in_width * BUFLINES)),
         buf(hwy::AllocateAligned<uint8_t>(out_width * BUFLINES)),
         cur_line(0) {}
 
@@ -40,32 +38,31 @@ class imchunk {
     cur_line                 = n;
     const int num_rows       = ((cur_line + BUFLINES) > height) ? height % BUFLINES : BUFLINES;
     const int num_extra_rows = ((cur_line + BUFLINES) > height) ? BUFLINES - height % BUFLINES : 0;
-    uint8_t *sp              = buf_tmp.get();
     uint8_t *dp              = buf.get();
-    fread(sp, sizeof(unsigned char), in_width * num_rows, file);
-    uint8_t *spp[BUFLINES], *dpp[BUFLINES];
-    for (int i = 0; i < BUFLINES; ++i) {
-      spp[i] = sp + i * in_width;
-      dpp[i] = dp + i * out_width;
-    }
+    // Read all rows packed at the start of buf, then expand to strided layout in place
+    // (bottom-up so we never overwrite source bytes still needed). Capacity is
+    // out_width * BUFLINES >= in_width * BUFLINES.
+    (void)fread(dp, sizeof(uint8_t), in_width * num_rows, file);
     const size_t extra_cols = out_width - in_width;
-    for (int i = 0; i < num_rows; ++i) {
-      memcpy(dpp[i], spp[i], in_width);
-      // padding single row
+    for (int i = num_rows - 1; i >= 0; --i) {
+      uint8_t *src = dp + static_cast<size_t>(i) * in_width;
+      uint8_t *dst = dp + static_cast<size_t>(i) * out_width;
+      if (dst != src) {
+        memmove(dst, src, in_width);
+      }
+      uint8_t *p = dst + in_width;
       for (size_t j = 0; j < extra_cols; j += ncomp) {
-        uint8_t *p = dpp[i] + in_width;
-        p[j]       = p[-3];
-        p[j + 1]   = p[-2];
-        p[j + 2]   = p[-1];
+        p[j] = p[-3];
+        if (j + 1 < extra_cols) p[j + 1] = p[-2];
+        if (j + 2 < extra_cols) p[j + 2] = p[-1];
       }
     }
     // padding rows, if any
     if (num_rows != BUFLINES) {
-      sp = dpp[num_rows - 1];
-      dp = dpp[num_rows];
+      uint8_t *last_row = dp + static_cast<size_t>(num_rows - 1) * out_width;
+      uint8_t *tail     = dp + static_cast<size_t>(num_rows) * out_width;
       for (int i = 0; i < num_extra_rows; ++i) {
-        memcpy(dp, sp, out_width);
-        dp += out_width;
+        memcpy(tail + static_cast<size_t>(i) * out_width, last_row, out_width);
       }
     }
     return buf.get();
