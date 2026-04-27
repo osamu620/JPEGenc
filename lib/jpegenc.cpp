@@ -43,7 +43,7 @@ class jpeg_encoder_impl {
         yuv0(ncomp),
         yuv1(ncomp),
         qtable{0},
-        enc(3000000),
+        enc(HWY_MAX(static_cast<size_t>(inimg.width) * inimg.height + 4096, static_cast<size_t>(16384))),
         use_RESET(false) {
     int ncomp_out = inimg.nc;
     if (ncomp_out == 1) {
