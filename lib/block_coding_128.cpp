@@ -10,8 +10,8 @@ const hn::ScalableTag<uint8_t> u8;
 const hn::ScalableTag<uint64_t> u64;
 
 // clang-format off
-#define USE_ARM_SPECIFIC 0
-#if USE_ARM_SPECIFIC && (HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES)
+#define USE_ARM_SPECIFIC 1
+#if USE_ARM_SPECIFIC && ((HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES))
 HWY_ALIGN constexpr uint8_t indices[] = {
         0,   1,   2,   3,  16,  17,  32,  33,
         18,  19,   4,   5,   6,   7,  20,  21,
@@ -51,7 +51,7 @@ HWY_ALIGN constexpr int16_t indices[] = {
 hn::FixedTag<uint8_t, 8> u8_64;
 hn::FixedTag<uint64_t, 1> u64_64;
 
-#if USE_ARM_SPECIFIC && (HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES)
+#if USE_ARM_SPECIFIC && ((HWY_TARGET == HWY_NEON) || (HWY_TARGET == HWY_NEON_WITHOUT_AES))
 const uint8x16x4_t idx_rows_0123 = vld1q_u8_x4(indices + 0 * DCTSIZE);
 const uint8x16x4_t idx_rows_4567 = vld1q_u8_x4(indices + 8 * DCTSIZE);
 const int8x16x4_t tbl_rows_0123  = vld1q_s8_x4((int8_t *)(sp + 0 * DCTSIZE));
