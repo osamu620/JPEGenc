@@ -25,6 +25,7 @@ class jpeg_encoder_impl {
   std::vector<uint8_t *> yuv0;
   std::vector<int16_t *> yuv1;
   HWY_ALIGN int16_t qtable[DCTSIZE2 * 2];
+  const size_t initial_bitstream_size;
   bitstream enc;
   const bool use_RESET;
 
@@ -43,7 +44,9 @@ class jpeg_encoder_impl {
         yuv0(ncomp),
         yuv1(ncomp),
         qtable{0},
-        enc(HWY_MAX(static_cast<size_t>(inimg.width) * inimg.height + 4096, static_cast<size_t>(16384))),
+        initial_bitstream_size(
+            HWY_MAX(static_cast<size_t>(inimg.width) * inimg.height + 4096, static_cast<size_t>(16384))),
+        enc(initial_bitstream_size),
         use_RESET(false) {
     int ncomp_out = inimg.nc;
     if (ncomp_out == 1) {
@@ -81,6 +84,10 @@ class jpeg_encoder_impl {
     tab_Y.init<0>();
     tab_C.init<1>();
     std::vector<int> prev_dc(3, 0);
+
+    // finalize() moves the bitstream's storage out, so refresh it on every call
+    // to keep invoke() safe to call repeatedly (e.g. -b benchmark loop).
+    enc = bitstream(initial_bitstream_size);
 
     // Prepare main-header
     create_scaled_qtable(0, QF, qtable);
