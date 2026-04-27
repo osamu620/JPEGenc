@@ -22,30 +22,22 @@ namespace jpegenc_hwy {
 
 class stream_buf {
  private:
-  std::unique_ptr<uint8_t[]> buf;
-  size_t len;
+  std::vector<uint8_t> buf;
 
  public:
   size_t pos;
   uint8_t *cur_byte;
 
-  stream_buf() : buf(nullptr), len(0), pos(0), cur_byte(nullptr) {};
-  explicit stream_buf(size_t size) : buf(std::make_unique<uint8_t[]>(size)), len(size) {
-    pos      = 0;
-    cur_byte = buf.get();
-  }
+  stream_buf() : buf(), pos(0), cur_byte(nullptr) {};
+  explicit stream_buf(size_t size) : buf(size), pos(0), cur_byte(buf.data()) {}
 
   inline void expand() {
-    std::unique_ptr<uint8_t[]> new_buf = std::make_unique<uint8_t[]>(len + len);
-    memcpy(new_buf.get(), buf.get(), len);
-    buf.swap(new_buf);
-    new_buf.reset();
-    len += len;
-    cur_byte = buf.get() + pos;
+    buf.resize(buf.size() * 2);
+    cur_byte = buf.data() + pos;
   }
 
   inline void put_byte(uint8_t val) {
-    if (pos == len) {
+    if (pos == buf.size()) {
       expand();
     }
     *cur_byte++ = val;
@@ -53,7 +45,7 @@ class stream_buf {
   }
 
   inline void put_qword(uint64_t val) {
-    if (pos + BYTE_BUF_SIZE > len) {
+    if (pos + BYTE_BUF_SIZE > buf.size()) {
       expand();
     }
     // emits eight uint8_t values at once
@@ -68,8 +60,13 @@ class stream_buf {
 
   uint8_t *get_buf() {
     pos      = 0;
-    cur_byte = buf.get();
-    return buf.get();
+    cur_byte = buf.data();
+    return buf.data();
+  }
+
+  std::vector<uint8_t> release() {
+    buf.resize(pos);
+    return std::move(buf);
   }
 };
 
@@ -227,11 +224,7 @@ class bitstream {
 #if USE_VECTOR != 0
     return std::move(stream);
 #else
-    size_t size = stream.pos;
-    std::vector<uint8_t> out;
-    out.resize(size);
-    memcpy(out.data(), stream.get_buf(), size);
-    return out;
+    return stream.release();
 #endif
   }
 };
