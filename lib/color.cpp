@@ -668,6 +668,126 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
       break;
   }
 }
+
+// Fused RGB → YCbCr → YUV420-subsample. One pass over the input strip; output
+// goes directly to the int16 MCU-order buffers. Same final values as
+// rgb2ycbcr() + subsample_core(YUV420) but avoids the planar uint8 yuv0
+// intermediate (~one full strip × 3 channels of L1/L2 traffic).
+HWY_ATTR void rgb2ycbcr_subsample_420(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  size_t pos                   = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;  // RGB interleaved
+
+  for (int j = 0; j < width; j += static_cast<int>(Lanes(u8))) {
+    for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+      const size_t pos_Chroma = static_cast<size_t>(j) * 4 + static_cast<size_t>(i) * 4;
+      uint8_t *base_row       = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+
+      // Hold the previous (even) row's level-shifted chroma so we can pair-add
+      // vertically when we encounter the next (odd) row.
+      auto cb_prev_l = Zero(s16);
+      auto cb_prev_h = Zero(s16);
+      auto cr_prev_l = Zero(s16);
+      auto cr_prev_h = Zero(s16);
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+
+        auto vR = hn::Undefined(u8);
+        auto vG = hn::Undefined(u8);
+        auto vB = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR, vG, vB);
+
+        auto r_l = PromoteLowerTo(u16, vR);
+        auto g_l = PromoteLowerTo(u16, vG);
+        auto b_l = PromoteLowerTo(u16, vB);
+        auto r_h = PromoteUpperTo(u16, vR);
+        auto g_h = PromoteUpperTo(u16, vG);
+        auto b_h = PromoteUpperTo(u16, vB);
+
+#define _FUSED_MUL(x, idx) BitCast(u16, MulFixedPoint15(BitCast(s16, (x)), hn::Broadcast<idx>(coeffs)))
+
+        // Y
+        auto yl = _FUSED_MUL(r_l, 0);
+        yl      = Add(yl, _FUSED_MUL(g_l, 1));
+        yl      = Add(yl, _FUSED_MUL(b_l, 2));
+        yl      = hn::ShiftRight<1>(Add(yl, g_l));
+        auto yh = _FUSED_MUL(r_h, 0);
+        yh      = Add(yh, _FUSED_MUL(g_h, 1));
+        yh      = Add(yh, _FUSED_MUL(b_h, 2));
+        yh      = hn::ShiftRight<1>(Add(yh, g_h));
+
+        // Y is full resolution → store in MCU order, level-shifted.
+        Store(Sub(BitCast(s16, yl), c128), s16, out[0] + pos + 8 * r);
+        Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * (r + 8));
+
+        // Cb
+        auto cbl = Sub(scaled_128_1, _FUSED_MUL(r_l, 3));
+        cbl      = Sub(cbl, _FUSED_MUL(g_l, 4));
+        cbl      = AverageRound(b_l, cbl);
+        auto cbh = Sub(scaled_128_1, _FUSED_MUL(r_h, 3));
+        cbh      = Sub(cbh, _FUSED_MUL(g_h, 4));
+        cbh      = AverageRound(b_h, cbh);
+
+        // Cr
+        auto crl = Sub(scaled_128_1, _FUSED_MUL(g_l, 6));
+        crl      = Sub(crl, _FUSED_MUL(b_l, 7));
+        crl      = AverageRound(r_l, crl);
+        auto crh = Sub(scaled_128_1, _FUSED_MUL(g_h, 6));
+        crh      = Sub(crh, _FUSED_MUL(b_h, 7));
+        crh      = AverageRound(r_h, crh);
+
+#undef _FUSED_MUL
+
+        // Level-shift to int16.
+        auto cbl_s = Sub(BitCast(s16, cbl), c128);
+        auto cbh_s = Sub(BitCast(s16, cbh), c128);
+        auto crl_s = Sub(BitCast(s16, crl), c128);
+        auto crh_s = Sub(BitCast(s16, crh), c128);
+
+        if ((r & 1) == 0) {
+          // Even row: stash for vertical pair-sum at the next (odd) row.
+          cb_prev_l = cbl_s;
+          cb_prev_h = cbh_s;
+          cr_prev_l = crl_s;
+          cr_prev_h = crh_s;
+        } else {
+          // Odd row: complete the 2×2 average and store.
+          auto cb_v_l = Add(cb_prev_l, cbl_s);
+          auto cb_v_h = Add(cb_prev_h, cbh_s);
+          Store(hn::ShiftRight<2>(Padd(s16, cb_v_l, cb_v_h)), s16,
+                out[1] + pos_Chroma + 8 * (r >> 1));
+          auto cr_v_l = Add(cr_prev_l, crl_s);
+          auto cr_v_h = Add(cr_prev_h, crh_s);
+          Store(hn::ShiftRight<2>(Padd(s16, cr_v_l, cr_v_h)), s16,
+                out[2] + pos_Chroma + 8 * (r >> 1));
+        }
+      }
+
+      pos += 128;
+    }
+  }
+}
+
+// Dispatcher: pick the fused path for modes that have one, otherwise call
+// the two-pass rgb2ycbcr + subsample_core combination.
+HWY_ATTR void rgb2ycbcr_subsample_core(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &yuv0,
+                                       std::vector<int16_t *> &out, int width, int YCCtype) {
+  if (YCCtype == YCC::YUV420) {
+    rgb2ycbcr_subsample_420(in, out, width);
+  } else {
+    rgb2ycbcr(in, yuv0, width);
+    subsample_core(yuv0, out, width, YCCtype);
+  }
+}
 #else
 HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
   uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
@@ -781,6 +901,13 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
     }
   }
 }
+
+// Scalar fallback for the dispatcher: just chains the existing two functions.
+HWY_ATTR void rgb2ycbcr_subsample_core(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &yuv0,
+                                       std::vector<int16_t *> &out, const int width, const int YCCtype) {
+  rgb2ycbcr(in, yuv0, width);
+  subsample_core(yuv0, out, width, YCCtype);
+}
 #endif
 }  // namespace HWY_NAMESPACE
 }  // namespace jpegenc_hwy
@@ -790,6 +917,7 @@ HWY_AFTER_NAMESPACE();
 namespace jpegenc_hwy {
 HWY_EXPORT(rgb2ycbcr);
 HWY_EXPORT(subsample_core);
+HWY_EXPORT(rgb2ycbcr_subsample_core);
 
 void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
   HWY_DYNAMIC_DISPATCH(rgb2ycbcr)(in, out, width);
@@ -797,6 +925,10 @@ void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int 
 void subsample(std::vector<uint8_t *> &in, std::vector<int16_t *> &out, const int width,
                const int YCCtype) {
   HWY_DYNAMIC_DISPATCH(subsample_core)(in, out, width, YCCtype);
+}
+void rgb2ycbcr_subsample(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &yuv0,
+                         std::vector<int16_t *> &out, const int width, const int YCCtype) {
+  HWY_DYNAMIC_DISPATCH(rgb2ycbcr_subsample_core)(in, yuv0, out, width, YCCtype);
 }
 }  // namespace jpegenc_hwy
 #endif
