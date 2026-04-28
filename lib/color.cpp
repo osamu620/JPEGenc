@@ -669,6 +669,474 @@ HWY_ATTR void subsample_core(std::vector<uint8_t *> &in, std::vector<int16_t *> 
   }
 }
 
+// ---------------------------------------------------------------------------
+// Fused RGB → YCbCr → subsample helpers. Each per-mode function makes one pass
+// over the interleaved RGB input and writes int16 MCU-order Y/Cb/Cr directly
+// to `out[0..2]`. Same arithmetic as rgb2ycbcr() + subsample_core(<mode>), so
+// the codestream is byte-identical to the previous two-pass code.
+//
+// Common pattern: load 16 RGB triples per inner iteration, compute YCbCr in
+// 8-lane u16 halves (lower / upper), then either store all three full-resolution
+// (4:4:4), pair-sum chroma horizontally (4:2:2), or pair-sum both axes (4:2:0,
+// 4:4:0, 4:1:1, 4:1:0).
+//
+// The storage offsets and pos / pos_Chroma increments mirror the matching
+// case in subsample_core() exactly.
+// ---------------------------------------------------------------------------
+
+#define _RS_MUL_FP(x, idx) BitCast(u16, MulFixedPoint15(BitCast(s16, (x)), hn::Broadcast<idx>(coeffs)))
+
+// 4:4:4 — every pixel's Y, Cb, Cr stored at full resolution in MCU order.
+HWY_ATTR void rgb2ycbcr_subsample_444(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  size_t pos                   = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+
+  for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+    for (int j = 0; j < width; j += static_cast<int>(Lanes(u8))) {
+      uint8_t *base_row = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR = hn::Undefined(u8); auto vG = hn::Undefined(u8); auto vB = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR, vG, vB);
+        auto r_l = PromoteLowerTo(u16, vR);
+        auto g_l = PromoteLowerTo(u16, vG);
+        auto b_l = PromoteLowerTo(u16, vB);
+        auto r_h = PromoteUpperTo(u16, vR);
+        auto g_h = PromoteUpperTo(u16, vG);
+        auto b_h = PromoteUpperTo(u16, vB);
+
+        auto yl = _RS_MUL_FP(r_l, 0);
+        yl      = Add(yl, _RS_MUL_FP(g_l, 1));
+        yl      = Add(yl, _RS_MUL_FP(b_l, 2));
+        yl      = hn::ShiftRight<1>(Add(yl, g_l));
+        auto yh = _RS_MUL_FP(r_h, 0);
+        yh      = Add(yh, _RS_MUL_FP(g_h, 1));
+        yh      = Add(yh, _RS_MUL_FP(b_h, 2));
+        yh      = hn::ShiftRight<1>(Add(yh, g_h));
+
+        auto cbl = Sub(scaled_128_1, _RS_MUL_FP(r_l, 3));
+        cbl      = Sub(cbl, _RS_MUL_FP(g_l, 4));
+        cbl      = AverageRound(b_l, cbl);
+        auto cbh = Sub(scaled_128_1, _RS_MUL_FP(r_h, 3));
+        cbh      = Sub(cbh, _RS_MUL_FP(g_h, 4));
+        cbh      = AverageRound(b_h, cbh);
+
+        auto crl = Sub(scaled_128_1, _RS_MUL_FP(g_l, 6));
+        crl      = Sub(crl, _RS_MUL_FP(b_l, 7));
+        crl      = AverageRound(r_l, crl);
+        auto crh = Sub(scaled_128_1, _RS_MUL_FP(g_h, 6));
+        crh      = Sub(crh, _RS_MUL_FP(b_h, 7));
+        crh      = AverageRound(r_h, crh);
+
+        Store(Sub(BitCast(s16, yl), c128), s16, out[0] + pos + 8 * r);
+        Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * (r + 8));
+        Store(Sub(BitCast(s16, cbl), c128), s16, out[1] + pos + 8 * r);
+        Store(Sub(BitCast(s16, cbh), c128), s16, out[1] + pos + 8 * (r + 8));
+        Store(Sub(BitCast(s16, crl), c128), s16, out[2] + pos + 8 * r);
+        Store(Sub(BitCast(s16, crh), c128), s16, out[2] + pos + 8 * (r + 8));
+      }
+      pos += 128;
+    }
+  }
+}
+
+// 4:2:2 — Y full-res, Cb/Cr horizontally averaged 2:1, vertically full.
+HWY_ATTR void rgb2ycbcr_subsample_422(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  size_t pos                   = 0;
+  size_t pos_Chroma            = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+
+  for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+    for (int j = 0; j < width; j += static_cast<int>(Lanes(u8))) {
+      uint8_t *base_row = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR = hn::Undefined(u8); auto vG = hn::Undefined(u8); auto vB = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR, vG, vB);
+        auto r_l = PromoteLowerTo(u16, vR);
+        auto g_l = PromoteLowerTo(u16, vG);
+        auto b_l = PromoteLowerTo(u16, vB);
+        auto r_h = PromoteUpperTo(u16, vR);
+        auto g_h = PromoteUpperTo(u16, vG);
+        auto b_h = PromoteUpperTo(u16, vB);
+
+        auto yl = _RS_MUL_FP(r_l, 0);
+        yl      = Add(yl, _RS_MUL_FP(g_l, 1));
+        yl      = Add(yl, _RS_MUL_FP(b_l, 2));
+        yl      = hn::ShiftRight<1>(Add(yl, g_l));
+        auto yh = _RS_MUL_FP(r_h, 0);
+        yh      = Add(yh, _RS_MUL_FP(g_h, 1));
+        yh      = Add(yh, _RS_MUL_FP(b_h, 2));
+        yh      = hn::ShiftRight<1>(Add(yh, g_h));
+
+        auto cbl = Sub(scaled_128_1, _RS_MUL_FP(r_l, 3));
+        cbl      = Sub(cbl, _RS_MUL_FP(g_l, 4));
+        cbl      = AverageRound(b_l, cbl);
+        auto cbh = Sub(scaled_128_1, _RS_MUL_FP(r_h, 3));
+        cbh      = Sub(cbh, _RS_MUL_FP(g_h, 4));
+        cbh      = AverageRound(b_h, cbh);
+
+        auto crl = Sub(scaled_128_1, _RS_MUL_FP(g_l, 6));
+        crl      = Sub(crl, _RS_MUL_FP(b_l, 7));
+        crl      = AverageRound(r_l, crl);
+        auto crh = Sub(scaled_128_1, _RS_MUL_FP(g_h, 6));
+        crh      = Sub(crh, _RS_MUL_FP(b_h, 7));
+        crh      = AverageRound(r_h, crh);
+
+        // Y full-res
+        Store(Sub(BitCast(s16, yl), c128), s16, out[0] + pos + 8 * r);
+        Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * (r + 8));
+
+        // Chroma: horizontal pair-add of 16 lanes → 8 averaged lanes per row.
+        auto cb_lo = Sub(BitCast(s16, cbl), c128);
+        auto cb_hi = Sub(BitCast(s16, cbh), c128);
+        auto cr_lo = Sub(BitCast(s16, crl), c128);
+        auto cr_hi = Sub(BitCast(s16, crh), c128);
+        Store(hn::ShiftRight<1>(Padd(s16, cb_lo, cb_hi)), s16, out[1] + pos_Chroma + 8 * r);
+        Store(hn::ShiftRight<1>(Padd(s16, cr_lo, cr_hi)), s16, out[2] + pos_Chroma + 8 * r);
+      }
+      pos += 128;
+      pos_Chroma += 64;
+    }
+  }
+}
+
+// 4:1:1 — Y full-res, Cb/Cr horizontally averaged 4:1, vertically full.
+// Processes 32 cols per inner iteration (= 2 LoadInterleaved3 calls per row).
+HWY_ATTR void rgb2ycbcr_subsample_411(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  size_t pos                   = 0;
+  size_t pos_Chroma            = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+  const int j_step             = static_cast<int>(Lanes(u8)) * 2;
+  const ptrdiff_t chunk_bytes  = static_cast<ptrdiff_t>(Lanes(u8)) * 3;
+
+  for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+    for (int j = 0; j < width; j += j_step) {
+      uint8_t *base_row = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+      size_t p          = 0;
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR0 = hn::Undefined(u8); auto vG0 = hn::Undefined(u8); auto vB0 = hn::Undefined(u8);
+        auto vR1 = hn::Undefined(u8); auto vG1 = hn::Undefined(u8); auto vB1 = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR0, vG0, vB0);
+        LoadInterleaved3(u8, sp + chunk_bytes, vR1, vG1, vB1);
+
+        auto r0_l = PromoteLowerTo(u16, vR0); auto g0_l = PromoteLowerTo(u16, vG0); auto b0_l = PromoteLowerTo(u16, vB0);
+        auto r0_h = PromoteUpperTo(u16, vR0); auto g0_h = PromoteUpperTo(u16, vG0); auto b0_h = PromoteUpperTo(u16, vB0);
+        auto r1_l = PromoteLowerTo(u16, vR1); auto g1_l = PromoteLowerTo(u16, vG1); auto b1_l = PromoteLowerTo(u16, vB1);
+        auto r1_h = PromoteUpperTo(u16, vR1); auto g1_h = PromoteUpperTo(u16, vG1); auto b1_h = PromoteUpperTo(u16, vB1);
+
+        // Y, four 8-lane outputs per row → 4 stores at offsets {p, p+64, p+128, p+192}.
+        auto y0_l = _RS_MUL_FP(r0_l, 0);
+        y0_l      = Add(y0_l, _RS_MUL_FP(g0_l, 1));
+        y0_l      = Add(y0_l, _RS_MUL_FP(b0_l, 2));
+        y0_l      = hn::ShiftRight<1>(Add(y0_l, g0_l));
+        auto y0_h = _RS_MUL_FP(r0_h, 0);
+        y0_h      = Add(y0_h, _RS_MUL_FP(g0_h, 1));
+        y0_h      = Add(y0_h, _RS_MUL_FP(b0_h, 2));
+        y0_h      = hn::ShiftRight<1>(Add(y0_h, g0_h));
+        auto y1_l = _RS_MUL_FP(r1_l, 0);
+        y1_l      = Add(y1_l, _RS_MUL_FP(g1_l, 1));
+        y1_l      = Add(y1_l, _RS_MUL_FP(b1_l, 2));
+        y1_l      = hn::ShiftRight<1>(Add(y1_l, g1_l));
+        auto y1_h = _RS_MUL_FP(r1_h, 0);
+        y1_h      = Add(y1_h, _RS_MUL_FP(g1_h, 1));
+        y1_h      = Add(y1_h, _RS_MUL_FP(b1_h, 2));
+        y1_h      = hn::ShiftRight<1>(Add(y1_h, g1_h));
+
+        Store(Sub(BitCast(s16, y0_l), c128), s16, out[0] + pos + p);
+        Store(Sub(BitCast(s16, y0_h), c128), s16, out[0] + pos + p + 64);
+        Store(Sub(BitCast(s16, y1_l), c128), s16, out[0] + pos + p + 128);
+        Store(Sub(BitCast(s16, y1_h), c128), s16, out[0] + pos + p + 192);
+
+        // Cb (level-shift each octet, then 4:1 horizontal via Padd∘Padd, >>2).
+        auto cb0_l = Sub(scaled_128_1, _RS_MUL_FP(r0_l, 3));
+        cb0_l      = Sub(cb0_l, _RS_MUL_FP(g0_l, 4));
+        cb0_l      = AverageRound(b0_l, cb0_l);
+        auto cb0_h = Sub(scaled_128_1, _RS_MUL_FP(r0_h, 3));
+        cb0_h      = Sub(cb0_h, _RS_MUL_FP(g0_h, 4));
+        cb0_h      = AverageRound(b0_h, cb0_h);
+        auto cb1_l = Sub(scaled_128_1, _RS_MUL_FP(r1_l, 3));
+        cb1_l      = Sub(cb1_l, _RS_MUL_FP(g1_l, 4));
+        cb1_l      = AverageRound(b1_l, cb1_l);
+        auto cb1_h = Sub(scaled_128_1, _RS_MUL_FP(r1_h, 3));
+        cb1_h      = Sub(cb1_h, _RS_MUL_FP(g1_h, 4));
+        cb1_h      = AverageRound(b1_h, cb1_h);
+
+        auto cb00s = Sub(BitCast(s16, cb0_l), c128);
+        auto cb01s = Sub(BitCast(s16, cb0_h), c128);
+        auto cb10s = Sub(BitCast(s16, cb1_l), c128);
+        auto cb11s = Sub(BitCast(s16, cb1_h), c128);
+        auto t0_cb = Padd(s16, cb00s, cb01s);
+        auto t1_cb = Padd(s16, cb10s, cb11s);
+        Store(hn::ShiftRight<2>(Padd(s16, t0_cb, t1_cb)), s16, out[1] + pos_Chroma + p);
+
+        // Cr (same shape).
+        auto cr0_l = Sub(scaled_128_1, _RS_MUL_FP(g0_l, 6));
+        cr0_l      = Sub(cr0_l, _RS_MUL_FP(b0_l, 7));
+        cr0_l      = AverageRound(r0_l, cr0_l);
+        auto cr0_h = Sub(scaled_128_1, _RS_MUL_FP(g0_h, 6));
+        cr0_h      = Sub(cr0_h, _RS_MUL_FP(b0_h, 7));
+        cr0_h      = AverageRound(r0_h, cr0_h);
+        auto cr1_l = Sub(scaled_128_1, _RS_MUL_FP(g1_l, 6));
+        cr1_l      = Sub(cr1_l, _RS_MUL_FP(b1_l, 7));
+        cr1_l      = AverageRound(r1_l, cr1_l);
+        auto cr1_h = Sub(scaled_128_1, _RS_MUL_FP(g1_h, 6));
+        cr1_h      = Sub(cr1_h, _RS_MUL_FP(b1_h, 7));
+        cr1_h      = AverageRound(r1_h, cr1_h);
+
+        auto cr00s = Sub(BitCast(s16, cr0_l), c128);
+        auto cr01s = Sub(BitCast(s16, cr0_h), c128);
+        auto cr10s = Sub(BitCast(s16, cr1_l), c128);
+        auto cr11s = Sub(BitCast(s16, cr1_h), c128);
+        auto t0_cr = Padd(s16, cr00s, cr01s);
+        auto t1_cr = Padd(s16, cr10s, cr11s);
+        Store(hn::ShiftRight<2>(Padd(s16, t0_cr, t1_cr)), s16, out[2] + pos_Chroma + p);
+
+        p += 8;
+      }
+      pos += 256;
+      pos_Chroma += 64;
+    }
+  }
+}
+
+// 4:1:0 — Y full-res, Cb/Cr 4:1 horizontal + 2:1 vertical (8:1 total).
+// j-outer / i-inner; pos_Chroma is recomputed each inner iteration to mirror
+// the original subsample_core layout.
+HWY_ATTR void rgb2ycbcr_subsample_410(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  size_t pos                   = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+  const int j_step             = static_cast<int>(Lanes(u8)) * 2;
+  const ptrdiff_t chunk_bytes  = static_cast<ptrdiff_t>(Lanes(u8)) * 3;
+
+  for (int j = 0; j < width; j += j_step) {
+    for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+      const size_t pos_Chroma = static_cast<size_t>(j) * 2 + static_cast<size_t>(i) * 4;
+      uint8_t *base_row       = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+      size_t p                = 0;
+      size_t pc               = 0;
+      auto cb_acc             = Zero(s16);
+      auto cr_acc             = Zero(s16);
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR0 = hn::Undefined(u8); auto vG0 = hn::Undefined(u8); auto vB0 = hn::Undefined(u8);
+        auto vR1 = hn::Undefined(u8); auto vG1 = hn::Undefined(u8); auto vB1 = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR0, vG0, vB0);
+        LoadInterleaved3(u8, sp + chunk_bytes, vR1, vG1, vB1);
+
+        auto r0_l = PromoteLowerTo(u16, vR0); auto g0_l = PromoteLowerTo(u16, vG0); auto b0_l = PromoteLowerTo(u16, vB0);
+        auto r0_h = PromoteUpperTo(u16, vR0); auto g0_h = PromoteUpperTo(u16, vG0); auto b0_h = PromoteUpperTo(u16, vB0);
+        auto r1_l = PromoteLowerTo(u16, vR1); auto g1_l = PromoteLowerTo(u16, vG1); auto b1_l = PromoteLowerTo(u16, vB1);
+        auto r1_h = PromoteUpperTo(u16, vR1); auto g1_h = PromoteUpperTo(u16, vG1); auto b1_h = PromoteUpperTo(u16, vB1);
+
+        auto y0_l = _RS_MUL_FP(r0_l, 0);
+        y0_l      = Add(y0_l, _RS_MUL_FP(g0_l, 1));
+        y0_l      = Add(y0_l, _RS_MUL_FP(b0_l, 2));
+        y0_l      = hn::ShiftRight<1>(Add(y0_l, g0_l));
+        auto y0_h = _RS_MUL_FP(r0_h, 0);
+        y0_h      = Add(y0_h, _RS_MUL_FP(g0_h, 1));
+        y0_h      = Add(y0_h, _RS_MUL_FP(b0_h, 2));
+        y0_h      = hn::ShiftRight<1>(Add(y0_h, g0_h));
+        auto y1_l = _RS_MUL_FP(r1_l, 0);
+        y1_l      = Add(y1_l, _RS_MUL_FP(g1_l, 1));
+        y1_l      = Add(y1_l, _RS_MUL_FP(b1_l, 2));
+        y1_l      = hn::ShiftRight<1>(Add(y1_l, g1_l));
+        auto y1_h = _RS_MUL_FP(r1_h, 0);
+        y1_h      = Add(y1_h, _RS_MUL_FP(g1_h, 1));
+        y1_h      = Add(y1_h, _RS_MUL_FP(b1_h, 2));
+        y1_h      = hn::ShiftRight<1>(Add(y1_h, g1_h));
+
+        Store(Sub(BitCast(s16, y0_l), c128), s16, out[0] + pos + p);
+        Store(Sub(BitCast(s16, y0_h), c128), s16, out[0] + pos + p + 64);
+        Store(Sub(BitCast(s16, y1_l), c128), s16, out[0] + pos + p + 128);
+        Store(Sub(BitCast(s16, y1_h), c128), s16, out[0] + pos + p + 192);
+
+        auto cb0_l = Sub(scaled_128_1, _RS_MUL_FP(r0_l, 3));
+        cb0_l      = Sub(cb0_l, _RS_MUL_FP(g0_l, 4));
+        cb0_l      = AverageRound(b0_l, cb0_l);
+        auto cb0_h = Sub(scaled_128_1, _RS_MUL_FP(r0_h, 3));
+        cb0_h      = Sub(cb0_h, _RS_MUL_FP(g0_h, 4));
+        cb0_h      = AverageRound(b0_h, cb0_h);
+        auto cb1_l = Sub(scaled_128_1, _RS_MUL_FP(r1_l, 3));
+        cb1_l      = Sub(cb1_l, _RS_MUL_FP(g1_l, 4));
+        cb1_l      = AverageRound(b1_l, cb1_l);
+        auto cb1_h = Sub(scaled_128_1, _RS_MUL_FP(r1_h, 3));
+        cb1_h      = Sub(cb1_h, _RS_MUL_FP(g1_h, 4));
+        cb1_h      = AverageRound(b1_h, cb1_h);
+
+        auto cb00s = Sub(BitCast(s16, cb0_l), c128);
+        auto cb01s = Sub(BitCast(s16, cb0_h), c128);
+        auto cb10s = Sub(BitCast(s16, cb1_l), c128);
+        auto cb11s = Sub(BitCast(s16, cb1_h), c128);
+        auto tb0   = Padd(s16, cb00s, cb01s);
+        auto tb1   = Padd(s16, cb10s, cb11s);
+        auto cb_row_h_sum = Padd(s16, tb0, tb1);  // 4-pixel horizontal sums for this row
+
+        auto cr0_l = Sub(scaled_128_1, _RS_MUL_FP(g0_l, 6));
+        cr0_l      = Sub(cr0_l, _RS_MUL_FP(b0_l, 7));
+        cr0_l      = AverageRound(r0_l, cr0_l);
+        auto cr0_h = Sub(scaled_128_1, _RS_MUL_FP(g0_h, 6));
+        cr0_h      = Sub(cr0_h, _RS_MUL_FP(b0_h, 7));
+        cr0_h      = AverageRound(r0_h, cr0_h);
+        auto cr1_l = Sub(scaled_128_1, _RS_MUL_FP(g1_l, 6));
+        cr1_l      = Sub(cr1_l, _RS_MUL_FP(b1_l, 7));
+        cr1_l      = AverageRound(r1_l, cr1_l);
+        auto cr1_h = Sub(scaled_128_1, _RS_MUL_FP(g1_h, 6));
+        cr1_h      = Sub(cr1_h, _RS_MUL_FP(b1_h, 7));
+        cr1_h      = AverageRound(r1_h, cr1_h);
+
+        auto cr00s = Sub(BitCast(s16, cr0_l), c128);
+        auto cr01s = Sub(BitCast(s16, cr0_h), c128);
+        auto cr10s = Sub(BitCast(s16, cr1_l), c128);
+        auto cr11s = Sub(BitCast(s16, cr1_h), c128);
+        auto tr0   = Padd(s16, cr00s, cr01s);
+        auto tr1   = Padd(s16, cr10s, cr11s);
+        auto cr_row_h_sum = Padd(s16, tr0, tr1);
+
+        if ((r & 1) == 0) {
+          // Even row: stash horizontal-summed Cb/Cr; pair with next row.
+          cb_acc = cb_row_h_sum;
+          cr_acc = cr_row_h_sum;
+        } else {
+          // Odd row: complete vertical sum and divide by 8 (= 4×2).
+          cb_acc = hn::ShiftRight<3>(Add(cb_acc, cb_row_h_sum));
+          cr_acc = hn::ShiftRight<3>(Add(cr_acc, cr_row_h_sum));
+          Store(cb_acc, s16, out[1] + pos_Chroma + pc);
+          Store(cr_acc, s16, out[2] + pos_Chroma + pc);
+          pc += 8;
+        }
+        p += 8;
+      }
+      pos += 256;
+    }
+  }
+}
+
+// 4:4:0 — Y full-res, Cb/Cr vertically averaged 2:1 only.
+// Note: this case loops j-outer / i-inner and recomputes pos / pos_Chroma each
+// inner iteration (matching subsample_core's YUV440 case), so the layout puts
+// the two luma blocks of one MCU column adjacently in pos space.
+HWY_ATTR void rgb2ycbcr_subsample_440(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs       = hn::LoadDup128(s16, constants);
+  const auto scaled_128_1 = Set(u16, (128 << 1) + 0);
+  const auto c128         = Set(s16, 128);
+
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+
+  for (int j = 0; j < width; j += static_cast<int>(Lanes(u8))) {
+    for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+      const size_t pos        = static_cast<size_t>(j) * 16 + static_cast<size_t>(i) * 8;
+      const size_t pos_Chroma = static_cast<size_t>(j) * 8 + static_cast<size_t>(i) * 4;
+      uint8_t *base_row       = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+
+      auto cb_prev_l = Zero(s16); auto cb_prev_h = Zero(s16);
+      auto cr_prev_l = Zero(s16); auto cr_prev_h = Zero(s16);
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR = hn::Undefined(u8); auto vG = hn::Undefined(u8); auto vB = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR, vG, vB);
+        auto r_l = PromoteLowerTo(u16, vR);
+        auto g_l = PromoteLowerTo(u16, vG);
+        auto b_l = PromoteLowerTo(u16, vB);
+        auto r_h = PromoteUpperTo(u16, vR);
+        auto g_h = PromoteUpperTo(u16, vG);
+        auto b_h = PromoteUpperTo(u16, vB);
+
+        auto yl = _RS_MUL_FP(r_l, 0);
+        yl      = Add(yl, _RS_MUL_FP(g_l, 1));
+        yl      = Add(yl, _RS_MUL_FP(b_l, 2));
+        yl      = hn::ShiftRight<1>(Add(yl, g_l));
+        auto yh = _RS_MUL_FP(r_h, 0);
+        yh      = Add(yh, _RS_MUL_FP(g_h, 1));
+        yh      = Add(yh, _RS_MUL_FP(b_h, 2));
+        yh      = hn::ShiftRight<1>(Add(yh, g_h));
+
+        auto cbl = Sub(scaled_128_1, _RS_MUL_FP(r_l, 3));
+        cbl      = Sub(cbl, _RS_MUL_FP(g_l, 4));
+        cbl      = AverageRound(b_l, cbl);
+        auto cbh = Sub(scaled_128_1, _RS_MUL_FP(r_h, 3));
+        cbh      = Sub(cbh, _RS_MUL_FP(g_h, 4));
+        cbh      = AverageRound(b_h, cbh);
+
+        auto crl = Sub(scaled_128_1, _RS_MUL_FP(g_l, 6));
+        crl      = Sub(crl, _RS_MUL_FP(b_l, 7));
+        crl      = AverageRound(r_l, crl);
+        auto crh = Sub(scaled_128_1, _RS_MUL_FP(g_h, 6));
+        crh      = Sub(crh, _RS_MUL_FP(b_h, 7));
+        crh      = AverageRound(r_h, crh);
+
+        // Y: lower (cols 0-7) of row r → pos + 8*r ; upper (cols 8-15) of row r → pos + 8*r + 128.
+        Store(Sub(BitCast(s16, yl), c128), s16, out[0] + pos + 8 * r);
+        Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * r + 128);
+
+        auto cbl_s = Sub(BitCast(s16, cbl), c128);
+        auto cbh_s = Sub(BitCast(s16, cbh), c128);
+        auto crl_s = Sub(BitCast(s16, crl), c128);
+        auto crh_s = Sub(BitCast(s16, crh), c128);
+
+        if ((r & 1) == 0) {
+          cb_prev_l = cbl_s; cb_prev_h = cbh_s;
+          cr_prev_l = crl_s; cr_prev_h = crh_s;
+        } else {
+          // 2:1 vertical average per column.
+          const size_t off = 8 * (r >> 1);
+          Store(hn::ShiftRight<1>(Add(cb_prev_l, cbl_s)), s16, out[1] + pos_Chroma + off);
+          Store(hn::ShiftRight<1>(Add(cb_prev_h, cbh_s)), s16, out[1] + pos_Chroma + off + 64);
+          Store(hn::ShiftRight<1>(Add(cr_prev_l, crl_s)), s16, out[2] + pos_Chroma + off);
+          Store(hn::ShiftRight<1>(Add(cr_prev_h, crh_s)), s16, out[2] + pos_Chroma + off + 64);
+        }
+      }
+    }
+  }
+}
+
 // Fused RGB → YCbCr → YUV420-subsample. One pass over the input strip; output
 // goes directly to the int16 MCU-order buffers. Same final values as
 // rgb2ycbcr() + subsample_core(YUV420) but avoids the planar uint8 yuv0
@@ -713,16 +1181,14 @@ HWY_ATTR void rgb2ycbcr_subsample_420(uint8_t *HWY_RESTRICT in, std::vector<int1
         auto g_h = PromoteUpperTo(u16, vG);
         auto b_h = PromoteUpperTo(u16, vB);
 
-#define _FUSED_MUL(x, idx) BitCast(u16, MulFixedPoint15(BitCast(s16, (x)), hn::Broadcast<idx>(coeffs)))
-
         // Y
-        auto yl = _FUSED_MUL(r_l, 0);
-        yl      = Add(yl, _FUSED_MUL(g_l, 1));
-        yl      = Add(yl, _FUSED_MUL(b_l, 2));
+        auto yl = _RS_MUL_FP(r_l, 0);
+        yl      = Add(yl, _RS_MUL_FP(g_l, 1));
+        yl      = Add(yl, _RS_MUL_FP(b_l, 2));
         yl      = hn::ShiftRight<1>(Add(yl, g_l));
-        auto yh = _FUSED_MUL(r_h, 0);
-        yh      = Add(yh, _FUSED_MUL(g_h, 1));
-        yh      = Add(yh, _FUSED_MUL(b_h, 2));
+        auto yh = _RS_MUL_FP(r_h, 0);
+        yh      = Add(yh, _RS_MUL_FP(g_h, 1));
+        yh      = Add(yh, _RS_MUL_FP(b_h, 2));
         yh      = hn::ShiftRight<1>(Add(yh, g_h));
 
         // Y is full resolution → store in MCU order, level-shifted.
@@ -730,22 +1196,20 @@ HWY_ATTR void rgb2ycbcr_subsample_420(uint8_t *HWY_RESTRICT in, std::vector<int1
         Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * (r + 8));
 
         // Cb
-        auto cbl = Sub(scaled_128_1, _FUSED_MUL(r_l, 3));
-        cbl      = Sub(cbl, _FUSED_MUL(g_l, 4));
+        auto cbl = Sub(scaled_128_1, _RS_MUL_FP(r_l, 3));
+        cbl      = Sub(cbl, _RS_MUL_FP(g_l, 4));
         cbl      = AverageRound(b_l, cbl);
-        auto cbh = Sub(scaled_128_1, _FUSED_MUL(r_h, 3));
-        cbh      = Sub(cbh, _FUSED_MUL(g_h, 4));
+        auto cbh = Sub(scaled_128_1, _RS_MUL_FP(r_h, 3));
+        cbh      = Sub(cbh, _RS_MUL_FP(g_h, 4));
         cbh      = AverageRound(b_h, cbh);
 
         // Cr
-        auto crl = Sub(scaled_128_1, _FUSED_MUL(g_l, 6));
-        crl      = Sub(crl, _FUSED_MUL(b_l, 7));
+        auto crl = Sub(scaled_128_1, _RS_MUL_FP(g_l, 6));
+        crl      = Sub(crl, _RS_MUL_FP(b_l, 7));
         crl      = AverageRound(r_l, crl);
-        auto crh = Sub(scaled_128_1, _FUSED_MUL(g_h, 6));
-        crh      = Sub(crh, _FUSED_MUL(b_h, 7));
+        auto crh = Sub(scaled_128_1, _RS_MUL_FP(g_h, 6));
+        crh      = Sub(crh, _RS_MUL_FP(b_h, 7));
         crh      = AverageRound(r_h, crh);
-
-#undef _FUSED_MUL
 
         // Level-shift to int16.
         auto cbl_s = Sub(BitCast(s16, cbl), c128);
@@ -781,13 +1245,34 @@ HWY_ATTR void rgb2ycbcr_subsample_420(uint8_t *HWY_RESTRICT in, std::vector<int1
 // the two-pass rgb2ycbcr + subsample_core combination.
 HWY_ATTR void rgb2ycbcr_subsample_core(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &yuv0,
                                        std::vector<int16_t *> &out, int width, int YCCtype) {
-  if (YCCtype == YCC::YUV420) {
-    rgb2ycbcr_subsample_420(in, out, width);
-  } else {
-    rgb2ycbcr(in, yuv0, width);
-    subsample_core(yuv0, out, width, YCCtype);
+  switch (YCCtype) {
+    case YCC::YUV444:
+      rgb2ycbcr_subsample_444(in, out, width);
+      return;
+    case YCC::YUV422:
+      rgb2ycbcr_subsample_422(in, out, width);
+      return;
+    case YCC::YUV411:
+      rgb2ycbcr_subsample_411(in, out, width);
+      return;
+    case YCC::YUV440:
+      rgb2ycbcr_subsample_440(in, out, width);
+      return;
+    case YCC::YUV420:
+      rgb2ycbcr_subsample_420(in, out, width);
+      return;
+    case YCC::YUV410:
+      rgb2ycbcr_subsample_410(in, out, width);
+      return;
+    default:
+      // GRAY / GRAY2 with RGB input still go through the two-pass path.
+      rgb2ycbcr(in, yuv0, width);
+      subsample_core(yuv0, out, width, YCCtype);
+      return;
   }
 }
+
+#undef _RS_MUL_FP
 #else
 HWY_ATTR void rgb2ycbcr(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &out, const int width) {
   uint8_t *I0 = in, *I1 = in + 1, *I2 = in + 2;
