@@ -29,7 +29,6 @@ size_t read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int
   int status = 0;  // status, = 3 is DONE
   int c;
   int val = 0;
-  char comment[256];  // temporal buffer to eat comments
   c = fgetc(fp);
   if (c != 'P') {
     printf("This image is not in PNM format.\n");
@@ -55,16 +54,19 @@ size_t read_pnm(FILE *&fp, const std::string &name, int &width, int &height, int
   }
   while (status < DONE) {
     c = fgetc(fp);
-    // eat spaces, LF or CR, or comments
-    while (c == ' ' || c == '\n' || c == 0xd) {
-      c = fgetc(fp);
+    // Eat whitespace and '#' comments. Comments are read byte-by-byte to the
+    // line terminator so they can be of any length (the previous fgets-into-
+    // a-256-byte-buffer truncated long comments and corrupted the parse).
+    while (c == ' ' || c == '\t' || c == '\n' || c == 0xd || c == '#') {
       if (c == '#') {
-        fgets(comment, sizeof(comment), fp);
-        c = fgetc(fp);
+        while (c != EOF && c != '\n') {
+          c = fgetc(fp);
+        }
       }
+      c = fgetc(fp);
     }
     // get values
-    while (c != ' ' && c != '\n' && c != 0xd) {
+    while (c != ' ' && c != '\t' && c != '\n' && c != 0xd && c != EOF) {
       val *= 10;
       val += c - '0';
       c = fgetc(fp);
