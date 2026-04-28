@@ -92,11 +92,11 @@ class jpeg_encoder_impl {
     const int mcu_rows = std::min(BUFLINES, rounded_height - row_off);
 
     if (ncomp == 3) {
-      jpegenc_hwy::rgb2ycbcr(wb.input.get(), wb.yuv0, rounded_width);
+      jpegenc_hwy::rgb2ycbcr_subsample(wb.input.get(), wb.yuv0, wb.yuv1, rounded_width, YCCtype);
     } else {
       wb.yuv0[0] = wb.input.get();
+      jpegenc_hwy::subsample(wb.yuv0, wb.yuv1, rounded_width, YCCtype);
     }
-    jpegenc_hwy::subsample(wb.yuv0, wb.yuv1, rounded_width, YCCtype);
     jpegenc_hwy::encode_lines(wb.yuv1, rounded_width, mcu_rows, YCCtype, qtable, prev_dc, tab_Y, tab_C, cs);
   }
 
