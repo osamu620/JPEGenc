@@ -92,22 +92,13 @@ void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, co
 
   if (nc == 3) {  // color
     for (int k = 0; k < num_mcus; k += mcu_skip) {
-      // DCT, Quantization
+      // Fused DCT + quantize, per block.
       for (int i = mcu_skip; i > 0; --i) {
-        dct2_core(block0);
+        dct2_core(block0, qtable);
         block0 += DCTSIZE2;
       }
-      dct2_core(block1);
-      dct2_core(block2);
-
-      block0 = in[0] + k * DCTSIZE2;
-
-      for (int i = mcu_skip; i > 0; --i) {
-        quantize_core(block0, qtable);
-        block0 += DCTSIZE2;
-      }
-      quantize_core(block1, qtable + DCTSIZE2);
-      quantize_core(block2, qtable + DCTSIZE2);
+      dct2_core(block1, qtable + DCTSIZE2);
+      dct2_core(block2, qtable + DCTSIZE2);
 
       block0 = in[0] + k * DCTSIZE2;
 
@@ -125,10 +116,8 @@ void encode_mcus(std::vector<int16_t *> &in, int width, const int mcu_height, co
   } else {  // monochrome
     for (int k = 0; k < num_mcus; k += mcu_skip * 2) {
       // Process two blocks within a single iteration for the speed
-      dct2_core(block0);
-      dct2_core(block0 + DCTSIZE2);
-      quantize_core(block0, qtable);
-      quantize_core(block0 + DCTSIZE2, qtable);
+      dct2_core(block0, qtable);
+      dct2_core(block0 + DCTSIZE2, qtable);
       encode_block(block0, tab_Y, prev_dc[0], enc);
       encode_block(block0 + DCTSIZE2, tab_Y, prev_dc[0], enc);
       block0 += DCTSIZE2 * 2;
