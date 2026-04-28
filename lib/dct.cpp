@@ -23,7 +23,11 @@ static const int16_t a3 = static_cast<int16_t>(round((c2 + c6 - 1.0) * (1 << 15)
 
 HWY_ALIGN static const int16_t coeff[] = {a0, a1, a2, a3, 0, 0, 0, 0};
 
-void dct2_core(int16_t *HWY_RESTRICT data) {
+// Fused forward 8x8 DCT + quantization. Pass-2 row vectors are multiplied by
+// the corresponding row of `qtable` (8 int16 values per row, DCTSIZE-strided)
+// before being stored, eliminating the separate quantize pass that used to
+// follow this function.
+void dct2_core(int16_t *HWY_RESTRICT data, const int16_t *HWY_RESTRICT qtable) {
 #if HWY_TARGET != HWY_SCALAR
   HWY_CAPPED(int16_t, 8) s16;
   //  HWY_CAPPED(int32_t, 4) s32;
@@ -222,14 +226,18 @@ void dct2_core(int16_t *HWY_RESTRICT data) {
   row1 = Add(z11, z4);
   row7 = Sub(z11, z4);
 
-  Store(row0, s16, data + 0 * DCTSIZE);
-  Store(row1, s16, data + 1 * DCTSIZE);
-  Store(row2, s16, data + 2 * DCTSIZE);
-  Store(row3, s16, data + 3 * DCTSIZE);
-  Store(row4, s16, data + 4 * DCTSIZE);
-  Store(row5, s16, data + 5 * DCTSIZE);
-  Store(row6, s16, data + 6 * DCTSIZE);
-  Store(row7, s16, data + 7 * DCTSIZE);
+  // Fused quantize: multiply each pass-2 row by the matching qtable row before
+  // storing. Same numeric result as a separate quantize pass that does
+  // MulFixedPoint15(data[i], qtable[i]) per element, with one less round-trip
+  // through memory.
+  Store(MulFixedPoint15(row0, Load(s16, qtable + 0 * DCTSIZE)), s16, data + 0 * DCTSIZE);
+  Store(MulFixedPoint15(row1, Load(s16, qtable + 1 * DCTSIZE)), s16, data + 1 * DCTSIZE);
+  Store(MulFixedPoint15(row2, Load(s16, qtable + 2 * DCTSIZE)), s16, data + 2 * DCTSIZE);
+  Store(MulFixedPoint15(row3, Load(s16, qtable + 3 * DCTSIZE)), s16, data + 3 * DCTSIZE);
+  Store(MulFixedPoint15(row4, Load(s16, qtable + 4 * DCTSIZE)), s16, data + 4 * DCTSIZE);
+  Store(MulFixedPoint15(row5, Load(s16, qtable + 5 * DCTSIZE)), s16, data + 5 * DCTSIZE);
+  Store(MulFixedPoint15(row6, Load(s16, qtable + 6 * DCTSIZE)), s16, data + 6 * DCTSIZE);
+  Store(MulFixedPoint15(row7, Load(s16, qtable + 7 * DCTSIZE)), s16, data + 7 * DCTSIZE);
 #else
   int32_t tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
   int32_t tmp10, tmp11, tmp12, tmp13;
@@ -336,6 +344,11 @@ void dct2_core(int16_t *HWY_RESTRICT data) {
     dataptr[DCTSIZE * 7] = static_cast<int16_t>((z11 - z4));
 
     dataptr++; /* advance pointer to next column */
+  }
+
+  /* Quantize (scalar fallback — kept correct for the rarely-used SCALAR target). */
+  for (int i = 0; i < DCTSIZE2; ++i) {
+    data[i] = static_cast<int16_t>(((int32_t)data[i] * qtable[i] + half) >> 15);
   }
 #endif
 }
