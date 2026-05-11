@@ -78,6 +78,13 @@ class stream_buf {
     cur_byte = buf.get();
     return buf.get();
   }
+
+  uint8_t *data() const { return buf.get(); }
+
+  void reset() {
+    pos      = 0;
+    cur_byte = buf.get();
+  }
 };
 
 class bitstream {
@@ -239,6 +246,22 @@ class bitstream {
 #endif
   }
 
+#if USE_VECTOR != 0
+  uint8_t *data() { return stream.data(); }
+#else
+  uint8_t *data() { return stream.data(); }
+#endif
+
+  void reset() {
+    bits = BIT_BUF_SIZE;
+    tmp  = 0;
+#if USE_VECTOR != 0
+    stream.clear();
+#else
+    stream.reset();
+#endif
+  }
+
   void finalize(std::vector<uint8_t> &out) {
     flush();
     put_word(EOI);
@@ -246,7 +269,8 @@ class bitstream {
     out = std::move(stream);
 #else
     out.resize(stream.pos);
-    memcpy(out.data(), stream.get_buf(), stream.pos);
+    memcpy(out.data(), stream.data(), stream.pos);
+    stream.reset();
 #endif
   }
 };

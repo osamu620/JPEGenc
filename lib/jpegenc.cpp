@@ -156,11 +156,12 @@ class jpeg_encoder_impl {
     codestream.resize(total);
     uint8_t *out = codestream.data();
     size_t pos   = 0;
-    std::memcpy(out + pos, enc.get_stream()->get_buf(), header_len);
+    std::memcpy(out + pos, enc.data(), header_len);
     pos += header_len;
     for (int s = 0; s < num_strips; ++s) {
-      std::memcpy(out + pos, strip_cs[s].get_stream()->get_buf(), strip_lens[s]);
+      std::memcpy(out + pos, strip_cs[s].data(), strip_lens[s]);
       pos += strip_lens[s];
+      strip_cs[s].reset();
     }
     out[pos++] = static_cast<uint8_t>(EOI >> 8);
     out[pos++] = static_cast<uint8_t>(EOI & 0xFF);
