@@ -46,7 +46,6 @@ class imchunk {
     cur_line                 = n;
     const int num_rows       = ((cur_line + BUFLINES) > height) ? height % BUFLINES : BUFLINES;
     const int num_extra_rows = ((cur_line + BUFLINES) > height) ? BUFLINES - height % BUFLINES : 0;
-    uint8_t *sp              = buf_tmp.get();
     const size_t want_pos    = static_cast<size_t>(origin) + static_cast<size_t>(n) * in_width;
     // Skip the seek when sequential reads keep us at the right offset already.
     // fseek invalidates the FILE's internal buffer, so it isn't free.
@@ -54,29 +53,30 @@ class imchunk {
       fseek(file, want_pos, SEEK_SET);
     }
     const size_t bytes_read = in_width * num_rows;
-    fread(sp, sizeof(unsigned char), bytes_read, file);
-    expected_pos = want_pos + bytes_read;
-    uint8_t *spp[BUFLINES], *dpp[BUFLINES];
-    for (int i = 0; i < BUFLINES; ++i) {
-      spp[i] = sp + i * in_width;
-      dpp[i] = dp + i * out_width;
-    }
-    const size_t extra_cols = out_width - in_width;
-    for (int i = 0; i < num_rows; ++i) {
-      memcpy(dpp[i], spp[i], in_width);
-      for (size_t j = 0; j < extra_cols; j += ncomp) {
-        uint8_t *p = dpp[i] + in_width;
-        p[j]       = p[-3];
-        p[j + 1]   = p[-2];
-        p[j + 2]   = p[-1];
+    if (in_width == out_width) {
+      fread(dp, sizeof(unsigned char), bytes_read, file);
+    } else {
+      uint8_t *sp = buf_tmp.get();
+      fread(sp, sizeof(unsigned char), bytes_read, file);
+      const size_t extra_cols = out_width - in_width;
+      for (int i = 0; i < num_rows; ++i) {
+        uint8_t *dst = dp + i * out_width;
+        memcpy(dst, sp + i * in_width, in_width);
+        uint8_t *p = dst + in_width;
+        for (size_t j = 0; j < extra_cols; j += ncomp) {
+          p[j]     = p[-3];
+          p[j + 1] = p[-2];
+          p[j + 2] = p[-1];
+        }
       }
     }
+    expected_pos = want_pos + bytes_read;
     if (num_rows != BUFLINES) {
-      sp = dpp[num_rows - 1];
-      dp = dpp[num_rows];
+      uint8_t *src = dp + static_cast<size_t>(num_rows - 1) * out_width;
+      uint8_t *fill = dp + static_cast<size_t>(num_rows) * out_width;
       for (int i = 0; i < num_extra_rows; ++i) {
-        memcpy(dp, sp, out_width);
-        dp += out_width;
+        memcpy(fill, src, out_width);
+        fill += out_width;
       }
     }
   }
