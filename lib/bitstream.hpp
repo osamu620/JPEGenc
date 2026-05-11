@@ -239,17 +239,14 @@ class bitstream {
 #endif
   }
 
-  std::vector<uint8_t> finalize() {
+  void finalize(std::vector<uint8_t> &out) {
     flush();
     put_word(EOI);
 #if USE_VECTOR != 0
-    return std::move(stream);
+    out = std::move(stream);
 #else
-    size_t size = stream.pos;
-    std::vector<uint8_t> out;
-    out.resize(size);
-    memcpy(out.data(), stream.get_buf(), size);
-    return out;
+    out.resize(stream.pos);
+    memcpy(out.data(), stream.get_buf(), stream.pos);
 #endif
   }
 };

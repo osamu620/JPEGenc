@@ -112,7 +112,7 @@ class jpeg_encoder_impl {
       encode_strip(s, 0, prev_dc, enc);
     }
 
-    codestream = enc.finalize();
+    enc.finalize(codestream);
   }
 
   // Multi-threaded body: producer (this thread) reads each strip into a free
