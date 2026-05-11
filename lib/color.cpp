@@ -1241,6 +1241,53 @@ HWY_ATTR void rgb2ycbcr_subsample_420(uint8_t *HWY_RESTRICT in, std::vector<int1
   }
 }
 
+// GRAY / GRAY2 — extract only Y from interleaved RGB, level-shift, store in
+// MCU order.  Same Y arithmetic as rgb2ycbcr(), same storage layout as the
+// GRAY case in subsample_core().
+HWY_ATTR void rgb2ycbcr_subsample_gray(uint8_t *HWY_RESTRICT in, std::vector<int16_t *> &out, int width) {
+  hn::FixedTag<uint8_t, 16> u8;
+  hn::FixedTag<uint16_t, 8> u16;
+  hn::FixedTag<int16_t, 8> s16;
+
+  HWY_ALIGN constexpr int16_t constants[] = {19595, 38470 - 32768, 7471, 11059, 21709, 0, 27439, 5329};
+  const auto coeffs = hn::LoadDup128(s16, constants);
+  const auto c128   = Set(s16, 128);
+
+  size_t pos                   = 0;
+  const ptrdiff_t row_stride_b = static_cast<ptrdiff_t>(width) * 3;
+
+  for (int i = 0; i < BUFLINES; i += DCTSIZE) {
+    for (int j = 0; j < width; j += static_cast<int>(Lanes(u8))) {
+      uint8_t *base_row = in + static_cast<ptrdiff_t>(i) * row_stride_b + j * 3;
+
+      for (int r = 0; r < DCTSIZE; ++r) {
+        uint8_t *sp = base_row + static_cast<ptrdiff_t>(r) * row_stride_b;
+        auto vR = hn::Undefined(u8); auto vG = hn::Undefined(u8); auto vB = hn::Undefined(u8);
+        LoadInterleaved3(u8, sp, vR, vG, vB);
+        auto r_l = PromoteLowerTo(u16, vR);
+        auto g_l = PromoteLowerTo(u16, vG);
+        auto b_l = PromoteLowerTo(u16, vB);
+        auto r_h = PromoteUpperTo(u16, vR);
+        auto g_h = PromoteUpperTo(u16, vG);
+        auto b_h = PromoteUpperTo(u16, vB);
+
+        auto yl = _RS_MUL_FP(r_l, 0);
+        yl      = Add(yl, _RS_MUL_FP(g_l, 1));
+        yl      = Add(yl, _RS_MUL_FP(b_l, 2));
+        yl      = hn::ShiftRight<1>(Add(yl, g_l));
+        auto yh = _RS_MUL_FP(r_h, 0);
+        yh      = Add(yh, _RS_MUL_FP(g_h, 1));
+        yh      = Add(yh, _RS_MUL_FP(b_h, 2));
+        yh      = hn::ShiftRight<1>(Add(yh, g_h));
+
+        Store(Sub(BitCast(s16, yl), c128), s16, out[0] + pos + 8 * r);
+        Store(Sub(BitCast(s16, yh), c128), s16, out[0] + pos + 8 * (r + 8));
+      }
+      pos += 128;
+    }
+  }
+}
+
 // Dispatcher: pick the fused path for modes that have one, otherwise call
 // the two-pass rgb2ycbcr + subsample_core combination.
 HWY_ATTR void rgb2ycbcr_subsample_core(uint8_t *HWY_RESTRICT in, std::vector<uint8_t *> &yuv0,
@@ -1264,10 +1311,11 @@ HWY_ATTR void rgb2ycbcr_subsample_core(uint8_t *HWY_RESTRICT in, std::vector<uin
     case YCC::YUV410:
       rgb2ycbcr_subsample_410(in, out, width);
       return;
+    case YCC::GRAY:
+    case YCC::GRAY2:
+      rgb2ycbcr_subsample_gray(in, out, width);
+      return;
     default:
-      // GRAY / GRAY2 with RGB input still go through the two-pass path.
-      rgb2ycbcr(in, yuv0, width);
-      subsample_core(yuv0, out, width, YCCtype);
       return;
   }
 }
